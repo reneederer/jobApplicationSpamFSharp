@@ -11,7 +11,6 @@ module DB = JobApplicationSpam.Database
 
 module Server =
 
-//    let rene () : Async<Result<string, string>> =
     [<Remote>]
     let setUserValues (userValues : UserValues) (userId : int) : Async<Result<string, string>> =
         async {
@@ -25,22 +24,9 @@ module Server =
             with
             //| :? PostgresException
             | _ ->
-                return fail "An error occured while trying to add user."
+                return fail "An error occured while trying to set user values."
         }
 
-    [<Remote>]
-    let setUserValues1 (userValues : UserValues) (userId : int) : Async<Result<string, string>>=
-        async {
-            use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
-            dbConn.Open()
-            use command = new NpgsqlCommand("select email from users where id = 1", dbConn)
-            try
-                return ok (command.ExecuteScalar () |> string)
-            with
-            | :? PostgresException
-            | _ ->
-                return fail "An error occured while trying to add user."
-        }
 
     let userEmailExists (dbConn : NpgsqlConnection) (email : string) =
         use command = new NpgsqlCommand("select count(*) from users where email = :email", dbConn)

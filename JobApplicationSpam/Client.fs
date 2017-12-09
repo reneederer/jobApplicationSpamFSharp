@@ -21,35 +21,34 @@ module Client =
 
     
     
-    let createUserValues1 gender degree firstName lastName street postcode city phone mobilePhone =
-        { //gender = Var.Create<Gender>(gender)
-          degree = Var.Create<string>(degree)
-          firstName = Var.Create<string>(firstName)
-          lastName = Var.Create<string>(lastName)
-          street = Var.Create<string>(street)
-          postcode= Var.Create<string>(postcode)
-          city = Var.Create<string>(city)
-          phone = Var.Create<string>(phone)
-          mobilePhone = Var.Create<string>(mobilePhone)
-        }
-    let createUserValues degree =
-        {
+    let createUserValues gender degree firstName lastName street postcode city phone mobilePhone =
+        { gender = gender
           degree = degree
+          firstName = firstName
+          lastName = lastName
+          street = street
+          postcode = postcode
+          city = city
+          phone = phone
+          mobilePhone = mobilePhone
         }
 
 
     let editUserValues () : Elt =
-        let userValues2 = createUserValues1 Gender.Male "dr" "rene" "ederer" "Raabstr. 24A" "90429" "Nuernberg" "noPhone" "noMobilePhone"
-        let userValues1 = createUserValues1 Gender.Male "dr" "rene" "ederer" "Raabstr. 24A" "90429" "Nuernberg" "noPhone" "noMobilePhone"
+        let varMessage = Var.Create("nothing")
         let subm userValues =
+            Var.Set varMessage ("Doing something")
             async {
                 let! result = Server.setUserValues userValues 1
-                let re =
+                let m =
                     match result with
-                    | Ok (v, _) -> JS.Alert(v)
-                    | Bad v -> JS.Alert(sprintf "%A" v)
+                    | Ok (v, _) ->  v
+                    | Bad v -> sprintf "%A" v
+                do! Async.Sleep(1000)
+                Var.Set varMessage m
+                JS.Alert("Hallo")
                 return ()
-            } |> Async.Start
+            } |> Async.StartImmediate
             //userValues.firstName.Value <- ""
             //userValues.lastName.Value <- ""
         let abc userValues =
@@ -59,42 +58,50 @@ module Client =
                 | Ok (v, _) -> return div [text v]
                 | Bad vs ->  return div [text <| String.concat ", " vs]
             } |> Doc.Async
-        let degreeVar = Var.Create("2")
+        let varGender = Var.Create Gender.Male 
+        let varDegree = Var.Create("1")
+        let varFirstName = Var.Create("")
+        let varLastName = Var.Create("")
+        let varStreet = Var.Create("")
+        let varPostcode = Var.Create("")
+        let varCity = Var.Create("")
+        let varPhone = Var.Create("")
+        let varMobilePhone = Var.Create("")
         div [  h1 [text "Hello"]
-               (*Doc.Radio [attr.id "male"; ] Gender.Male userValues.gender
+               Doc.Radio [attr.id "male"; ] Gender.Male varGender
                labelAttr [attr.``for`` "male"; attr.radiogroup "gender"] [text "männlich"]
                br []
-               Doc.Radio [attr.id "female"; attr.radiogroup "gender" ] Gender.Female userValues.gender
+               Doc.Radio [attr.id "female"; attr.radiogroup "gender" ] Gender.Female varGender
                labelAttr [attr.``for`` "female"] [text "weiblich"]
                br []
-               *)
-//               labelAttr [attr.``for`` "degree"] [text "Titel"]
-               //Doc.Input [ attr.``type`` "input"; attr.id "degree"; attr.value userValues.degree.Value ] userValues.degree
-               Doc.Input [ attr.``type`` "input"; attr.id "degree"; attr.value degreeVar.Value ] degreeVar
-               //br []
- //              labelAttr [attr.``for`` "firstName"] [text "Vorname"]
-               //Doc.Input [ attr.``type`` "input"; attr.id "firstName"; attr.value userValues.firstName.Value ] userValues.firstName
-               //br []
-  //             labelAttr [attr.``for`` "lastName"] [text "Nachname"]
-               //Doc.Input [ attr.``type`` "input"; attr.name "lastName"; attr.value userValues.lastName.Value ] userValues.lastName
+               labelAttr [attr.``for`` "degree"] [text "Titel"]
+               Doc.Input [ attr.``type`` "input"; attr.id "degree"; attr.value varDegree.Value ] varDegree
                br []
-   //            labelAttr [attr.``for`` "street"] [text "Straße"]
-               //Doc.Input [ attr.``type`` "input"; attr.id "street"; attr.value userValues.street.Value ] userValues.street
+               labelAttr [attr.``for`` "firstName"] [text "Vorname"]
+               Doc.Input [ attr.``type`` "input"; attr.id "firstName"; attr.value varFirstName.Value ] varFirstName
                br []
-    //           labelAttr [attr.``for`` "postcode"] [text "Postleitzahl"]
-               //Doc.Input [ attr.``type`` "input"; attr.id "postcode"; attr.value userValues.postcode.Value ] userValues.postcode
+               labelAttr [attr.``for`` "lastName"] [text "Nachname"]
+               Doc.Input [ attr.``type`` "input"; attr.name "lastName"; attr.value varLastName.Value ] varLastName
                br []
-     //          labelAttr [attr.``for`` "city"] [text "Stadt"]
-               //Doc.Input [ attr.``type`` "input"; attr.id "city"; attr.value userValues.city.Value ] userValues.city
+               labelAttr [attr.``for`` "street"] [text "Straße"]
+               Doc.Input [ attr.``type`` "input"; attr.id "street"; attr.value varStreet.Value ] varStreet
                br []
-      //         labelAttr [attr.``for`` "phone"] [text "Telefon"]
-               //Doc.Input [ attr.``type`` "input"; attr.id "phone"; attr.value userValues.phone.Value ] userValues.phone
+               labelAttr [attr.``for`` "postcode"] [text "Postleitzahl"]
+               Doc.Input [ attr.``type`` "input"; attr.id "postcode"; attr.value varPostcode.Value ] varPostcode
                br []
-       //        labelAttr [attr.``for`` "mobilePhone"] [text "Mobil"]
-               //Doc.Input [ attr.``type`` "input"; attr.id "mobilePhone"; attr.value userValues.mobilePhone.Value ] userValues.mobilePhone
+               labelAttr [attr.``for`` "city"] [text "Stadt"]
+               Doc.Input [ attr.``type`` "input"; attr.id "city"; attr.value varCity.Value ] varCity
                br []
-               Doc.Button "myBut" [attr.``type`` "submit"; ] (fun () -> subm <| createUserValues degreeVar.Value)
-               abc <| createUserValues degreeVar.Value
+               labelAttr [attr.``for`` "phone"] [text "Telefon"]
+               Doc.Input [ attr.``type`` "input"; attr.id "phone"; attr.value varPhone.Value ] varPhone
+               br []
+               labelAttr [attr.``for`` "mobilePhone"] [text "Mobil"]
+               Doc.Input [ attr.``type`` "input"; attr.id "mobilePhone"; attr.value varMobilePhone.Value ] varMobilePhone
+               br []
+
+               Doc.Button "myBut" [attr.``type`` "submit"; ] (fun () -> subm (createUserValues varGender.Value varDegree.Value varFirstName.Value varLastName.Value varStreet.Value varPostcode.Value varCity.Value varPhone.Value varMobilePhone.Value) |> ignore)
+               textView varMessage.View
+               //subm <| createUserValues varGender.Value varDegree.Value varFirstName.Value varLastName.Value varStreet.Value varPostcode.Value varCity.Value varPhone.Value varMobilePhone.Value
             ]
 
 

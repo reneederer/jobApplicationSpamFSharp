@@ -17,22 +17,9 @@ module Types =
         ; city : Var<string>
         }
 
-    type UserValues1 =
-        { //gender : Var<Gender>
-          degree : Var<string>
-          firstName : Var<string>
-          lastName : Var<string>
-          street : Var<string>
-          postcode : Var<string>
-          city : Var<string>
-          phone : Var<string>
-          mobilePhone : Var<string>
-        }
-
     type UserValues =
-        { //gender : Var<Gender>
+        { gender : Gender
           degree : string
-          (*
           firstName : string
           lastName : string
           street : string
@@ -40,15 +27,28 @@ module Types =
           city : string
           phone : string
           mobilePhone : string
-          *)
         }
 
 
-    type EmployerContact = Person
+    type Contact = 
+        { gender : Gender
+          degree : string
+          firstName : string
+          lastName : string
+          street : string
+          postcode : string
+          city : string
+          email : string
+          phone : string
+          mobilePhone : string
+        }
 
     type Employer =
-        { company : Var<string>
-          contact : EmployerContact
+        { company : string
+          street : string
+          postcode : string
+          city : string
+          boss : Contact
         }
 
 

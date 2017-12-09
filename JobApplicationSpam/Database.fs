@@ -22,7 +22,7 @@ module Database =
         
 
 
-    let setUserValuesDB (dbConn : NpgsqlConnection) (userValues : UserValues1) (userId : int) =
+    let setUserValuesDB (dbConn : NpgsqlConnection) (userValues : UserValues) (userId : int) =
         use command =
             match getUserValuesId dbConn userId with
             | Ok (userValuesId, _) ->

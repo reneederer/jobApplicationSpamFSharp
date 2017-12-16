@@ -199,46 +199,22 @@ module Client =
                //subm <| createUserValues varGender.Value varDegree.Value varFirstName.Value varLastName.Value varStreet.Value varPostcode.Value varCity.Value varPhone.Value varMobilePhone.Value
             ]
 
-    open System
 
     [<JavaScript>]
     let applyNow () =
-        let varEmployerId = Var.Create("")
-        let varTemplateId = Var.Create("")
-        let message = Var.Create("abc")
-
         let submitIt () =
-            try
-                let userId = 1
-                let employerId = varEmployerId.Value |> Int32.Parse
-                let templateId = varTemplateId.Value |> Int32.Parse
-                //JS.Document.Body.SetAttribute("style", "cursor:wait")
-                async {
-                    try
-                        let! applyNowResult = Server.applyNow userId employerId templateId
-                        match applyNowResult with
-                        | Ok (v, _) -> message.Value <- "Bewerbung wurde versandt."
-                        | Bad vs -> message.Value <- "Bewerbung konnte nicht bearbeitet werden."
-                        return ()
-                    with
-                    | e ->
-                        message.Value <- "Bewerbung konnte nicht bearbeitet werden." + e.Message
-                } |> Async.StartImmediate
-            with
-            | e ->
-                message.Value <- "Es trat ein Fehler auf: " + e.Message
+            let userId = 1
+            let templateId = 1
+            let employerId = 1
+            async {
+                let! applyNowResult = Server.applyNow userId employerId templateId
+                return ()
+            } |> Async.StartImmediate
         div
           [ formAttr
-              [ attr.action ""; attr.method "post"; on.submit (fun _ ev -> submitIt (); ev.PreventDefault(); ev.StopImmediatePropagation();) ]
-              [ labelAttr [] [text "employerId"]
-                Doc.Input [attr.``type`` "text"; attr.value varEmployerId.Value] varEmployerId
-                br []
-                labelAttr [] [text "templateId"]
-                Doc.Input [attr.``type`` "text"; attr.value varTemplateId.Value] varTemplateId
-                br []
-                inputAttr [attr.``type`` "submit"; ] []
+              [on.submit (fun _ _ -> submitIt ()) ]
+              [ inputAttr [attr.``type`` "submit"; ] []
               ]
-            textView message.View
           ]
 
 

@@ -198,7 +198,6 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Main.html" />
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Types.fs" />
     <Compile Include="Database.fs" />
@@ -206,11 +205,9 @@
     <Compile Include="Remoting.fs" />
     <Compile Include="Client.fs" />
     <Compile Include="Main.fs" />
+    <Content Include="Main.html" />
     <Content Include="packages.config" />
     <Content Include="App.config" />
-    <Content Include="bootstrap.min.css">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
   <Target Name="IncludeContent" BeforeTargets="Compile">
     <ItemGroup>

@@ -1,6 +1,8 @@
 ﻿namespace JobApplicationSpam
 module Types =
     open WebSharper.UI.Next
+    open WebSharper.Sitelets
+
 
     type Gender =
     | Male
@@ -30,25 +32,26 @@ module Types =
         }
 
 
-    type Contact = 
-        { gender : Gender
-          degree : string
-          firstName : string
-          lastName : string
-          street : string
-          postcode : string
-          city : string
-          email : string
-          phone : string
-          mobilePhone : string
-        }
 
     type Employer =
         { company : string
           street : string
           postcode : string
           city : string
-          boss : Contact
+          gender : Gender
+          degree : string
+          firstName : string
+          lastName : string
+          email : string
+          phone : string
+          mobilePhone : string
+        }
+    
+    type TemplateForJobApplication =
+        { emailSubject : string
+          emailBody : string
+          odtPath : string
+          pdfPaths : list<string>
         }
 
 

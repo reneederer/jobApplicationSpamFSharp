@@ -1,7 +1,7 @@
 (function()
 {
  "use strict";
- var Global,JobApplicationSpam,Client,WebSharper,UI,Next,Doc,AttrProxy,Concurrency,Remoting,AjaxRemotingProvider,AttrModule,Var,Utils;
+ var Global,JobApplicationSpam,Client,WebSharper,UI,Next,Doc,AttrProxy,Numeric,Concurrency,Remoting,AjaxRemotingProvider,Var,AttrModule,Utils;
  Global=window;
  JobApplicationSpam=Global.JobApplicationSpam=Global.JobApplicationSpam||{};
  Client=JobApplicationSpam.Client=JobApplicationSpam.Client||{};
@@ -10,11 +10,12 @@
  Next=UI&&UI.Next;
  Doc=Next&&Next.Doc;
  AttrProxy=Next&&Next.AttrProxy;
+ Numeric=WebSharper&&WebSharper.Numeric;
  Concurrency=WebSharper&&WebSharper.Concurrency;
  Remoting=WebSharper&&WebSharper.Remoting;
  AjaxRemotingProvider=Remoting&&Remoting.AjaxRemotingProvider;
- AttrModule=Next&&Next.AttrModule;
  Var=Next&&Next.Var;
+ AttrModule=Next&&Next.AttrModule;
  Utils=WebSharper&&WebSharper.Utils;
  Client.uploadTemplate=function()
  {
@@ -22,24 +23,49 @@
  };
  Client.applyNow=function()
  {
+  var varEmployerId,varTemplateId,message;
   function submitIt()
   {
-   var b;
-   Concurrency.StartImmediate((b=null,Concurrency.Delay(function()
+   var employerId,templateId,b;
+   try
    {
-    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.applyNow:505729016",[1,1,1]),function()
+    employerId=Numeric.ParseInt32(varEmployerId.c);
+    templateId=Numeric.ParseInt32(varTemplateId.c);
+    Concurrency.StartImmediate((b=null,Concurrency.Delay(function()
     {
-     return Concurrency.Return(null);
-    });
-   })),null);
-  }
-  return Doc.Element("div",[],[Doc.Element("form",[AttrModule.Handler("submit",function()
-  {
-   return function()
+     return Concurrency.TryWith(Concurrency.Delay(function()
+     {
+      return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.applyNow:505729016",[1,employerId,templateId]),function(a)
+      {
+       return Concurrency.Combine(a.$==1?(Var.Set(message,"Bewerbung konnte nicht bearbeitet werden."),Concurrency.Zero()):(Var.Set(message,"Bewerbung wurde versandt."),Concurrency.Zero()),Concurrency.Delay(function()
+       {
+        return Concurrency.Return(null);
+       }));
+      });
+     }),function(a)
+     {
+      Var.Set(message,"Bewerbung konnte nicht bearbeitet werden."+a.message);
+      return Concurrency.Zero();
+     });
+    })),null);
+   }
+   catch(e)
    {
-    return submitIt();
+    Var.Set(message,"Es trat ein Fehler auf: "+e.message);
+   }
+  }
+  varEmployerId=Var.Create$1("");
+  varTemplateId=Var.Create$1("");
+  message=Var.Create$1("abc");
+  return Doc.Element("div",[],[Doc.Element("form",[AttrProxy.Create("action",""),AttrProxy.Create("method","post"),AttrModule.Handler("submit",function()
+  {
+   return function(ev)
+   {
+    submitIt();
+    ev.preventDefault();
+    return ev.stopImmediatePropagation();
    };
-  })],[Doc.Element("input",[AttrProxy.Create("type","submit")],[])])]);
+  })],[Doc.Element("label",[],[Doc.TextNode("employerId")]),Doc.Input([AttrProxy.Create("type","text"),AttrProxy.Create("value",varEmployerId.c)],varEmployerId),Doc.Element("br",[],[]),Doc.Element("label",[],[Doc.TextNode("templateId")]),Doc.Input([AttrProxy.Create("type","text"),AttrProxy.Create("value",varTemplateId.c)],varTemplateId),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("type","submit")],[])]),Doc.TextView(message.v)]);
  };
  Client.addEmployer=function()
  {

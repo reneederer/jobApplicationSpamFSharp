@@ -34,8 +34,22 @@ module Templating =
             li ["Apply now" => EndPoint.ApplyNow]
             li ["About" => EndPoint.About]
         ]
+    (*
+    let SideBar (ctx: Context<EndPoint>) endpoint : Doc list =
+        let ( => ) txt act =
+             liAttr [if endpoint = act then yield attr.``class`` "active"] [
+                aAttr [attr.href (ctx.Link act)] [text txt]
+             ]
+        [
+            li ["Home" => EndPoint.Home]
+            li ["Upload" => EndPoint.UploadTemplate]
+            li ["Add employer" => EndPoint.AddEmployer]
+            li ["Apply now" => EndPoint.ApplyNow]
+            li ["About" => EndPoint.About]
+        ]
+        *)
 
-    let main ctx action (title: string) (body: Doc list) =
+    let main (ctx : Context<EndPoint>) (action : EndPoint) (title: string) (body: Doc list) : Async<Content<'a>>=
         Content.Page(
             MainTemplate()
                 .Title(title)
@@ -53,10 +67,11 @@ module Site =
     open System.Web
     open WebSharper.UI.Next.Client
 
+
     let homePage ctx =
         Templating.main ctx EndPoint.Home "Home" [
             h1 [text "Say Hi to the server!"]
-            div [client <@ Client.editUserValues () @>]
+            //div [client <@ Client.editUserValues () @>]
         ]
     
     let loginPage ctx =

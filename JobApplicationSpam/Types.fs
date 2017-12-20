@@ -3,21 +3,15 @@ module Types =
     open WebSharper.UI.Next
     open WebSharper.Sitelets
 
-
     type Gender =
     | Male
     | Female
 
     type Login =
-        { email : Var<string>
-          password : Var<string>
+        { email : string
+          password : string
         }
 
-    type Address =
-        { street : Var<string>
-        ; postcode : Var<string>
-        ; city : Var<string>
-        }
 
     type UserValues =
         { gender : Gender

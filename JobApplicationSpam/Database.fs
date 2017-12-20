@@ -50,6 +50,15 @@ module Database =
         | _ ->
             fail "An error occured while trying to add user."
 
+    let getUserIdByEmail (dbConn : NpgsqlConnection) (email : string) =
+        use command = new NpgsqlCommand("select id from users where email = :email", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
+        try
+            ok (command.ExecuteScalar() |> string |> Int32.Parse)
+        with
+        | :? NpgsqlException as e ->
+            reraise()
+        | e -> fail "Email not found"
     
 
     let getTemplateForJobApplication (dbConn : NpgsqlConnection) (templateId : int) =
@@ -136,5 +145,67 @@ module Database =
                 return fail "An error occured while trying to update userValues."
             }
     
+    let userEmailExists (dbConn : NpgsqlConnection) (email : string) =
+        use command = new NpgsqlCommand("select count(*) from users where email = :email", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
+        try
+            ok (Int32.Parse(command.ExecuteScalar().ToString()) = 1)
+        with
+        | :? PostgresException
+        | _ ->
+            fail "An error occured while checking if email exists"
+
+    let getIdPasswordSaltAndGuid (dbConn : NpgsqlConnection) (email : string) =
+        use command = new NpgsqlCommand("select id, password, salt, guid from users where email = :email", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
+        try
+            use reader = command.ExecuteReader()
+            reader.Read() |> ignore
+            ok (reader.GetInt32(0), reader.GetString(1), reader.GetString(2), if reader.IsDBNull(3) then None else Some <| reader.GetString(3))
+        with
+        | :? PostgresException
+        | _ ->
+            fail "An error occured while trying read password"
+
+
+    let insertNewUser (dbConn : NpgsqlConnection) (email : string) (password : string) (salt : string) (guid : string) =
+        use command = new NpgsqlCommand("insert into users(email, password, salt, guid) values(:email, :password, :salt, :guid)", dbConn)
+        command.Parameters.AddRange(
+            [| new NpgsqlParameter("email", email)
+               new NpgsqlParameter("password", password)
+               new NpgsqlParameter("salt", salt)
+               new NpgsqlParameter("guid", guid) |])
+        try
+            command.ExecuteNonQuery() |> ignore
+            ok "Added new user"
+        with
+        | :? PostgresException
+        | _ ->
+            fail "An error occured while trying to add new user"
+
+    let getGuid (dbConn : NpgsqlConnection) (email : string) =
+        use command = new NpgsqlCommand("select guid from users where email = :email", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
+        try
+            let guidStr = command.ExecuteScalar().ToString()
+            if String.IsNullOrEmpty guidStr
+                then ok None
+                else ok (Some guidStr)
+        with
+        | :? PostgresException
+        | _ ->
+            fail "An error occured while trying to get guid"
+
+    let setGuidToNull (dbConn : NpgsqlConnection) (email : string) =
+        use command = new NpgsqlCommand("update users set guid = null where email = :email", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
+        try
+            command.ExecuteNonQuery() |> ignore
+            ok "Set guid to null"
+        with
+        | :? PostgresException
+        | _ ->
+            fail "An error occured while trying to set guid to null"
+       
 
 

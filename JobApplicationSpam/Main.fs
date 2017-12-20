@@ -9,12 +9,14 @@ open System.IO
 type EndPoint =
     | [<EndPoint "/">] Home
     | [<EndPoint "/login">] Login
+    | [<EndPoint "/register">] Register
     | [<EndPoint "/edituservalues">] EditUserValues
     | [<EndPoint "/uploadtemplate">] UploadTemplate
     | [<EndPoint "/addEmployer">] AddEmployer
     | [<EndPoint "/applynow">] ApplyNow
-    | [<EndPoint "/showjobapplicationlist">] ShowJobApplicationList
+    | [<EndPoint "/showsentjobapplications">] ShowSentJobApplications
     | [<EndPoint "/about">] About
+    | [<EndPoint "/confirmEmail">] ConfirmEmail
 
 module Templating =
     open WebSharper.UI.Next.Html
@@ -32,10 +34,25 @@ module Templating =
             li ["Upload" => EndPoint.UploadTemplate]
             li ["Add employer" => EndPoint.AddEmployer]
             li ["Apply now" => EndPoint.ApplyNow]
+            li ["Register" => EndPoint.Register]
+            li ["Login" => EndPoint.Login ]
+            li ["About" => EndPoint.About]
+            li ["ShowSentJobApplications" => EndPoint.ShowSentJobApplications]
+        ]
+    let SideBar (ctx: Context<EndPoint>) endpoint : Doc list =
+        let ( => ) txt act =
+             liAttr [if endpoint = act then yield attr.``class`` "active"] [
+                aAttr [attr.href (ctx.Link act)] [text txt]
+             ]
+        [
+            li ["Home" => EndPoint.Home]
+            li ["Upload" => EndPoint.UploadTemplate]
+            li ["Add employer" => EndPoint.AddEmployer]
+            li ["Apply now" => EndPoint.ApplyNow]
             li ["About" => EndPoint.About]
         ]
 
-    let main ctx action (title: string) (body: Doc list) =
+    let main (ctx : Context<EndPoint>) (action : EndPoint) (title: string) (body: Doc list) : Async<Content<'a>>=
         Content.Page(
             MainTemplate()
                 .Title(title)
@@ -52,17 +69,25 @@ module Site =
     open Chessie.ErrorHandling
     open System.Web
     open WebSharper.UI.Next.Client
+    open System
 
-    let homePage ctx =
+
+    let homePage (ctx : Context<EndPoint>) =
         Templating.main ctx EndPoint.Home "Home" [
             h1 [text "Say Hi to the server!"]
-            div [client <@ Client.editUserValues () @>]
+            //div [client <@ Client.editUserValues () @>]
         ]
     
-    let loginPage ctx =
-        Templating.main ctx EndPoint.Home "Home" [
-            h1 [text "Say Hi to the server!"]
-            div [client <@ Client.editUserValues () @>]
+    let loginPage (ctx : Context<EndPoint>) =
+        Templating.main ctx EndPoint.Login "Login" [
+            h1 [text "Login"]
+            client <@ Client.login () @>
+        ]
+
+    let registerPage (ctx : Context<EndPoint>) =
+        Templating.main ctx EndPoint.Register "Register" [
+            h1 [text "Register"]
+            client <@ Client.register () @>
         ]
     
 
@@ -80,15 +105,15 @@ module Site =
         let uploadResult = 
             if (not <| Seq.isEmpty ctx.Request.Files)
             then
-                Server.uploadTemplate 1
-                    (Option.defaultValue "" ctx.Request.Post.["templateName"])
-                    (Option.defaultValue "" ctx.Request.Post.["emailSubject"])
-                    (Option.defaultValue "" ctx.Request.Post.["emailBody"])
-                    (Option.defaultValue "" ctx.Request.Post.["templateName"])
-                    (Seq.item 0 ctx.Request.Files |> fun (x : HttpPostedFileBase) -> x.FileName)
-                    (Seq.skip 1 ctx.Request.Files |> Seq.map (fun (x : HttpPostedFileBase) -> x.FileName))
-                |> Async.Ignore
-                |> Async.Start
+                Server.uploadTemplate
+                    (Option.get ctx.Request.Post.["templateName"])
+                    (Option.get ctx.Request.Post.["userAppliesAs"])
+                    (Option.get ctx.Request.Post.["emailSubject"])
+                    (Option.get ctx.Request.Post.["emailBody"])
+                    (ctx.Request.Files |> Seq.choose (fun (x : HttpPostedFileBase) -> if x.FileName <> "" then Some x.FileName else None))
+                    (ctx.UserSession.GetLoggedInUser () |> Async.RunSynchronously |> Option.map Int32.Parse)
+                |> Async.RunSynchronously
+            else ok "Nothing to upload"
          (*
       (if not (ctx.Request.Files |> Seq.isEmpty) then text "Files have been uploaded" else text "")
       myText
@@ -96,19 +121,22 @@ module Site =
         Templating.main ctx EndPoint.UploadTemplate "UploadTemplate"
           [ div
               [ client <@ Client.uploadTemplate() @>
-                h1 [text (Seq.length ctx.Request.Files |> string)]
+                h1 [text (sprintf "%A" uploadResult)]
               ]
           ]
+
     let addEmployerPage ctx =
         Templating.main ctx EndPoint.AddEmployer "AddEmployer" [
             div [client <@ Client.addEmployer () @>]
         ]
+
     let applyNowPage ctx =
         Templating.main ctx EndPoint.About "Apply now" [
             h1 [text "Apply now"]
             div [client <@ Client.applyNow () @>]
         ]
-    let showJobApplicationListPage ctx =
+
+    let showSentJobApplications ctx =
         Templating.main ctx EndPoint.About "About" [
             h1 [text "About"]
             p [text "This is a template WebSharper client-server application."]
@@ -119,18 +147,38 @@ module Site =
             h1 [text "About"]
             p [text "This is a template WebSharper client-server application."]
         ]
+    
+    let confirmEmailPage (ctx : Context<EndPoint>) =
+        let message =
+            match ctx.Request.Get.["email"], ctx.Request.Get.["guid"] with
+            | Some email, Some guid->
+                match Server.confirmEmail email guid with
+                | Ok _ -> "Great! Your email has been confirmed."
+                | Bad vs -> "Email confirmation has failed."
+            | Some _, None
+            | None, Some _
+            | None, None ->
+                "Confirmation requires email and guid to be set."
+        Templating.main ctx EndPoint.About "About" [
+            h1 [text message]
+        ]
+
 
     let main =
-        Application.MultiPage (fun ctx endpoint ->
-            match endpoint with
-            | EndPoint.Home -> homePage ctx
-            | EndPoint.Login -> loginPage ctx
-            | EndPoint.EditUserValues -> loginPage ctx
-            | EndPoint.UploadTemplate -> uploadTemplatePage ctx
-            | EndPoint.AddEmployer -> addEmployerPage ctx
-            | EndPoint.ApplyNow -> applyNowPage ctx
-            | EndPoint.ShowJobApplicationList -> showJobApplicationListPage ctx
-            | EndPoint.About -> aboutPage ctx
+        Application.MultiPage (fun (ctx : Context<EndPoint>) endpoint ->
+            match (ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously, endpoint) with
+            | Some _, EndPoint.Home -> homePage ctx
+            | Some _, EndPoint.Login -> loginPage ctx
+            | Some _, EndPoint.EditUserValues -> loginPage ctx
+            | Some _, EndPoint.UploadTemplate -> uploadTemplatePage ctx
+            | Some _, EndPoint.AddEmployer -> addEmployerPage ctx
+            | Some _, EndPoint.ApplyNow -> applyNowPage ctx
+            | Some _, EndPoint.ShowSentJobApplications -> showSentJobApplications ctx
+            | Some _, EndPoint.Register -> registerPage ctx
+            | None, EndPoint.Register -> registerPage ctx
+            | Some _, EndPoint.About -> aboutPage ctx
+            | Some _, EndPoint.ConfirmEmail -> confirmEmailPage ctx
+            | None, _ -> loginPage ctx
         )
 
 module SelfHostedServer =

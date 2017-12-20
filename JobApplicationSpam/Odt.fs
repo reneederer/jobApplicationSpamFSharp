@@ -1,11 +1,12 @@
 ﻿namespace JobApplicationSpam
 module Odt =
-    open Chessie.ErrorHandling
-    open Chessie.ErrorHandling.Trial
     open System
     open System.IO
     open System.IO.Compression
     open System.Configuration
+    open PdfSharp
+    open PdfSharp.Pdf
+    open PdfSharp.Pdf.IO
 
     let private replaceAll text map =
         Map.fold (fun (state : string) (key : string) (value : string) -> state.Replace(key, value)) text map
@@ -45,15 +46,13 @@ module Odt =
         then
             odtPath.Substring(0, odtPath.Length - 4) + ".pdf"
         else failwith "Could not convert odt file to pdf."
-    (*
-    let map = [ ("$chef_vorname", "Hans"); ("$chef_nachname", "Meiser") ] |> Map.ofList
-    let zipPath = @"c:\users\rene\myodt.odt"
-    let extractPath = @"c:\users\rene\myodt"
-    let newZipPath = @"c:\users\rene\myodt1.odt"
-    if Directory.Exists(extractPath) then Directory.Delete(extractPath, true)
-    if File.Exists(newZipPath) then File.Delete(newZipPath)
-    ZipFile.ExtractToDirectory(zipPath, extractPath)
-    replaceInDirectory extractPath map
-    ZipFile.CreateFromDirectory(extractPath, newZipPath)
-    odtToPdf @"C:\UniServerZ\www\jobApplicationSpam\unoconv-master\tests\document-example.odt"
-    *)
+    
+    let mergePdfs (pdfPaths : list<string>) (outputPath : string) =
+        use outputDocument = new PdfDocument ()
+        for pdfPath in pdfPaths do
+            let inputDocument = PdfReader.Open(pdfPath, PdfDocumentOpenMode.Import)
+            let count = inputDocument.PageCount
+            for page in inputDocument.Pages do
+                outputDocument.AddPage page |> ignore
+        outputDocument.Save outputPath
+

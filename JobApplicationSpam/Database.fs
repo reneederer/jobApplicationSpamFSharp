@@ -4,6 +4,7 @@ module Database =
     open Npgsql
     open Types
     open Chessie.ErrorHandling
+    open System.Data
 
     let getUserValuesId (dbConn : NpgsqlConnection) (userId : int) =
         use command = new NpgsqlCommand("select userId from userValues where userId = :userId", dbConn)
@@ -62,27 +63,34 @@ module Database =
     
 
     let getTemplateForJobApplication (dbConn : NpgsqlConnection) (templateId : int) =
-        use command = new NpgsqlCommand("select emailSubject, emailBody, odtPath from jobApplicationTemplate where id = :templateId", dbConn)
+        use command = new NpgsqlCommand("select emailSubject, emailBody from jobApplicationTemplate where id = :templateId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("templateId", templateId)) |> ignore
         use reader = command.ExecuteReader()
         reader.Read() |> ignore
         let emailSubject = reader.GetString(0)
         let emailBody = reader.GetString(1)
-        let odtPath = reader.GetString(2)
         reader.Dispose()
         command.Dispose()
-        use command1 = new NpgsqlCommand("select pdfPath from jobApplicationPdfAppendix where jobApplicationTemplateId = :templateId", dbConn)
+        use command1 = new NpgsqlCommand("select filePath from jobApplicationTemplateFile where jobApplicationTemplateId = :templateId", dbConn)
         command1.Parameters.Add(new NpgsqlParameter("templateId", templateId)) |> ignore
         use reader1 = command1.ExecuteReader()
-        let mutable pdfPaths = list.Empty
+        let mutable filePaths = list.Empty
         while reader1.Read() do
-            pdfPaths <- reader1.GetString(0) :: pdfPaths
+            filePaths <- reader1.GetString(0) :: filePaths
         ok
           { emailSubject = emailSubject
             emailBody = emailBody
-            odtPath = odtPath
-            pdfPaths = pdfPaths
+            filePaths = filePaths
           }
+
+    let getTemplateNames (dbConn : NpgsqlConnection) (userId : int) =
+        use command = new NpgsqlCommand("select templateName from jobApplicationTemplate where userId = :userId order by templateName desc", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        use reader = command.ExecuteReader()
+        let mutable tableNames = []
+        while reader.Read() do
+            tableNames <- reader.GetString(0) :: tableNames 
+        tableNames
 
 
     let getTemplateIdWithOffset (dbConn : NpgsqlConnection) (userId : int) (offset : int)=

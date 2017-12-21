@@ -17,6 +17,7 @@ module Client =
     open System.IO
     open WebSharper.Sitelets
     open HtmlAgilityPack
+    open System
 
     [<JavaScript>]
     type Language =
@@ -93,6 +94,12 @@ module Client =
     
     [<JavaScript>]
     let currentLanguage = German
+
+    [<JavaScript>]
+    type AddEmployerAction =
+    | ApplyImmediately
+    | SendJobApplicationToUserOnly
+    | JustAddEmployer
 
 
     [<JavaScript>]
@@ -227,6 +234,9 @@ module Client =
         let varEmail = Var.Create ""
         let varPhone = Var.Create ""
         let varMobilePhone = Var.Create ""
+        let varTemplate = Var.Create ""
+        let templateList = Server.getTemplateNames ()
+        let varAddEmployerAction = Var.Create JustAddEmployer
         formAttr
           [ attr.``class`` "form-horizontal"; ]
           [ h1 [text <| translate currentLanguage StrAddEmployer]
@@ -326,7 +336,7 @@ module Client =
                       [ attr.``class`` "form-control"
                         attr.``type`` "input"
                         attr.placeholder <| translate currentLanguage StrBossLastName
-                        attr.id "lastName"
+                        on.change (fun e a -> JS.Alert(""))
                         attr.value varLastName.Value ] varLastName
                   ]
               ]
@@ -366,6 +376,59 @@ module Client =
                         attr.value varMobilePhone.Value ] varMobilePhone
                   ]
               ]
+            divAttr
+              [ attr.``class`` "form-group" ]
+              [ labelAttr [attr.``class`` "control-label col-sm-2 col-2"] [text <| translate currentLanguage StrBossMobilePhone]
+                divAttr [ attr.``class`` "col-sm-7 col-7" ]
+                  [ Doc.Radio
+                      [ attr.``class`` "form-control"
+                        attr.radiogroup "addEmployerAction"
+                        attr.placeholder <| translate currentLanguage StrBossMobilePhone
+                        attr.id "mobilePhone"
+                        attr.value "hallo"
+                      ]
+                      ApplyImmediately
+                      varAddEmployerAction
+                    Doc.Radio
+                      [ attr.``class`` "form-control"
+                        attr.radiogroup "addEmployerAction"
+                        attr.placeholder <| translate currentLanguage StrBossMobilePhone
+                        attr.id "mobilePhone"
+                        attr.value varMobilePhone.Value
+                      ]
+                      SendJobApplicationToUserOnly
+                      varAddEmployerAction
+                    Doc.Radio
+                      [ attr.``class`` "form-control"
+                        attr.radiogroup "addEmployerAction"
+                        attr.placeholder <| translate currentLanguage StrBossMobilePhone
+                        attr.id "mobilePhone"
+                        attr.value varMobilePhone.Value
+                      ]
+                      AddEmployerAction.JustAddEmployer
+                      varAddEmployerAction
+                  ]
+              ]
+            (if false then
+                divAttr
+                  [ attr.``class`` "form-group" ]
+                  [ labelAttr [attr.``class`` "control-label col-sm-2 col-2"] [text <| translate currentLanguage StrBossMobilePhone]
+                    divAttr [ attr.``class`` "col-sm-7 col-7" ]
+                      [ Doc.Select
+                          [ attr.``class`` "form-control"
+                            attr.``type`` "input"
+                            attr.placeholder <| translate currentLanguage StrBossMobilePhone
+                            attr.id "mobilePhone"
+                            on.change (fun a b ->
+                                JS.Alert(templateList.[a?selectedIndex |> string |> Int32.Parse]))
+                            attr.value varMobilePhone.Value
+                          ]
+                          id
+                          templateList
+                          varTemplate
+                      ]
+                  ]
+                else div [])
             divAttr
               [ attr.``class`` "form-group" ]
               [ Doc.Button (translate currentLanguage StrAddEmployer) [attr.``type`` "submit"; attr.``class`` "form-control" ] (fun () -> if varCanSubmit.Value then varCanSubmit.Value <- false; subm (createEmployer varCompany.Value varStreet.Value varPostcode.Value varCity.Value varGender.Value varDegree.Value varFirstName.Value varLastName.Value varEmail.Value varPhone.Value varMobilePhone.Value) |> ignore)

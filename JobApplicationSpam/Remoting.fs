@@ -64,7 +64,7 @@ module Server =
         | :? PostgresException
         | _ ->
             fail "An error occured while checking if email exists"
-
+    
     [<Remote>]
     let emailExists email = 
         async {
@@ -149,8 +149,8 @@ module Server =
                           ("$chefMobil", employer.mobilePhone)
                           ("$datumHeute", DateTime.Today.ToString("dd.MM.yyyy"))
                         ] |> Map.ofList
-                    Odt.replaceInOdt template.odtPath "c:/users/rene/myodt/" "c:/users/rene/myodt1/m1.odt" myMap
-                    sendEmail "rene.ederer.nbg@gmail.com" "René Ederer" employer.email template.emailSubject template.emailBody template.pdfPaths
+                   // Odt.replaceInOdt template.odtPath "c:/users/rene/myodt/" "c:/users/rene/myodt1/m1.odt" myMap
+                    //sendEmail "rene.ederer.nbg@gmail.com" "René Ederer" employer.email template.emailSubject template.emailBody template.pdfPaths
                     return ok (Odt.odtToPdf "c:/users/rene/myodt1/m1.odt")
                 | Ok _, Bad vs ->
                     failwith (String.concat ", " vs)
@@ -280,6 +280,14 @@ module Server =
 
         }
 
+    [<Remote>]
+    let getTemplateNames () =
+        use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
+        dbConn.Open()
+        match getCurrentUserId () with
+        | Some userId ->
+            Database.getTemplateNames dbConn userId
+        | None -> failwith "User is not logged in"
 
 
 

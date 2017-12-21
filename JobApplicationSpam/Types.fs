@@ -44,8 +44,7 @@ module Types =
     type TemplateForJobApplication =
         { emailSubject : string
           emailBody : string
-          odtPath : string
-          pdfPaths : list<string>
+          filePaths : list<string>
         }
 
 

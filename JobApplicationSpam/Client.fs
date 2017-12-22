@@ -483,12 +483,12 @@ module Client =
                     divAttr
                      [ attr.``class`` "form-group"; ]
                      [ labelAttr
-                         [attr.``for`` ("file" + (n.ToString())); attr.``class`` "control-label col-sm-2 col-2"]
+                         [attr.``for`` ("file" + (n.ToString())); attr.``class`` "control-label"]
                          [ text <| translate currentLanguage StrAddFile ]
                        divAttr
-                         [attr.``class`` "col-sm-7 col-7"]
+                         [attr.``class`` ""]
                          [ inputAttr
-                             [ attr.``class`` "form-control col-sm-7 col-7"
+                             [ attr.``class`` "form-control"
                                attr.``type`` "file"
                                attr.id ("file" + (n.ToString()))
                                attr.name "file[]"
@@ -511,12 +511,12 @@ module Client =
                  [ divAttr
                      [ attr.``class`` "form-group"; ]
                      [ labelAttr
-                         [attr.``for`` "templateName"; attr.``class`` "control-label col-sm-2 col-2" ]
+                         [attr.``for`` "templateName"; attr.``class`` "control-label" ]
                          [ text <| translate currentLanguage StrTemplateName ]
                        divAttr
-                         [attr.``class`` "col-sm-7 col-7"]
+                         [attr.``class`` ""]
                          [ inputAttr
-                             [ attr.``class`` "form-control col-sm-7 col-7"
+                             [ attr.``class`` "form-control"
                                attr.``type`` "text"
                                attr.id "templateName"
                                attr.name "templateName"
@@ -527,12 +527,12 @@ module Client =
                    divAttr
                      [ attr.``class`` "form-group"; ]
                      [ labelAttr
-                         [attr.``for`` "emailSubject"; attr.``class`` "control-label col-sm-2 col-2" ]
+                         [attr.``for`` "emailSubject"; attr.``class`` "control-label" ]
                          [ text <| translate currentLanguage StrUserAppliesAs ]
                        divAttr
-                         [attr.``class`` "col-sm-7 col-7"]
+                         [attr.``class`` ""]
                          [ inputAttr
-                             [ attr.``class`` "form-control col-sm-7 col-7"
+                             [ attr.``class`` "form-control"
                                attr.``type`` "text"
                                attr.id "userAppliesAs"
                                attr.name "userAppliesAs"
@@ -544,12 +544,12 @@ module Client =
                    divAttr
                      [ attr.``class`` "form-group"; ]
                      [ labelAttr
-                         [attr.``for`` "emailSubject"; attr.``class`` "control-label col-sm-2 col-2" ]
+                         [attr.``for`` "emailSubject"; attr.``class`` "control-label" ]
                          [ text <| translate currentLanguage StrEmailSubject ]
                        divAttr
-                         [attr.``class`` "col-sm-7 col-7"]
+                         [attr.``class`` ""]
                          [ inputAttr
-                             [ attr.``class`` "form-control col-sm-7 col-7"
+                             [ attr.``class`` "form-control"
                                attr.``type`` "text"
                                attr.id "emailSubject"
                                attr.name "emailSubject"
@@ -561,12 +561,12 @@ module Client =
                    divAttr
                      [ attr.``class`` "form-group"; ]
                      [ labelAttr
-                         [attr.``for`` "emailBody"; attr.``class`` "control-label col-sm-2 col-2"]
+                         [attr.``for`` "emailBody"; attr.``class`` "control-label"]
                          [ text <| translate currentLanguage StrEmailBody ]
                        divAttr
-                         [attr.``class`` "col-sm-7 col-7"]
+                         [attr.``class`` ""]
                          [ textareaAttr
-                             [ attr.``class`` "form-control col-sm-7 col-7"
+                             [ attr.``class`` "form-control"
                                attr.style "min-height:260px"
                                attr.``type`` "text"
                                attr.id "emailBody"
@@ -580,10 +580,10 @@ module Client =
                    divAttr
                      [ attr.``class`` "form-group"; ]
                      [ labelAttr
-                         [attr.``class`` "control-label col-sm-2 col-2"]
+                         [attr.``class`` "control-label"]
                          [text ""]
                        divAttr
-                         [attr.``class`` "col-sm-7 col-7"]
+                         [attr.``class`` ""]
                          [ inputAttr
                              [ attr.``type`` "submit"; attr.value <| translate currentLanguage StrUploadTemplate]
                              []

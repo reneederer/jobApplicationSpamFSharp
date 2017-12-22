@@ -193,7 +193,8 @@ module SelfHostedServer =
     let main args =
         let rootDirectory, url =
             match args with
-            | [| rootDirectory; url |] -> rootDirectory, url
+            | [| rootDirectory; url |] ->
+                rootDirectory, url
             | [| url |] -> "..", url
             | [| |] -> "..", "http://localhost:9000/"
             | _ -> eprintfn "Usage: JobApplicationSpam ROOT_DIRECTORY URL"; exit 1
@@ -203,6 +204,7 @@ module SelfHostedServer =
                         FileSystem = PhysicalFileSystem(rootDirectory)))
                 .UseSitelet(rootDirectory, Site.main)
             |> ignore)
-        stdout.WriteLine("Serving {0}", url)
-        stdin.ReadLine() |> ignore
+        //stdout.WriteLine("Serving {0}", url)
+        while true do
+            System.Threading.Thread.Sleep(60000)
         0

@@ -95,6 +95,7 @@ module Client =
     [<JavaScript>]
     let currentLanguage = German
 
+
     [<JavaScript>]
     type AddEmployerAction =
     | ApplyImmediately
@@ -178,22 +179,6 @@ module Client =
 
 
     [<JavaScript>]
-    let uploadTemplate1 () : Elt =
-        let varMessage = Var.Create("nothing")
-        let subme () =
-            Var.Set varMessage ("Uploading")
-        div
-            [ h1 [text "Hello"]
-              formAttr
-                 [attr.enctype "multipart/form-data"; attr.method "POST"; on.submit (fun _ _ -> subme ())]
-                 [ inputAttr [attr.``type`` "file"; attr.name "myFile"] []
-                   inputAttr [attr.``type`` "submit"] []
-                   //Doc.Button "myBut" [attr.``type`` "submit"; ] (fun () -> subme ())
-                 ]
-              textView varMessage.View
-            ]
-
-    [<JavaScript>]
     let addEmployer () : Elt =
         let createEmployer company street postcode city gender degree firstName lastName email phone mobilePhone =
             { company = company
@@ -208,21 +193,43 @@ module Client =
               phone = phone
               mobilePhone = mobilePhone
             }
-        let varMessage = Var.Create("nothing")
+        let varMessage = Var.Create("")
         let varCanSubmit = Var.Create(true)
-        let subm employer =
-            async {
-                Var.Set varMessage ("Adding employer...")
-                let! result = Server.addEmployer employer
-                let m =
-                    match result with
-                    | Ok (v, _) ->  v
-                    | Bad v -> sprintf "%A" v
-                do! Async.Sleep(1000)
-                varMessage.Value <- m
-                varCanSubmit.Value <- true
-                return ()
-            } |> Async.StartImmediate
+        let subm employer templateName =
+            let addEmployer123 () : Async<Result<int, string>> =
+                async {
+                    varMessage.Value <- "Adding employer..."
+                    do! Async.Sleep 2000
+                    return! Server.addEmployer employer
+                }
+            let applyNow123 employerId templateName : Async<Result<string, string>> =
+                async {
+                    varMessage.Value <- "Sending job application..."
+                    do! Async.Sleep 2000
+                    JS.Alert(employerId.ToString() + ", " + templateName)
+                    return! Server.applyNowByTemplateName employerId templateName
+                }
+            
+            
+            let b =
+                async {
+                    let! addEmployerResult = addEmployer123 ()
+                    match addEmployerResult with
+                    | Ok (employerId, _) ->
+                        let! applyNowResult = applyNow123 employerId templateName
+                        match applyNowResult with
+                        | Ok (v, _) ->
+                            varMessage.Value <- "Job application has been sent"
+                            return ()
+                        | Bad xs ->
+                            varMessage.Value <- "Unfortunately, adding employer failed."
+                            return ()
+                    | Bad xs ->
+                        varMessage.Value <- "Unfortunately, adding employer failed."
+                        return ()
+                }
+            b |> Async.Ignore |> Async.StartImmediate
+            varCanSubmit.Value <- true
         let varCompany = Var.Create ""
         let varStreet = Var.Create ""
         let varPostcode = Var.Create ""
@@ -234,8 +241,8 @@ module Client =
         let varEmail = Var.Create ""
         let varPhone = Var.Create ""
         let varMobilePhone = Var.Create ""
-        let varTemplate = Var.Create ""
         let templateList = Server.getTemplateNames ()
+        let varTemplate = Var.Create(Seq.tryItem 0 templateList |> Option.defaultValue "")
         let varAddEmployerAction = Var.Create JustAddEmployer
         formAttr
           [ attr.``class`` "form-horizontal"; ]
@@ -336,7 +343,6 @@ module Client =
                       [ attr.``class`` "form-control"
                         attr.``type`` "input"
                         attr.placeholder <| translate currentLanguage StrBossLastName
-                        on.change (fun e a -> JS.Alert(""))
                         attr.value varLastName.Value ] varLastName
                   ]
               ]
@@ -409,7 +415,7 @@ module Client =
                       varAddEmployerAction
                   ]
               ]
-            (if false then
+            (if true then
                 divAttr
                   [ attr.``class`` "form-group" ]
                   [ labelAttr [attr.``class`` "control-label col-sm-2 col-2"] [text <| translate currentLanguage StrBossMobilePhone]
@@ -419,8 +425,6 @@ module Client =
                             attr.``type`` "input"
                             attr.placeholder <| translate currentLanguage StrBossMobilePhone
                             attr.id "mobilePhone"
-                            on.change (fun a b ->
-                                JS.Alert(templateList.[a?selectedIndex |> string |> Int32.Parse]))
                             attr.value varMobilePhone.Value
                           ]
                           id
@@ -431,7 +435,8 @@ module Client =
                 else div [])
             divAttr
               [ attr.``class`` "form-group" ]
-              [ Doc.Button (translate currentLanguage StrAddEmployer) [attr.``type`` "submit"; attr.``class`` "form-control" ] (fun () -> if varCanSubmit.Value then varCanSubmit.Value <- false; subm (createEmployer varCompany.Value varStreet.Value varPostcode.Value varCity.Value varGender.Value varDegree.Value varFirstName.Value varLastName.Value varEmail.Value varPhone.Value varMobilePhone.Value) |> ignore)
+              [ Doc.Button (translate currentLanguage StrAddEmployer) [attr.``type`` "submit"; attr.``class`` "form-control" ] (fun () -> if varCanSubmit.Value then varCanSubmit.Value <- false; subm (createEmployer varCompany.Value varStreet.Value varPostcode.Value varCity.Value varGender.Value varDegree.Value varFirstName.Value varLastName.Value varEmail.Value varPhone.Value varMobilePhone.Value) varTemplate.Value |> ignore)
+                            
               ]
             textView varMessage.View
          ]

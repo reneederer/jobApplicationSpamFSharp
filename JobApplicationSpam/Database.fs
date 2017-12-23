@@ -83,6 +83,33 @@ module Database =
             filePaths = filePaths
           }
 
+
+
+    let getTemplateForJobApplicationByTemplateName (dbConn : NpgsqlConnection) (userId : int) (templateName : string) : Result<int * TemplateForJobApplication, string>=
+        use command = new NpgsqlCommand("select id, emailSubject, emailBody from jobApplicationTemplate where userId = :userId and templateName = :templateName", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("templateName", templateName)) |> ignore
+        use reader = command.ExecuteReader()
+        reader.Read() |> ignore
+        let templateId = reader.GetInt32(0)
+        let emailSubject = reader.GetString(1)
+        let emailBody = reader.GetString(2)
+        reader.Dispose()
+        command.Dispose()
+        use command1 = new NpgsqlCommand("select filePath from jobApplicationTemplateFile where jobApplicationTemplateId = :templateId", dbConn)
+        command1.Parameters.Add(new NpgsqlParameter("templateId", templateId)) |> ignore
+        use reader1 = command1.ExecuteReader()
+        let mutable filePaths = list.Empty
+        while reader1.Read() do
+            filePaths <- reader1.GetString(0) :: filePaths
+        ok
+          ( templateId
+          , { emailSubject = emailSubject
+              emailBody = emailBody
+              filePaths = filePaths
+            }
+          )
+
     let getTemplateNames (dbConn : NpgsqlConnection) (userId : int) =
         use command = new NpgsqlCommand("select templateName from jobApplicationTemplate where userId = :userId order by templateName desc", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore

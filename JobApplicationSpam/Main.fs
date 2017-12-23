@@ -12,11 +12,11 @@ type EndPoint =
     | [<EndPoint "/register">] Register
     | [<EndPoint "/edituservalues">] EditUserValues
     | [<EndPoint "/uploadtemplate">] UploadTemplate
-    | [<EndPoint "/addEmployer">] AddEmployer
+    | [<EndPoint "/addemployer">] AddEmployer
     | [<EndPoint "/applynow">] ApplyNow
     | [<EndPoint "/showsentjobapplications">] ShowSentJobApplications
     | [<EndPoint "/about">] About
-    | [<EndPoint "/confirmEmail">] ConfirmEmail
+    | [<EndPoint "/confirmemail">] ConfirmEmail
 
 module Templating =
     open WebSharper.UI.Next.Html
@@ -204,7 +204,6 @@ module SelfHostedServer =
                         FileSystem = PhysicalFileSystem(rootDirectory)))
                 .UseSitelet(rootDirectory, Site.main)
             |> ignore)
-        //stdout.WriteLine("Serving {0}", url)
         while true do
             System.Threading.Thread.Sleep(60000)
         0

@@ -200,9 +200,9 @@ module Server =
                           ("$chefMobil", employer.mobilePhone)
                           ("$datumHeute", DateTime.Today.ToString("dd.MM.yyyy"))
                         ] |> List.sortByDescending (fun (x, _) -> x.Length) |> Map.ofList
-                    Odt.replaceInOdt template.filePaths.[0] "c:/users/rene/myodt/" "c:/users/rene/myodt1/m1.odt" myMap
+                    let replacedOdtPath = Odt.replaceInOdt template.filePaths.[0] (Path.Combine(Environment.CurrentDirectory, "users/tmp_" + Guid.NewGuid().ToString())) (Path.Combine(Environment.CurrentDirectory, "users/" + userId.ToString() + "/" + DateTime.Now.ToString("dd_MM_yyyy_hh_mm_ss") + "_" + Guid.NewGuid().ToString())) myMap
                     //sendEmail "rene.ederer.nbg@gmail.com" "René Ederer" employer.email template.emailSubject template.emailBody template.pdfPaths
-                    return ok (Odt.odtToPdf "c:/users/rene/myodt1/m1.odt")
+                    return ok (Odt.odtToPdf replacedOdtPath)
                 | Ok _, Bad vs ->
                     failwith (String.concat ", " vs)
                     return fail "An error occured while trying to upload template"

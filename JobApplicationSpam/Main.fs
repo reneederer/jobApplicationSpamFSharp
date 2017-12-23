@@ -188,6 +188,7 @@ module SelfHostedServer =
     open Microsoft.Owin.StaticFiles
     open Microsoft.Owin.FileSystems
     open WebSharper.Owin
+    open LetsEncrypt.Owin
 
     [<EntryPoint>]
     let main args =
@@ -198,8 +199,11 @@ module SelfHostedServer =
             | [| url |] -> "..", url
             | [| |] -> "..", "http://localhost:9000/"
             | _ -> eprintfn "Usage: JobApplicationSpam ROOT_DIRECTORY URL"; exit 1
+
         use server = WebApp.Start(url, fun appB ->
-            appB.UseStaticFiles(
+            appB
+                .UseAcmeChallenge()
+                .UseStaticFiles(
                     StaticFileOptions(
                         FileSystem = PhysicalFileSystem(rootDirectory)))
                 .UseSitelet(rootDirectory, Site.main)

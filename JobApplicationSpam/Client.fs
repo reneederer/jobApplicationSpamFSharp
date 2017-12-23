@@ -250,9 +250,9 @@ module Client =
             divAttr
               [ attr.``class`` "form-group" ]
               [ labelAttr
-                  [attr.``for`` "company"; attr.``class`` "control-label col-sm-2 col-2"]
+                  [attr.``for`` "company"; attr.``class`` "control-label"]
                   [text <| translate currentLanguage StrCompanyName]
-                divAttr [ attr.``class`` "col-sm-7 col-7" ]
+                divAttr [ attr.``class`` "" ]
                   [ Doc.Input
                       [ attr.``class`` "form-control"
                         attr.``type`` "input"
@@ -263,9 +263,9 @@ module Client =
             divAttr
               [ attr.``class`` "form-group" ]
               [ labelAttr
-                  [attr.``for`` "company"; attr.``class`` "control-label col-sm-2 col-2"]
+                  [attr.``for`` "company"; attr.``class`` "control-label"]
                   [text <| translate currentLanguage StrCompanyStreet]
-                divAttr [ attr.``class`` "col-sm-7 col-7" ]
+                divAttr [ attr.``class`` "" ]
                   [ Doc.Input
                       [ attr.``class`` "form-control"
                         attr.``type`` "input"
@@ -276,9 +276,9 @@ module Client =
             divAttr
               [ attr.``class`` "form-group" ]
               [ labelAttr
-                  [attr.``for`` "company"; attr.``class`` "control-label col-sm-2 col-2"]
+                  [attr.``for`` "company"; attr.``class`` "control-label"]
                   [text <| translate currentLanguage StrCompanyPostcode]
-                divAttr [ attr.``class`` "col-sm-7 col-7" ]
+                divAttr [ attr.``class`` "" ]
                   [ Doc.Input
                       [ attr.``class`` "form-control"
                         attr.``type`` "input"
@@ -289,9 +289,9 @@ module Client =
             divAttr
               [ attr.``class`` "form-group" ]
               [ labelAttr
-                  [attr.``for`` "city"; attr.``class`` "control-label col-sm-2 col-2"]
+                  [attr.``for`` "city"; attr.``class`` "control-label"]
                   [text <| translate currentLanguage StrCompanyCity]
-                divAttr [ attr.``class`` "col-sm-7 col-7" ]
+                divAttr [ attr.``class`` "" ]
                   [ Doc.Input
                       [ attr.``class`` "form-control"
                         attr.``type`` "input"
@@ -301,9 +301,9 @@ module Client =
               ]
             divAttr
               [ attr.``class`` "form-group" ]
-              [ labelAttr [attr.``class`` "control-label col-sm-2 col-2" ] [ text <| translate currentLanguage StrBossGender ]
+              [ labelAttr [attr.``class`` "control-label" ] [ text <| translate currentLanguage StrBossGender ]
                 br []
-                divAttr [ attr.``class`` "col-sm-7 col-7" ]
+                divAttr [ attr.``class`` "" ]
                   [ Doc.Radio [ attr.id "male"; attr.radiogroup "gender"; ] Gender.Male varGender
                     labelAttr [ attr.``for`` "male"; ] [text <| translate currentLanguage StrMale]
                     br []
@@ -313,8 +313,8 @@ module Client =
               ]
             divAttr
               [ attr.``class`` "form-group" ]
-              [ labelAttr [attr.``for`` "degree"; attr.``class`` "control-label col-sm-2 col-2"] [text <| translate currentLanguage StrBossDegree]
-                divAttr [ attr.``class`` "col-sm-7 col-7" ]
+              [ labelAttr [attr.``for`` "degree"; attr.``class`` "control-label"] [text <| translate currentLanguage StrBossDegree]
+                divAttr [ attr.``class`` "" ]
                   [ Doc.Input
                       [ attr.``class`` "form-control"
                         attr.``type`` "input"
@@ -325,8 +325,8 @@ module Client =
               ]
             divAttr
               [ attr.``class`` "form-group" ]
-              [ labelAttr [attr.``for`` "firstName"; attr.``class`` "control-label col-sm-2 col-2"] [text <| translate currentLanguage StrBossFirstName]
-                divAttr [ attr.``class`` "col-sm-7 col-7" ]
+              [ labelAttr [attr.``for`` "firstName"; attr.``class`` "control-label"] [text <| translate currentLanguage StrBossFirstName]
+                divAttr [ attr.``class`` "" ]
                   [ Doc.Input
                       [ attr.``class`` "form-control"
                         attr.``type`` "input"
@@ -337,8 +337,8 @@ module Client =
               ]
             divAttr
               [ attr.``class`` "form-group" ]
-              [ labelAttr [attr.``for`` "lastName"; attr.``class`` "control-label col-sm-2 col-2"] [text <| translate currentLanguage StrBossLastName]
-                divAttr [ attr.``class`` "col-sm-7 col-7" ]
+              [ labelAttr [attr.``for`` "lastName"; attr.``class`` "control-label"] [text <| translate currentLanguage StrBossLastName]
+                divAttr [ attr.``class`` "" ]
                   [ Doc.Input
                       [ attr.``class`` "form-control"
                         attr.``type`` "input"
@@ -348,8 +348,8 @@ module Client =
               ]
             divAttr
               [ attr.``class`` "form-group" ]
-              [ labelAttr [attr.``for`` "email"; attr.``class`` "control-label col-sm-2 col-2"] [text <| translate currentLanguage StrBossEmail]
-                divAttr [ attr.``class`` "col-sm-7 col-7" ]
+              [ labelAttr [attr.``for`` "email"; attr.``class`` "control-label"] [text <| translate currentLanguage StrBossEmail]
+                divAttr [ attr.``class`` "" ]
                   [ Doc.Input
                       [ attr.``class`` "form-control"
                         attr.``type`` "input"
@@ -360,8 +360,8 @@ module Client =
               ]
             divAttr
               [ attr.``class`` "form-group" ]
-              [ labelAttr [attr.``for`` "phone"; attr.``class`` "control-label col-sm-2 col-2"] [text <| translate currentLanguage StrBossPhone]
-                divAttr [ attr.``class`` "col-sm-7 col-7" ]
+              [ labelAttr [attr.``for`` "phone"; attr.``class`` "control-label"] [text <| translate currentLanguage StrBossPhone]
+                divAttr [ attr.``class`` "" ]
                   [ Doc.Input
                       [ attr.``class`` "form-control"
                         attr.``type`` "input"
@@ -372,8 +372,8 @@ module Client =
               ]
             divAttr
               [ attr.``class`` "form-group" ]
-              [ labelAttr [attr.``for`` "mobilePhone"; attr.``class`` "control-label col-sm-2 col-2"] [text <| translate currentLanguage StrBossMobilePhone]
-                divAttr [ attr.``class`` "col-sm-7 col-7" ]
+              [ labelAttr [attr.``for`` "mobilePhone"; attr.``class`` "control-label"] [text <| translate currentLanguage StrBossMobilePhone]
+                divAttr [ attr.``class`` "" ]
                   [ Doc.Input
                       [ attr.``class`` "form-control"
                         attr.``type`` "input"
@@ -384,8 +384,8 @@ module Client =
               ]
             divAttr
               [ attr.``class`` "form-group" ]
-              [ labelAttr [attr.``class`` "control-label col-sm-2 col-2"] [text <| translate currentLanguage StrBossMobilePhone]
-                divAttr [ attr.``class`` "col-sm-7 col-7" ]
+              [ labelAttr [attr.``class`` "control-label"] [text <| translate currentLanguage StrBossMobilePhone]
+                divAttr [ attr.``class`` "" ]
                   [ Doc.Radio
                       [ attr.``class`` "form-control"
                         attr.radiogroup "addEmployerAction"
@@ -418,8 +418,8 @@ module Client =
             (if true then
                 divAttr
                   [ attr.``class`` "form-group" ]
-                  [ labelAttr [attr.``class`` "control-label col-sm-2 col-2"] [text <| translate currentLanguage StrBossMobilePhone]
-                    divAttr [ attr.``class`` "col-sm-7 col-7" ]
+                  [ labelAttr [attr.``class`` "control-label"] [text <| translate currentLanguage StrBossMobilePhone]
+                    divAttr [ attr.``class`` "" ]
                       [ Doc.Select
                           [ attr.``class`` "form-control"
                             attr.``type`` "input"

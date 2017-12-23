@@ -24,15 +24,17 @@ module Odt =
         for directory in directories do
             replaceInDirectory (Path.Combine(path, directory)) map
     
-    let replaceInOdt odtPath extractedOdtPath replacedOdtPath map =
-        let replacedOdtDirectory = Path.GetDirectoryName(replacedOdtPath)
+    let replaceInOdt odtPath extractedOdtDirectory replacedOdtDirectory map =
+        let odtFileName = Path.GetFileName(odtPath)
         if not <| Directory.Exists(replacedOdtDirectory) then Directory.CreateDirectory(replacedOdtDirectory) |> ignore
-        if Directory.Exists(extractedOdtPath) then Directory.Delete(extractedOdtPath, true)
+        let replacedOdtPath = Path.Combine(replacedOdtDirectory, odtFileName)
+        if Directory.Exists extractedOdtDirectory then Directory.Delete(extractedOdtDirectory, true)
         if File.Exists(replacedOdtPath) then File.Delete(replacedOdtPath)
-        ZipFile.ExtractToDirectory(odtPath, extractedOdtPath)
-        replaceInDirectory extractedOdtPath map
-        ZipFile.CreateFromDirectory(extractedOdtPath, replacedOdtPath)
-        Directory.Delete(extractedOdtPath, true)
+        ZipFile.ExtractToDirectory(odtPath, extractedOdtDirectory)
+        replaceInDirectory extractedOdtDirectory map
+        ZipFile.CreateFromDirectory(extractedOdtDirectory, replacedOdtPath)
+        Directory.Delete(extractedOdtDirectory, true)
+        replacedOdtPath
     
     let odtToPdf (odtPath : string) =
         use process1 = new System.Diagnostics.Process()

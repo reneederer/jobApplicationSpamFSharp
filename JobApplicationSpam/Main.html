@@ -1,6 +1,15 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-111530525-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'UA-111530525-1');
+    </script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${Title}</title>
@@ -34,16 +43,31 @@
     </style>
 </head>
 <body>
-    <nav class="navbar bg-dark navbar-dark" style="margin-bottom:20px">
+    <nav class="navbar bg-dark navbar-dark">
         <a class="navbar-brand" href="#">www.bewerbungsspam.de</a>
+        <div class="navbar-header" style="color:white; margin:auto; margin-right:0px">
+            <button style="margin: auto; margin-right:0" class="navbar-toggler d-md-none d-lg-none d-xl-none" type="button" data-toggle="collapse" data-target="#otherContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">U</button>
+        </div>
+        <div style="color:white" id="otherContent" class="row collapse in navbar-collapse d-md-none d-lg-none d-xl-none">
+            <ul style="list-style-type:none; float: right; margin: auto; margin-right:0">
+                <li>rene.ederer.nbg@gmail.com</li>
+                <li><button>Ausloggen</button></li>
+            </ul>
+        </div>
+        <div style="color:white" class="d-none d-sm-none d-md-block d-lg-block d-xl-block">
+            <ul style="list-style-type:none; float: right; margin: auto; margin-right:0">
+                <li>rene.ederer.nbg@gmail.com</li>
+                <li><button>Ausloggen</button></li>
+            </ul>
+        </div>
     </nav>
     <div class="container">
         <div class="row">
-            <div class="col-lg-4 col-xl-4">
+            <div class="col-4 col-sm-4 col-md-4 col-lg-4 col-xl-4">
                 <div class="sidebar-nav">
                     <nav class="navbar navbar-light" role="navigation">
                         <div class="navbar-header">
-                            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
+                            <button class="navbar-toggler d-md-none d-lg-none d-xl-none" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
                         </div>
                         <div id="navbarSupportedContent" class="navbar-collapse sidebar-navbar-collapse">
                             <ul class="nav navbar-nav">
@@ -53,13 +77,12 @@
                                 <li><a href="/uploadtemplate">Bewerbungsvorlage hochladen</a></li>
                                 <li><a href="/edityourvalues">Menu Item 3</a></li>
                                 <li><a href="/addemployer">Arbeitgeber hinzufügen</a></li>
-                                <li><a href="#">Reviews <span class="badge">1,118</span></a></li>
                             </ul>
                         </div>
                     </nav>
                 </div>
             </div>
-            <div class="col-lg-8 col-xl-8">
+            <div class="col-12 col-sm-12 col-md-10 col-lg-8 col-xl-8">
                 <div ws-replace="Body">
                 </div>
                 <div ws-replace="MenuBar">

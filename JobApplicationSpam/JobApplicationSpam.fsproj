@@ -60,6 +60,9 @@
     <Reference Include="IntelliFactory.Xml">
       <HintPath>..\packages\IntelliFactory.Xml.0.6.64.1\lib\net40\IntelliFactory.Xml.dll</HintPath>
     </Reference>
+    <Reference Include="LetsEncrypt.Owin">
+      <HintPath>..\packages\LetsEncrypt.Owin.1.2.0\lib\LetsEncrypt.Owin.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Owin">
       <HintPath>..\packages\Microsoft.Owin.3.1.0\lib\net45\Microsoft.Owin.dll</HintPath>
     </Reference>

@@ -51,6 +51,13 @@ module Templating =
             li ["Apply now" => EndPoint.ApplyNow]
             li ["About" => EndPoint.About]
         ]
+    
+    let loggedInUser (ctx: Context<EndPoint>) : string =
+        ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously
+        |> Option.map System.Int32.TryParse
+        |> Option.bind (fun (b, v) -> if b then Some v else None)
+        |> Option.map (Server.getEmailByUserId >> Async.RunSynchronously)
+        |> Option.defaultValue ""
 
     let main (ctx : Context<EndPoint>) (action : EndPoint) (title: string) (body: Doc list) : Async<Content<'a>>=
         Content.Page(
@@ -58,6 +65,7 @@ module Templating =
                 .Title(title)
                 .MenuBar(MenuBar ctx action)
                 .Body(body)
+                .LoggedInUser(loggedInUser ctx)
                 .Doc()
         )
 

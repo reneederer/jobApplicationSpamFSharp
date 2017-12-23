@@ -18,6 +18,11 @@ module Database =
         | :? PostgresException
         | _ ->
             fail "An error occured while trying to add user."
+
+    let getEmailByUserId (dbConn : NpgsqlConnection) (userId : int) =
+        use command = new NpgsqlCommand("select email from users where id = :userId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        command.ExecuteScalar() |> string
         
     let getEmployer (dbConn : NpgsqlConnection) (employerId : int) =
         use command = new NpgsqlCommand("select company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone from employer where id = :employerId limit 1", dbConn)

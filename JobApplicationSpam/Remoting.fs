@@ -17,6 +17,14 @@ module Server =
     open WebSharper.Web.Remoting
 
     [<Remote>]
+    let getEmailByUserId userId =
+        async {
+            use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
+            dbConn.Open()
+            return Database.getEmailByUserId dbConn userId
+        }
+
+    [<Remote>]
     let getCurrentUserId () =
         GetContext().UserSession.GetLoggedInUser()
         |> Async.RunSynchronously

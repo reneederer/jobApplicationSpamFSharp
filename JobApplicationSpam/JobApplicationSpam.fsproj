@@ -242,9 +242,6 @@
     <Compile Include="Main.fs" />
     <Content Include="packages.config" />
     <Content Include="App.config" />
-    <Content Include="bootstrap.min.css">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
   <Target Name="IncludeContent" BeforeTargets="Compile">
     <ItemGroup>

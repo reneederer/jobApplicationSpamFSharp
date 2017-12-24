@@ -17,6 +17,7 @@ type EndPoint =
     | [<EndPoint "/showsentjobapplications">] ShowSentJobApplications
     | [<EndPoint "/about">] About
     | [<EndPoint "/confirmemail">] ConfirmEmail
+    | [<EndPoint "/createtemplate">] CreateTemplate
 
 module Templating =
     open WebSharper.UI.Next.Html
@@ -38,6 +39,8 @@ module Templating =
             li ["Login" => EndPoint.Login ]
             li ["About" => EndPoint.About]
             li ["ShowSentJobApplications" => EndPoint.ShowSentJobApplications]
+            li ["Edit user values" => EndPoint.EditUserValues]
+            li ["Create template" => EndPoint.CreateTemplate]
         ]
     let SideBar (ctx: Context<EndPoint>) endpoint : Doc list =
         let ( => ) txt act =
@@ -90,6 +93,11 @@ module Site =
         Templating.main ctx EndPoint.Login "Login" [
             h1 [text "Login"]
             client <@ Client.login () @>
+        ]
+
+    let createTemplatePage (ctx : Context<EndPoint>) =
+        Templating.main ctx EndPoint.CreateTemplate "Create Template" [
+            client <@ Client.createTemplate () @>
         ]
 
     let registerPage (ctx : Context<EndPoint>) =
@@ -187,6 +195,7 @@ module Site =
             | None, EndPoint.Register -> registerPage ctx
             | Some _, EndPoint.About -> aboutPage ctx
             | Some _, EndPoint.ConfirmEmail -> confirmEmailPage ctx
+            | Some_ , EndPoint.CreateTemplate -> createTemplatePage ctx
             | None, _ -> loginPage ctx
         )
 

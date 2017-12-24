@@ -1,7 +1,7 @@
 (function()
 {
  "use strict";
- var Global,JobApplicationSpam,Client,Language,Str,AddEmployerAction,SC$1,JobApplicationSpam_GeneratedPrintf,WebSharper,UI,Next,Doc,Var,AttrModule,Concurrency,Remoting,AjaxRemotingProvider,AttrProxy,Strings,Numeric,Seq,Utils;
+ var Global,JobApplicationSpam,Client,Language,Str,AddEmployerAction,SC$1,JobApplicationSpam_GeneratedPrintf,WebSharper,UI,Next,Var,Doc,AttrProxy,AttrModule,Concurrency,Remoting,AjaxRemotingProvider,Strings,Numeric,Seq,Utils;
  Global=window;
  JobApplicationSpam=Global.JobApplicationSpam=Global.JobApplicationSpam||{};
  Client=JobApplicationSpam.Client=JobApplicationSpam.Client||{};
@@ -13,13 +13,13 @@
  WebSharper=Global.WebSharper;
  UI=WebSharper&&WebSharper.UI;
  Next=UI&&UI.Next;
- Doc=Next&&Next.Doc;
  Var=Next&&Next.Var;
+ Doc=Next&&Next.Doc;
+ AttrProxy=Next&&Next.AttrProxy;
  AttrModule=Next&&Next.AttrModule;
  Concurrency=WebSharper&&WebSharper.Concurrency;
  Remoting=WebSharper&&WebSharper.Remoting;
  AjaxRemotingProvider=Remoting&&Remoting.AjaxRemotingProvider;
- AttrProxy=Next&&Next.AttrProxy;
  Strings=WebSharper&&WebSharper.Strings;
  Numeric=WebSharper&&WebSharper.Numeric;
  Seq=WebSharper&&WebSharper.Seq;
@@ -131,6 +131,24 @@
  };
  AddEmployerAction.ApplyImmediately={
   $:0
+ };
+ Client.createTemplate=function()
+ {
+  var varTextArea;
+  varTextArea=Var.Create$1("");
+  return Doc.Element("div",[],[Doc.Element("h1",[],[Doc.TextNode("hallo123")]),Doc.InputArea([AttrProxy.Create("autofocus","autofocus"),AttrModule.Handler("scroll",function()
+  {
+   return function()
+   {
+    return Global.alert("Scrolling!");
+   };
+  }),AttrProxy.Create("style","white-space: nowrap; overflow: hidden; min-height: 400px; font: Arial; font-size: 12pt"),AttrModule.Handler("mousedown",function()
+  {
+   return function()
+   {
+    return Global.alert(varTextArea.c);
+   };
+  })],varTextArea)]);
  };
  Client.showSentJobApplications=function()
  {

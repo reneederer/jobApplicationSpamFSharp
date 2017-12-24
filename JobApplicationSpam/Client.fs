@@ -162,8 +162,6 @@ module Client =
                 varMessage.Value <- m
                 return ()
             } |> Async.StartImmediate
-            //userValues.firstName.Value <- ""
-            //userValues.lastName.Value <- ""
         let varGender = Var.Create Gender.Male 
         let varDegree = Var.Create("")
         let varFirstName = Var.Create("")
@@ -798,4 +796,14 @@ module Client =
     [<JavaScript>]
     let showSentJobApplications () =
         h1 [text "hallo"]
+
+
+
+    [<JavaScript>]
+    let createTemplate () = 
+        let varTextArea = Var.Create("")
+        div
+          [ h1 [ text "hallo123" ]
+            Doc.InputArea [attr.autofocus "autofocus"; attr.style "white-space: nowrap; overflow: hidden; min-height: 400px; font: Arial; font-size: 12pt"; on.mouseDown (fun el _ -> JS.Alert(varTextArea.Value))] varTextArea
+          ]
    

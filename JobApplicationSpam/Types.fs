@@ -6,6 +6,16 @@ module Types =
     type Gender =
     | Male
     | Female
+    with
+        override this.ToString() =
+            match this with
+            | Gender.Male -> "m"
+            | Gender.Female -> "f"
+        static member fromString(v) =
+            match v with
+            | "m" -> Gender.Male
+            | "f" -> Gender.Female
+            | x -> failwith ("Failed to convert string to gender: " + x)
 
     type Login =
         { email : string
@@ -24,8 +34,7 @@ module Types =
           phone : string
           mobilePhone : string
         }
-
-
+    
 
     type Employer =
         { company : string

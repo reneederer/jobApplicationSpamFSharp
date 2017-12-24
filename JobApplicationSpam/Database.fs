@@ -7,13 +7,14 @@ module Database =
     open System.Data
 
     let getUserValuesId (dbConn : NpgsqlConnection) (userId : int) =
-        use command = new NpgsqlCommand("select userId from userValues where userId = :userId", dbConn)
+        use command = new NpgsqlCommand("select count(*) from userValues where userId = :userId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         try
-            match command.ExecuteScalar() |> string |> Int32.TryParse with
-            | true, v ->
-                ok v
-            | false, _ -> fail "Not found"
+            match command.ExecuteScalar() |> string |> Int32.Parse with
+            | 1 ->
+                ok userId
+            | 0 -> fail "Not found"
+            | _ -> failwith "More than 1 record with same userId in table userValues"
         with
         | :? PostgresException
         | _ ->
@@ -34,7 +35,7 @@ module Database =
             street = reader.GetString(1)
             postcode = reader.GetString(2)
             city = reader.GetString(3)
-            gender = match reader.GetString(4) with "m" -> Gender.Male | "f" -> Gender.Female | _ -> failwith "Gender not valid"
+            gender = Gender.fromString(reader.GetString(4))
             degree = reader.GetString(5)
             firstName = reader.GetString(6)
             lastName = reader.GetString(7)
@@ -48,13 +49,8 @@ module Database =
         use command = new NpgsqlCommand("select company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone from employer where userId = :userId limit 1 offset :offset", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("offset", offset)) |> ignore
-        try
-            let reader = command.ExecuteReader()
-            failwith "Not implemenetedddd"
-        with
-        | :? PostgresException
-        | _ ->
-            fail "An error occured while trying to add user."
+        let reader = command.ExecuteReader()
+        failwith "Not implemenetedddd"
 
     let getUserIdByEmail (dbConn : NpgsqlConnection) (email : string) =
         use command = new NpgsqlCommand("select id from users where email = :email", dbConn)
@@ -147,7 +143,7 @@ module Database =
         if reader.Read()
         then
             Some
-                { gender = match reader.GetString(0) with "m" -> Gender.Male | "f" -> Gender.Female | _ -> failwith "Gender not found"
+                { gender = reader.GetString(0) |> Gender.fromString
                   degree = reader.GetString(1)
                   firstName = reader.GetString(2)
                   lastName = reader.GetString(3)
@@ -159,7 +155,7 @@ module Database =
                 }
         else None
 
-    let setUserValuesDB (dbConn : NpgsqlConnection) (userValues : UserValues) (userId : int) =
+    let setUserValues (dbConn : NpgsqlConnection) (userValues : UserValues) (userId : int) =
         use command =
             match getUserValuesId dbConn userId with
             | Ok (userValuesId, _) ->
@@ -167,9 +163,9 @@ module Database =
                     update userValues set
                         (gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone)
                         = (:gender, :degree, :firstName, :lastName, :street, :postcode, :city, :phone, :mobilePhone)
-                        where id = :userValuesId"""
+                        where userId = :userValuesId"""
                     , dbConn)
-                //command.Parameters.Add(new NpgsqlParameter("gender", match userValues.gender.Value with Gender.Male -> 'm' | Gender.Female -> 'f')) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("gender", userValues.gender.ToString())) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("degree", userValues.degree)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("firstName", userValues.firstName)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("lastName", userValues.lastName)) |> ignore
@@ -183,10 +179,11 @@ module Database =
             | Bad _ ->
                 let command = new NpgsqlCommand("""
                     insert into userValues
-                        (gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone)
-                        values (:gender, :degree, :firstName, :lastName, :street, :postcode, :city, :phone, :mobilePhone)"""
+                        (userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone)
+                        values (:userId, :gender, :degree, :firstName, :lastName, :street, :postcode, :city, :phone, :mobilePhone)"""
                     , dbConn)
-                //command.Parameters.Add(new NpgsqlParameter("gender", match userValues.gender.Value with Gender.Male -> 'm' | Gender.Female -> 'f')) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("gender", userValues.gender.ToString())) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("degree", userValues.degree)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("firstName", userValues.firstName)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("lastName", userValues.lastName)) |> ignore
@@ -196,17 +193,7 @@ module Database =
                 command.Parameters.Add(new NpgsqlParameter("phone", userValues.phone)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("mobilePhone", userValues.mobilePhone)) |> ignore
                 command
-        try
-            async {
-                let _ = command.ExecuteNonQuery () 
-                return ok "UserValues have been updated."
-            }
-        with
-        | :? PostgresException
-        | _ ->
-            async {
-                return fail "An error occured while trying to update userValues."
-            }
+        command.ExecuteNonQuery () |> ignore
     
     let userEmailExists (dbConn : NpgsqlConnection) (email : string) =
         use command = new NpgsqlCommand("select count(*) from users where email = :email", dbConn)
@@ -238,13 +225,8 @@ module Database =
                new NpgsqlParameter("password", password)
                new NpgsqlParameter("salt", salt)
                new NpgsqlParameter("guid", guid) |])
-        try
-            command.ExecuteNonQuery() |> ignore
-            ok "Added new user"
-        with
-        | :? PostgresException
-        | _ ->
-            fail "An error occured while trying to add new user"
+        command.ExecuteNonQuery() |> ignore
+        ok "Added new user"
 
     let getGuid (dbConn : NpgsqlConnection) (email : string) =
         use command = new NpgsqlCommand("select guid from users where email = :email", dbConn)

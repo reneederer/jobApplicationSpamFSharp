@@ -62,14 +62,8 @@ module Server =
             | Some userId ->
                 use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
                 dbConn.Open()
-                use command = new NpgsqlCommand("select email from users where id = " + userValues.degree, dbConn)
-                try
-                    match command.ExecuteScalar() with
-                    | null -> return fail "No record found"
-                    | v -> return ok <| HttpContext.Current.Session.["email"].ToString()
-                with
-                | _ ->
-                    return fail "An error occured while trying to set user values."
+                Database.setUserValues dbConn userValues userId
+                return ok "User values have been updated."
             | None -> return fail "Please login."
         }
 
@@ -151,6 +145,20 @@ module Server =
                     use command = new NpgsqlCommand("insert into jobApplicationStatus (jobApplicationId, statusChangedOn, dueOn, statusValueId, statusMessage) values(:jobApplicationId, current_date, null, 1, '')", dbConn)
                     command.Parameters.Add(new NpgsqlParameter("jobApplicationId", jobApplicationId)) |> ignore
                     command.ExecuteNonQuery ()|> ignore
+                    let userValues =
+                        Database.getUserValues dbConn userId
+                        |> Option.defaultValue
+                            { gender = Gender.Male
+                              degree = ""
+                              firstName = ""
+                              lastName = ""
+                              street = ""
+                              postcode = ""
+                              city = ""
+                              phone = ""
+                              mobilePhone = ""
+                            }
+                    let userEmail = Database.getEmailByUserId dbConn userId
                     let myMap =
                         [ ("$firmaName", employer.company)
                           ("$firmaStrasse", employer.street)
@@ -165,6 +173,19 @@ module Server =
                           ("$chefEmail", employer.email)
                           ("$chefTelefon", employer.phone)
                           ("$chefMobil", employer.mobilePhone)
+                          ("$meinGeschlecht", userValues.gender.ToString())
+                          ("$meinTitel", userValues.degree)
+                          ("$meinVorname", userValues.firstName)
+                          ("$meinNachname", userValues.lastName)
+                          ("$meineStrasse", userValues.street)
+                          ("$meinePlz", userValues.postcode)
+                          ("$meineStadt", userValues.city)
+                          ("$meineEmail", userEmail)
+                          ("$meinMobilTelefon", userValues.mobilePhone)
+                          ("$meinTelefon", userValues.phone)
+                          ("$absatz1", "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.")
+                          ("$absatz2", "LLLLorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.")
+                          ("$absatz2", "hallo")
                           ("$datumHeute", DateTime.Today.ToString("dd.MM.yyyy"))
                         ] |> Map.ofList
                     Odt.replaceInOdt template.filePaths.[0] "c:/users/rene/myodt/" "c:/users/rene/myodt1/m1.odt" myMap
@@ -203,6 +224,20 @@ module Server =
                     use command = new NpgsqlCommand("insert into jobApplicationStatus (jobApplicationId, statusChangedOn, dueOn, statusValueId, statusMessage) values(:jobApplicationId, current_date, null, 1, '')", dbConn)
                     command.Parameters.Add(new NpgsqlParameter("jobApplicationId", jobApplicationId)) |> ignore
                     command.ExecuteNonQuery ()|> ignore
+                    let userValues =
+                        Database.getUserValues dbConn userId
+                        |> Option.defaultValue
+                            { gender = Gender.Male
+                              degree = ""
+                              firstName = ""
+                              lastName = ""
+                              street = ""
+                              postcode = ""
+                              city = ""
+                              phone = ""
+                              mobilePhone = ""
+                            }
+                    let userEmail = Database.getEmailByUserId dbConn userId
                     let myMap =
                         [ ("$firmaName", employer.company)
                           ("$firmaStrasse", employer.street)
@@ -217,9 +252,24 @@ module Server =
                           ("$chefEmail", employer.email)
                           ("$chefTelefon", employer.phone)
                           ("$chefMobil", employer.mobilePhone)
+                          ("$meinGeschlecht", userValues.gender.ToString())
+                          ("$meinTitel", userValues.degree)
+                          ("$meinVorname", userValues.firstName)
+                          ("$meinNachname", userValues.lastName)
+                          ("$meineStrasse", userValues.street)
+                          ("$meinePlz", userValues.postcode)
+                          ("$meineStadt", userValues.city)
+                          ("$meineEmail", userEmail)
+                          ("$meinMobilTelefon", userValues.mobilePhone)
+                          ("$meinTelefon", userValues.phone)
+                          ("$meineMobilNr", userValues.mobilePhone)
+                          ("$meineTelefonNr", userValues.phone)
+                          ("$zeile1", "Hiermit bewerbe ich mich auf Ihre Stellenanzeige")
+                          ("$zeile2", "vom 24.12 in den Nürnberger Nachrichten.")
+                          ("$zeile3", "Ich hoffe auf eine positive Rückmeldung.")
                           ("$datumHeute", DateTime.Today.ToString("dd.MM.yyyy"))
                         ] |> List.sortByDescending (fun (x, _) -> x.Length) |> Map.ofList
-                    let replacedOdtPath = Odt.replaceInOdt template.filePaths.[0] (Path.Combine(Environment.CurrentDirectory, "users/tmp_" + Guid.NewGuid().ToString())) (Path.Combine(Environment.CurrentDirectory, "users/" + userId.ToString() + "/" + DateTime.Now.ToString("dd_MM_yyyy_hh_mm_ss") + "_" + Guid.NewGuid().ToString())) myMap
+                    let replacedOdtPath = Odt.replaceInOdt template.filePaths.[0] (Path.Combine(Environment.CurrentDirectory, "users/tmp_" + Guid.NewGuid().ToString())) (Path.Combine(Environment.CurrentDirectory, "users/" + userId.ToString() + "/" + DateTime.Now.ToString("dd_MM_yyyy_HH_mm_ss") + "_" + Guid.NewGuid().ToString())) myMap
                     //sendEmail "rene.ederer.nbg@gmail.com" "René Ederer" employer.email template.emailSubject template.emailBody template.pdfPaths
                     return ok (Odt.odtToPdf replacedOdtPath)
                 | Ok _, Bad vs ->
@@ -330,7 +380,7 @@ module Server =
                     "bewerbungsspam.de"
                     email
                     "Please confirm your email address"
-                    ("Dear user,\n\nplease visit this link to confirm your email address.\nhttp://bewerbungsspam.de/confirmEmail?email=rene.ederer.nbg@gmail.com&guid=" + guid + "\nPlease excuse the inconvenience.\n\nYour team from www.bewerbungsspam.de")
+                    ("Dear user,\n\nplease visit this link to confirm your email address.\nhttp://bewerbungsspam.de/confirmemail?email=rene.ederer.nbg@gmail.com&guid=" + guid + "\nPlease excuse the inconvenience.\n\nYour team from www.bewerbungsspam.de")
                     []
                 ok ()
 

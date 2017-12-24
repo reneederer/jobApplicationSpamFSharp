@@ -136,6 +136,29 @@ module Database =
         | _ ->
             fail "An error occured while trying to add user."
 
+    let getUserValues (dbConn : NpgsqlConnection) (userId : int) =
+        use command =
+            new NpgsqlCommand("""
+                select gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone
+                from userValues where userId = :userId limit 1"""
+                , dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        use reader = command.ExecuteReader()
+        if reader.Read()
+        then
+            Some
+                { gender = match reader.GetString(0) with "m" -> Gender.Male | "f" -> Gender.Female | _ -> failwith "Gender not found"
+                  degree = reader.GetString(1)
+                  firstName = reader.GetString(2)
+                  lastName = reader.GetString(3)
+                  street = reader.GetString(4)
+                  postcode = reader.GetString(5)
+                  city = reader.GetString(6)
+                  phone = reader.GetString(7)
+                  mobilePhone = reader.GetString(8)
+                }
+        else None
+
     let setUserValuesDB (dbConn : NpgsqlConnection) (userValues : UserValues) (userId : int) =
         use command =
             match getUserValuesId dbConn userId with

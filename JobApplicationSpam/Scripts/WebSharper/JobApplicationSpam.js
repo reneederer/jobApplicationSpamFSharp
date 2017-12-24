@@ -1,7 +1,7 @@
 (function()
 {
  "use strict";
- var Global,JobApplicationSpam,Client,Language,Str,AddEmployerAction,SC$1,JobApplicationSpam_GeneratedPrintf,WebSharper,UI,Next,Doc,Var,AttrModule,Concurrency,Remoting,AjaxRemotingProvider,AttrProxy,Numeric,Seq,Utils;
+ var Global,JobApplicationSpam,Client,Language,Str,AddEmployerAction,SC$1,JobApplicationSpam_GeneratedPrintf,WebSharper,UI,Next,Doc,Var,AttrModule,Concurrency,Remoting,AjaxRemotingProvider,AttrProxy,Strings,Numeric,Seq,Utils;
  Global=window;
  JobApplicationSpam=Global.JobApplicationSpam=Global.JobApplicationSpam||{};
  Client=JobApplicationSpam.Client=JobApplicationSpam.Client||{};
@@ -20,6 +20,7 @@
  Remoting=WebSharper&&WebSharper.Remoting;
  AjaxRemotingProvider=Remoting&&Remoting.AjaxRemotingProvider;
  AttrProxy=Next&&Next.AttrProxy;
+ Strings=WebSharper&&WebSharper.Strings;
  Numeric=WebSharper&&WebSharper.Numeric;
  Seq=WebSharper&&WebSharper.Seq;
  Utils=WebSharper&&WebSharper.Utils;
@@ -28,6 +29,39 @@
  };
  Language.English={
   $:0
+ };
+ Str.StrUserValuesMobilePhone={
+  $:30
+ };
+ Str.StrUserValuesPhone={
+  $:29
+ };
+ Str.StrUserValuesCity={
+  $:28
+ };
+ Str.StrUserValuesPostcode={
+  $:27
+ };
+ Str.StrUserValuesStreet={
+  $:26
+ };
+ Str.StrUserValuesLastName={
+  $:25
+ };
+ Str.StrUserValuesFirstName={
+  $:24
+ };
+ Str.StrUserValuesDegree={
+  $:23
+ };
+ Str.StrUserValuesGender={
+  $:22
+ };
+ Str.StrSubmitEditUserValues={
+  $:21
+ };
+ Str.StrEditUserValues={
+  $:20
  };
  Str.StrAddFile={
   $:19
@@ -130,12 +164,9 @@
   {
    return function()
    {
-    var b;
-    return Concurrency.StartImmediate((b=null,Concurrency.Delay(function()
-    {
-     (new AjaxRemotingProvider.New()).Sync("JobApplicationSpam:JobApplicationSpam.Server.login:1280212622",[varTxtLoginEmail.c,varTxtLoginPassword.c]);
-     return Concurrency.Return(null);
-    })),null);
+    var m;
+    m=(new AjaxRemotingProvider.New()).Sync("JobApplicationSpam:JobApplicationSpam.Server.login:1280212622",[varTxtLoginEmail.c,varTxtLoginPassword.c]);
+    return m.$==1?Global.alert(Strings.concat(", ",m.$0)):null;
    };
   })],[Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","txtLoginEmail")],[Doc.TextNode("Email")]),Doc.Input([AttrProxy.Create("class","form-control"),AttrProxy.Create("id","txtLoginEmail"),AttrProxy.Create("placeholder","Email")],varTxtLoginEmail)]),Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","txtLoginPassword")],[Doc.TextNode("Password")]),Doc.PasswordBox([AttrProxy.Create("class","form-control"),AttrProxy.Create("id","txtLoginPassword"),AttrProxy.Create("placeholder","Password")],varTxtLoginPassword)]),Doc.Element("input",[AttrProxy.Create("type","submit"),AttrProxy.Create("value","Login")],[])]);
  };
@@ -305,7 +336,7 @@
  };
  Client.editUserValues=function()
  {
-  var varMessage,varGender,varDegree,varFirstName,varLastName,varStreet,varPostcode,varCity,varPhone,varMobilePhone;
+  var varMessage,varGender,varDegree,varFirstName,varLastName,varStreet,varPostcode,varCity,varPhone,varMobilePhone,m,userValues;
   function createUserValues(gender,degree,firstName,lastName,street,postcode,city,phone,mobilePhone)
   {
    return{
@@ -320,16 +351,16 @@
     mobilePhone:mobilePhone
    };
   }
-  function subm(userValues)
+  function subm(userValues$1)
   {
    var b;
    Concurrency.StartImmediate((b=null,Concurrency.Delay(function()
    {
     Var.Set(varMessage,"Setting user values...");
-    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.setUserValues:1230958299",[userValues]),function(a)
+    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.setUserValues:1230958299",[userValues$1]),function(a)
     {
-     var m;
-     m=a.$==1?(function($1)
+     var m$1;
+     m$1=a.$==1?(function($1)
      {
       return function($2)
       {
@@ -338,7 +369,7 @@
      }(Global.id))(a.$0):a.$0;
      return Concurrency.Bind(Concurrency.Sleep(1000),function()
      {
-      Var.Set(varMessage,m);
+      Var.Set(varMessage,m$1);
       return Concurrency.Return(null);
      });
     });
@@ -348,7 +379,7 @@
   varGender=Var.Create$1({
    $:0
   });
-  varDegree=Var.Create$1("1");
+  varDegree=Var.Create$1("");
   varFirstName=Var.Create$1("");
   varLastName=Var.Create$1("");
   varStreet=Var.Create$1("");
@@ -356,11 +387,13 @@
   varCity=Var.Create$1("");
   varPhone=Var.Create$1("");
   varMobilePhone=Var.Create$1("");
-  return Doc.Element("div",[],[Doc.Element("h1",[],[Doc.TextNode("Hello")]),Doc.Radio([AttrProxy.Create("id","male")],{
+  m=(new AjaxRemotingProvider.New()).Sync("JobApplicationSpam:JobApplicationSpam.Server.getCurrentUserValues:682112376",[]);
+  m==null?void 0:(userValues=m.$0,Var.Set(varGender,userValues.gender),Var.Set(varDegree,userValues.degree),Var.Set(varFirstName,userValues.firstName),Var.Set(varLastName,userValues.lastName),Var.Set(varStreet,userValues.street),Var.Set(varPostcode,userValues.postcode),Var.Set(varCity,userValues.city),Var.Set(varPhone,userValues.phone),Var.Set(varMobilePhone,userValues.mobilePhone));
+  return Doc.Element("div",[],[Doc.Element("h1",[],[Doc.TextNode(Client.translate(Client.currentLanguage(),Str.StrEditUserValues))]),Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("class","control-label")],[Doc.TextNode(Client.translate(Client.currentLanguage(),Str.StrUserValuesGender))]),Doc.Element("br",[],[]),Doc.Element("div",[AttrProxy.Create("class","")],[Doc.Radio([AttrProxy.Create("id","male"),AttrProxy.Create("radiogroup","gender")],{
    $:0
-  },varGender),Doc.Element("label",[AttrProxy.Create("for","male"),AttrProxy.Create("radiogroup","gender")],[Doc.TextNode("männlich")]),Doc.Element("br",[],[]),Doc.Radio([AttrProxy.Create("id","female"),AttrProxy.Create("radiogroup","gender")],{
+  },varGender),Doc.Element("label",[AttrProxy.Create("for","male")],[Doc.TextNode(Client.translate(Client.currentLanguage(),Str.StrMale))]),Doc.Element("br",[],[]),Doc.Radio([AttrProxy.Create("id","female"),AttrProxy.Create("radiogroup","gender")],{
    $:1
-  },varGender),Doc.Element("label",[AttrProxy.Create("for","female")],[Doc.TextNode("weiblich")]),Doc.Element("br",[],[]),Doc.Element("label",[AttrProxy.Create("for","degree")],[Doc.TextNode("Titel")]),Doc.Input([AttrProxy.Create("type","input"),AttrProxy.Create("id","degree"),AttrProxy.Create("value",varDegree.c)],varDegree),Doc.Element("br",[],[]),Doc.Element("label",[AttrProxy.Create("for","firstName")],[Doc.TextNode("Vorname")]),Doc.Input([AttrProxy.Create("type","input"),AttrProxy.Create("id","firstName"),AttrProxy.Create("value",varFirstName.c)],varFirstName),Doc.Element("br",[],[]),Doc.Element("label",[AttrProxy.Create("for","lastName")],[Doc.TextNode("Nachname")]),Doc.Input([AttrProxy.Create("type","input"),AttrProxy.Create("name","lastName"),AttrProxy.Create("value",varLastName.c)],varLastName),Doc.Element("br",[],[]),Doc.Element("label",[AttrProxy.Create("for","street")],[Doc.TextNode("Straße")]),Doc.Input([AttrProxy.Create("type","input"),AttrProxy.Create("id","street"),AttrProxy.Create("value",varStreet.c)],varStreet),Doc.Element("br",[],[]),Doc.Element("label",[AttrProxy.Create("for","postcode")],[Doc.TextNode("Postleitzahl")]),Doc.Input([AttrProxy.Create("type","input"),AttrProxy.Create("id","postcode"),AttrProxy.Create("value",varPostcode.c)],varPostcode),Doc.Element("br",[],[]),Doc.Element("label",[AttrProxy.Create("for","city")],[Doc.TextNode("Stadt")]),Doc.Input([AttrProxy.Create("type","input"),AttrProxy.Create("id","city"),AttrProxy.Create("value",varCity.c)],varCity),Doc.Element("br",[],[]),Doc.Element("label",[AttrProxy.Create("for","phone")],[Doc.TextNode("Telefon")]),Doc.Input([AttrProxy.Create("type","input"),AttrProxy.Create("id","phone"),AttrProxy.Create("value",varPhone.c)],varPhone),Doc.Element("br",[],[]),Doc.Element("label",[AttrProxy.Create("for","mobilePhone")],[Doc.TextNode("Mobil")]),Doc.Input([AttrProxy.Create("type","input"),AttrProxy.Create("id","mobilePhone"),AttrProxy.Create("value",varMobilePhone.c)],varMobilePhone),Doc.Element("br",[],[]),Doc.Button("myBut",[AttrProxy.Create("type","submit")],function()
+  },varGender),Doc.Element("label",[AttrProxy.Create("for","female")],[Doc.TextNode(Client.translate(Client.currentLanguage(),Str.StrFemale))])])]),Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","degree"),AttrProxy.Create("class","control-label")],[Doc.TextNode(Client.translate(Client.currentLanguage(),Str.StrUserValuesDegree))]),Doc.Element("div",[AttrProxy.Create("class","")],[Doc.Input([AttrProxy.Create("class","form-control"),AttrProxy.Create("type","input"),AttrProxy.Create("placeholder",Client.translate(Client.currentLanguage(),Str.StrUserValuesDegree)),AttrProxy.Create("id","degree"),AttrProxy.Create("value",varDegree.c)],varDegree)])]),Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","firstName"),AttrProxy.Create("class","control-label")],[Doc.TextNode(Client.translate(Client.currentLanguage(),Str.StrUserValuesFirstName))]),Doc.Element("div",[AttrProxy.Create("class","")],[Doc.Input([AttrProxy.Create("class","form-control"),AttrProxy.Create("type","input"),AttrProxy.Create("placeholder",Client.translate(Client.currentLanguage(),Str.StrUserValuesFirstName)),AttrProxy.Create("id","firstName"),AttrProxy.Create("value",varFirstName.c)],varFirstName)])]),Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","lastName"),AttrProxy.Create("class","control-label")],[Doc.TextNode(Client.translate(Client.currentLanguage(),Str.StrUserValuesLastName))]),Doc.Element("div",[AttrProxy.Create("class","")],[Doc.Input([AttrProxy.Create("class","form-control"),AttrProxy.Create("type","input"),AttrProxy.Create("placeholder",Client.translate(Client.currentLanguage(),Str.StrUserValuesLastName)),AttrProxy.Create("id","lastName"),AttrProxy.Create("value",varLastName.c)],varLastName)])]),Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","street"),AttrProxy.Create("class","control-label")],[Doc.TextNode(Client.translate(Client.currentLanguage(),Str.StrUserValuesStreet))]),Doc.Element("div",[AttrProxy.Create("class","")],[Doc.Input([AttrProxy.Create("class","form-control"),AttrProxy.Create("type","input"),AttrProxy.Create("placeholder",Client.translate(Client.currentLanguage(),Str.StrUserValuesStreet)),AttrProxy.Create("id","street"),AttrProxy.Create("value",varStreet.c)],varStreet)])]),Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","postcode"),AttrProxy.Create("class","control-label")],[Doc.TextNode(Client.translate(Client.currentLanguage(),Str.StrUserValuesPostcode))]),Doc.Element("div",[AttrProxy.Create("class","")],[Doc.Input([AttrProxy.Create("class","form-control"),AttrProxy.Create("type","input"),AttrProxy.Create("placeholder",Client.translate(Client.currentLanguage(),Str.StrUserValuesPostcode)),AttrProxy.Create("id","postcode"),AttrProxy.Create("value",varPostcode.c)],varPostcode)])]),Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","city"),AttrProxy.Create("class","control-label")],[Doc.TextNode(Client.translate(Client.currentLanguage(),Str.StrUserValuesCity))]),Doc.Element("div",[AttrProxy.Create("class","")],[Doc.Input([AttrProxy.Create("class","form-control"),AttrProxy.Create("type","input"),AttrProxy.Create("placeholder",Client.translate(Client.currentLanguage(),Str.StrUserValuesCity)),AttrProxy.Create("id","city"),AttrProxy.Create("value",varCity.c)],varCity)])]),Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","phone"),AttrProxy.Create("class","control-label")],[Doc.TextNode(Client.translate(Client.currentLanguage(),Str.StrUserValuesPhone))]),Doc.Element("div",[AttrProxy.Create("class","")],[Doc.Input([AttrProxy.Create("class","form-control"),AttrProxy.Create("type","input"),AttrProxy.Create("placeholder",Client.translate(Client.currentLanguage(),Str.StrUserValuesPhone)),AttrProxy.Create("id","phone"),AttrProxy.Create("value",varPhone.c)],varPhone)])]),Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","mobilePhone"),AttrProxy.Create("class","control-label")],[Doc.TextNode(Client.translate(Client.currentLanguage(),Str.StrUserValuesMobilePhone))]),Doc.Element("div",[AttrProxy.Create("class","")],[Doc.Input([AttrProxy.Create("class","form-control"),AttrProxy.Create("type","input"),AttrProxy.Create("placeholder",Client.translate(Client.currentLanguage(),Str.StrUserValuesMobilePhone)),AttrProxy.Create("id","mobilePhone"),AttrProxy.Create("value",varMobilePhone.c)],varMobilePhone)])]),Doc.Button(Client.translate(Client.currentLanguage(),Str.StrSubmitEditUserValues),[AttrProxy.Create("type","submit")],function()
   {
    subm(createUserValues(varGender.c,varDegree.c,varFirstName.c,varLastName.c,varStreet.c,varPostcode.c,varCity.c,varPhone.c,varMobilePhone.c));
   }),Doc.TextView(varMessage.v)]);
@@ -372,7 +405,7 @@
  };
  Client.translate=function(language,str)
  {
-  return language.$==1?str.$==1?"weiblich":str.$==2?"Arbeitgeber eingeben":str.$==3?"Firmenname":str.$==4?"Straße":str.$==5?"Postleitzahl":str.$==6?"Stadt":str.$==7?"Geschlecht":str.$==8?"Titel":str.$==9?"Vorname":str.$==10?"Nachname":str.$==11?"Email":str.$==12?"Telefon":str.$==13?"Mobiltelefon":str.$==14?"Vorlage hochladen":str.$==16?"Email-Betreff":str.$==17?"Email-Text":str.$==15?"Name der Vorlage":str.$==18?"Beruf":str.$==19?"Datei hinzufügen":"männlich":str.$==1?"female":str.$==2?"Add Employer":str.$==3?"Company name":str.$==9?"First name":str.$==10?"Last name":str.$==4?"Street":str.$==5?"Postcode":str.$==6?"City":str.$==7?"Gender":str.$==8?"Degree":str.$==11?"Email":str.$==12?"Phone":str.$==13?"Mobile phone":str.$==14?"Add template":str.$==16?"Email subject":str.$==17?"Email body":str.$==15?"Template name":str.$==18?"Job":str.$==19?"Add file":"male";
+  return language.$==1?str.$==1?"weiblich":str.$==2?"Arbeitgeber eingeben":str.$==3?"Firmenname":str.$==4?"Straße":str.$==5?"Postleitzahl":str.$==6?"Stadt":str.$==7?"Geschlecht":str.$==8?"Titel":str.$==9?"Vorname":str.$==10?"Nachname":str.$==11?"Email":str.$==12?"Telefon":str.$==13?"Mobiltelefon":str.$==14?"Vorlage hochladen":str.$==16?"Email-Betreff":str.$==17?"Email-Text":str.$==15?"Name der Vorlage":str.$==18?"Beruf":str.$==19?"Datei hinzufügen":str.$==20?"Angaben zum Bewerber":str.$==21?"Speichern":str.$==22?"Geschlecht":str.$==23?"Titel":str.$==24?"Vorname":str.$==25?"Nachname":str.$==26?"Straße":str.$==27?"PLZ":str.$==28?"Stadt":str.$==29?"Telefon":str.$==30?"Mobiltelefon":"männlich":str.$==1?"female":str.$==2?"Add Employer":str.$==3?"Company name":str.$==9?"First name":str.$==10?"Last name":str.$==4?"Street":str.$==5?"Postcode":str.$==6?"City":str.$==7?"Gender":str.$==8?"Degree":str.$==11?"Email":str.$==12?"Phone":str.$==13?"Mobile phone":str.$==14?"Add template":str.$==16?"Email subject":str.$==17?"Email body":str.$==15?"Template name":str.$==18?"Job":str.$==19?"Add file":str.$==20?"Edit your values":str.$==21?"Save values":str.$==22?"Gender":str.$==23?"Degree":str.$==24?"First name":str.$==25?"Last name":str.$==26?"Street":str.$==27?"Postcode":str.$==28?"City":str.$==29?"Phone":str.$==30?"Mobile phone":"male";
  };
  SC$1.$cctor=function()
  {

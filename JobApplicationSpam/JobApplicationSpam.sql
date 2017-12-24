@@ -1,8 +1,6 @@
 ﻿\c jobapplicationspam;
 
-
-set client_encoding to 'utf8';
-set constraints all deferred;
+set client_encoding to 'UTF8';
 
 drop table if exists jobCenterContract;
 drop table if exists jobApplicationStatus;
@@ -12,11 +10,9 @@ drop table if exists employer;
 drop table if exists jobApplicationTemplateFile;
 drop table if exists jobApplicationTemplate;
 drop table if exists userValues;
-drop table if exists userDownloads;
 drop table if exists users;
 
 create table users (id serial primary key, email varchar(200) unique not null, password varchar(200) not null, salt varchar(200) not null, guid varchar(128) null);
-create table userDownloads(id serial primary key, folder varchar(500) not null, userId int not null, downloadTime timestamp not null, foreign key(userId) references users(id));
 create table userValues(userId int primary key, gender varchar(1) not null, degree varchar(20) not null, firstName varchar(50) not null, lastName varchar(50) not null, street varchar(50) not null, postcode varchar(20) not null, city varchar(50) not null, phone varchar(30) not null, mobilePhone varchar(30) not null, foreign key(userId) references users(id));
 create table jobApplicationTemplate(id serial primary key, userId int not null, templateName varchar(100) not null, userAppliesAs varchar(200) not null, emailSubject varchar(100) not null, emailBody varchar(1000) not null, foreign key(userId) references users(id)); 
 create table jobApplicationTemplateFile(id serial primary key, jobApplicationTemplateId int not null, filePath varchar(200) not null, foreign key(jobApplicationTemplateId) references jobApplicationTemplate(id));
@@ -26,11 +22,12 @@ create table jobApplicationStatusValue(id int primary key, status varchar(50));
 create table jobApplicationStatus(id serial primary key, jobApplicationId int, statusChangedOn date, dueOn timestamp, statusValueId int, statusMessage varchar(200), foreign key(jobApplicationId) references jobApplication(id), foreign key(statusValueId) references jobApplicationStatusValue(id));
 create table jobCenterContract(id serial primary key, userId int not null, repeatEvery int not null, jobApplicationCount int not null, expireDate date not null, foreign key(userId) references users(id));
 
+
 insert into users(email, password, salt, guid) values('rene', '1234', 'salt', null);
 insert into users(email, password, salt, guid) values('rene.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null);
-/*insert into users(email, password) values('helmut', 'HelmutGoerke1963');
-*/
-insert into userValues(userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone) values(1, 'm', '', 'René', 'Ederer', 'Raabstr. 24A', '90429', 'Nürnberg', '', '01520 2723494');
+
+insert into userValues(userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone) values(1, 'm', '', 'rene', 'ederer', 'taabsrr. 24A', '90429', 'Nürnberg', '', '01520 2723494');
+insert into userValues(userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone) values(2, 'm', '', 'René', 'Ederer', 'Raabstr. 24A', '90429', 'Nürnberg', '', '01520 2723494');
 
 insert into jobApplicationTemplate(userId, templateName, userAppliesAs, emailSubject, emailBody) values(2, 'Mein Template', 'Fachinformatiker für Anwendungsentwicklung', 'Bewerbung als Fachinformatiker für Anwendungsentwicklung', 'Sehr $geehrter $chefAnrede $chefNachname,\n\nanbei schicke ich Ihnen meine Bewerbungsunterlagen.\nDas Jobcenter kann während der Einarbeitungszeit (auch mehrere Monate) bis zu 50% der Gehaltskosten übernehmen.\nMeine Sachbearbeiterin Frau Götz (jobcenter-nuernberg-stadt.mitte-ag-team@jobcenter-ge.de) gibt Ihnen gerne nähere Auskunft.\nÜber eine Einladung zu einem Bewerbungsgespräch würder ich mich sehr freuen.\n\nMit freundlichen Grüßen\n\n\n$meinVorname $meinNachname\n$meineStrasse\n$meinePlz $meineStadt\n$meineMobilnr');
 insert into jobApplicationTemplate(userId, templateName, userAppliesAs, emailSubject, emailBody) values(2, 'Mein Template ohne Anhang', 'Fachinformatiker für Anwendungsentwicklung', 'Bewerbung als Fachinformatiker für Anwendungsentwicklung', 'Sehr $geehrter $chefAnrede $chefNachname,\n\nanbei schicke ich Ihnen meine Bewerbungsunterlagen.\nDas Jobcenter kann während der Einarbeitungszeit (auch mehrere Monate) bis zu 50% der Gehaltskosten übernehmen.\nMeine Sachbearbeiterin Frau Götz (jobcenter-nuernberg-stadt.mitte-ag-team@jobcenter-ge.de) gibt Ihnen gerne nähere Auskunft.\nÜber eine Einladung zu einem Bewerbungsgespräch würder ich mich sehr freuen.\n\nMit freundlichen Grüßen\n\n\n$meinVorname $meinNachname\n$meineStrasse\n$meinePlz $meineStadt\n$meineMobilnr');
@@ -77,7 +74,6 @@ insert into jobApplicationStatus(jobApplicationId, statusChangedOn, dueOn, statu
     values(5, to_timestamp('26.01.2017', '%d.%m.%Y'), null, 1, '');
 insert into jobApplicationStatus(jobApplicationId, statusChangedOn, dueOn, statusValueId, statusMessage)
     values(6, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 1, 'Forwarded by Ms Götz');
-
 
 /*insert into jobCenterContract(id, userId, repeatOn, jobApplicationCount, expireDate) values(1, 1, , 6, curdate())*/
 

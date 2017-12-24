@@ -97,6 +97,11 @@ module Site =
             h1 [text "Register"]
             client <@ Client.register () @>
         ]
+
+    let editUserValuesPage (ctx : Context<EndPoint>) =
+        Templating.main ctx EndPoint.Register "Edit your values" [
+            client <@ Client.editUserValues () @>
+        ]
     
 
     let uploadTemplatePage (ctx : Context<EndPoint>) =
@@ -122,10 +127,6 @@ module Site =
                     (ctx.UserSession.GetLoggedInUser () |> Async.RunSynchronously |> Option.map Int32.Parse)
                 |> Async.RunSynchronously
             else ok "Nothing to upload"
-         (*
-      (if not (ctx.Request.Files |> Seq.isEmpty) then text "Files have been uploaded" else text "")
-      myText
-      *)
         Templating.main ctx EndPoint.UploadTemplate "UploadTemplate"
           [ div
               [ client <@ Client.uploadTemplate() @>
@@ -177,7 +178,7 @@ module Site =
             match (ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously, endpoint) with
             | Some _, EndPoint.Home -> homePage ctx
             | Some _, EndPoint.Login -> loginPage ctx
-            | Some _, EndPoint.EditUserValues -> loginPage ctx
+            | Some _, EndPoint.EditUserValues -> editUserValuesPage ctx
             | Some _, EndPoint.UploadTemplate -> uploadTemplatePage ctx
             | Some _, EndPoint.AddEmployer -> addEmployerPage ctx
             | Some _, EndPoint.ApplyNow -> applyNowPage ctx

@@ -15,6 +15,7 @@ module Server =
     open System.Net.Mail
     open System.IO
     open WebSharper.Web.Remoting
+    open Database
 
     [<Remote>]
     let getEmailByUserId userId =
@@ -41,6 +42,16 @@ module Server =
         attachmentPaths
         |> List.iter (fun x -> message.Attachments.Add(new Attachment(x)))
         smtpClient.Send(message)
+    
+    [<Remote>]
+    let getCurrentUserValues () =
+        match getCurrentUserId() with
+        | Some userId ->
+            use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
+            dbConn.Open()
+            Database.getUserValues dbConn userId
+        | None -> failwith "There is no user logged in."
+
 
 
     [<Remote>]

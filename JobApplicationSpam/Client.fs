@@ -46,6 +46,17 @@ module Client =
         | StrEmailBody
         | StrUserAppliesAs
         | StrAddFile
+        | StrEditUserValues
+        | StrSubmitEditUserValues
+        | StrUserValuesGender
+        | StrUserValuesDegree
+        | StrUserValuesFirstName
+        | StrUserValuesLastName
+        | StrUserValuesStreet
+        | StrUserValuesPostcode
+        | StrUserValuesCity
+        | StrUserValuesPhone
+        | StrUserValuesMobilePhone
 
     [<JavaScript>]
     let translate language str =
@@ -70,6 +81,17 @@ module Client =
         | English, StrTemplateName -> "Template name"
         | English, StrUserAppliesAs -> "Job"
         | English, StrAddFile -> "Add file"
+        | English, StrEditUserValues -> "Edit your values"
+        | English, StrSubmitEditUserValues -> "Save values"
+        | English, StrUserValuesGender -> "Gender"
+        | English, StrUserValuesDegree -> "Degree"
+        | English, StrUserValuesFirstName -> "First name"
+        | English, StrUserValuesLastName -> "Last name"
+        | English, StrUserValuesStreet -> "Street"
+        | English, StrUserValuesPostcode -> "Postcode"
+        | English, StrUserValuesCity -> "City"
+        | English, StrUserValuesPhone -> "Phone"
+        | English, StrUserValuesMobilePhone -> "Mobile phone"
         | German, StrMale -> "männlich"
         | German, StrFemale -> "weiblich"
         | German, StrAddEmployer -> "Arbeitgeber eingeben"
@@ -90,6 +112,17 @@ module Client =
         | German, StrTemplateName -> "Name der Vorlage"
         | German, StrUserAppliesAs -> "Beruf"
         | German, StrAddFile -> "Datei hinzufügen"
+        | German, StrEditUserValues -> "Angaben zum Bewerber"
+        | German, StrSubmitEditUserValues -> "Speichern"
+        | German, StrUserValuesGender -> "Geschlecht"
+        | German, StrUserValuesDegree -> "Titel"
+        | German, StrUserValuesFirstName -> "Vorname"
+        | German, StrUserValuesLastName -> "Nachname"
+        | German, StrUserValuesStreet -> "Straße"
+        | German, StrUserValuesPostcode -> "PLZ"
+        | German, StrUserValuesCity -> "Stadt"
+        | German, StrUserValuesPhone -> "Telefon"
+        | German, StrUserValuesMobilePhone -> "Mobiltelefon"
 
     
     [<JavaScript>]
@@ -132,7 +165,7 @@ module Client =
             //userValues.firstName.Value <- ""
             //userValues.lastName.Value <- ""
         let varGender = Var.Create Gender.Male 
-        let varDegree = Var.Create("1")
+        let varDegree = Var.Create("")
         let varFirstName = Var.Create("")
         let varLastName = Var.Create("")
         let varStreet = Var.Create("")
@@ -140,39 +173,137 @@ module Client =
         let varCity = Var.Create("")
         let varPhone = Var.Create("")
         let varMobilePhone = Var.Create("")
-        div [  h1 [text "Hello"]
-               Doc.Radio [attr.id "male"; ] Gender.Male varGender
-               labelAttr [attr.``for`` "male"; attr.radiogroup "gender"] [text "männlich"]
-               br []
-               Doc.Radio [attr.id "female"; attr.radiogroup "gender" ] Gender.Female varGender
-               labelAttr [attr.``for`` "female"] [text "weiblich"]
-               br []
-               labelAttr [attr.``for`` "degree"] [text "Titel"]
-               Doc.Input [ attr.``type`` "input"; attr.id "degree"; attr.value varDegree.Value ] varDegree
-               br []
-               labelAttr [attr.``for`` "firstName"] [text "Vorname"]
-               Doc.Input [ attr.``type`` "input"; attr.id "firstName"; attr.value varFirstName.Value ] varFirstName
-               br []
-               labelAttr [attr.``for`` "lastName"] [text "Nachname"]
-               Doc.Input [ attr.``type`` "input"; attr.name "lastName"; attr.value varLastName.Value ] varLastName
-               br []
-               labelAttr [attr.``for`` "street"] [text "Straße"]
-               Doc.Input [ attr.``type`` "input"; attr.id "street"; attr.value varStreet.Value ] varStreet
-               br []
-               labelAttr [attr.``for`` "postcode"] [text "Postleitzahl"]
-               Doc.Input [ attr.``type`` "input"; attr.id "postcode"; attr.value varPostcode.Value ] varPostcode
-               br []
-               labelAttr [attr.``for`` "city"] [text "Stadt"]
-               Doc.Input [ attr.``type`` "input"; attr.id "city"; attr.value varCity.Value ] varCity
-               br []
-               labelAttr [attr.``for`` "phone"] [text "Telefon"]
-               Doc.Input [ attr.``type`` "input"; attr.id "phone"; attr.value varPhone.Value ] varPhone
-               br []
-               labelAttr [attr.``for`` "mobilePhone"] [text "Mobil"]
-               Doc.Input [ attr.``type`` "input"; attr.id "mobilePhone"; attr.value varMobilePhone.Value ] varMobilePhone
-               br []
+        match Server.getCurrentUserValues () with 
+        | Some userValues ->
+            varGender.Value <- userValues.gender
+            varDegree.Value <- userValues.degree
+            varFirstName.Value <- userValues.firstName
+            varLastName.Value <- userValues.lastName
+            varStreet.Value <- userValues.street
+            varPostcode.Value <- userValues.postcode
+            varCity.Value <- userValues.city
+            varPhone.Value <- userValues.phone
+            varMobilePhone.Value <- userValues.mobilePhone
+        | None -> ()
+        div [  h1 [text (translate currentLanguage StrEditUserValues)]
+               divAttr
+                 [ attr.``class`` "form-group" ]
+                 [ labelAttr [attr.``class`` "control-label" ] [ text <| translate currentLanguage StrUserValuesGender ]
+                   br []
+                   divAttr [ attr.``class`` "" ]
+                     [ Doc.Radio [ attr.id "male"; attr.radiogroup "gender"; ] Gender.Male varGender
+                       labelAttr [ attr.``for`` "male"; ] [text <| translate currentLanguage StrMale]
+                       br []
+                       Doc.Radio [ attr.id "female"; attr.radiogroup "gender"; ] Gender.Female varGender
+                       labelAttr [ attr.``for`` "female"; ] [text <| translate currentLanguage StrFemale]
+                     ]
+                 ]
+               divAttr
+                 [ attr.``class`` "form-group" ]
+                 [ labelAttr
+                     [attr.``for`` "degree"; attr.``class`` "control-label"]
+                     [text <| translate currentLanguage StrUserValuesDegree]
+                   divAttr [ attr.``class`` "" ]
+                     [ Doc.Input
+                         [ attr.``class`` "form-control"
+                           attr.``type`` "input"
+                           attr.placeholder <| translate currentLanguage StrUserValuesDegree
+                           attr.id "degree"; attr.value varDegree.Value ] varDegree
+                     ]
+                 ]
+               divAttr
+                 [ attr.``class`` "form-group" ]
+                 [ labelAttr
+                     [attr.``for`` "firstName"; attr.``class`` "control-label"]
+                     [text <| translate currentLanguage StrUserValuesFirstName]
+                   divAttr [ attr.``class`` "" ]
+                     [ Doc.Input
+                         [ attr.``class`` "form-control"
+                           attr.``type`` "input"
+                           attr.placeholder <| translate currentLanguage StrUserValuesFirstName
+                           attr.id "firstName"; attr.value varFirstName.Value ] varFirstName
+                     ]
+                 ]
+               divAttr
+                 [ attr.``class`` "form-group" ]
+                 [ labelAttr
+                     [attr.``for`` "lastName"; attr.``class`` "control-label"]
+                     [text <| translate currentLanguage StrUserValuesLastName]
+                   divAttr [ attr.``class`` "" ]
+                     [ Doc.Input
+                         [ attr.``class`` "form-control"
+                           attr.``type`` "input"
+                           attr.placeholder <| translate currentLanguage StrUserValuesLastName
+                           attr.id "lastName"; attr.value varLastName.Value ] varLastName
+                     ]
+                 ]
+               divAttr
+                 [ attr.``class`` "form-group" ]
+                 [ labelAttr
+                     [attr.``for`` "street"; attr.``class`` "control-label"]
+                     [text <| translate currentLanguage StrUserValuesStreet]
+                   divAttr [ attr.``class`` "" ]
+                     [ Doc.Input
+                         [ attr.``class`` "form-control"
+                           attr.``type`` "input"
+                           attr.placeholder <| translate currentLanguage StrUserValuesStreet
+                           attr.id "street"; attr.value varStreet.Value ] varStreet
+                     ]
+                 ]
+               divAttr
+                 [ attr.``class`` "form-group" ]
+                 [ labelAttr
+                     [attr.``for`` "postcode"; attr.``class`` "control-label"]
+                     [text <| translate currentLanguage StrUserValuesPostcode]
+                   divAttr [ attr.``class`` "" ]
+                     [ Doc.Input
+                         [ attr.``class`` "form-control"
+                           attr.``type`` "input"
+                           attr.placeholder <| translate currentLanguage StrUserValuesPostcode
+                           attr.id "postcode"; attr.value varPostcode.Value ] varPostcode
+                     ]
+                 ]
+               divAttr
+                 [ attr.``class`` "form-group" ]
+                 [ labelAttr
+                     [attr.``for`` "city"; attr.``class`` "control-label"]
+                     [text <| translate currentLanguage StrUserValuesCity]
+                   divAttr [ attr.``class`` "" ]
+                     [ Doc.Input
+                         [ attr.``class`` "form-control"
+                           attr.``type`` "input"
+                           attr.placeholder <| translate currentLanguage StrUserValuesCity
+                           attr.id "city"; attr.value varCity.Value ] varCity
+                     ]
+                 ]
+               divAttr
+                 [ attr.``class`` "form-group" ]
+                 [ labelAttr
+                     [attr.``for`` "phone"; attr.``class`` "control-label"]
+                     [text <| translate currentLanguage StrUserValuesPhone]
+                   divAttr [ attr.``class`` "" ]
+                     [ Doc.Input
+                         [ attr.``class`` "form-control"
+                           attr.``type`` "input"
+                           attr.placeholder <| translate currentLanguage StrUserValuesPhone
+                           attr.id "phone"; attr.value varPhone.Value ] varPhone
+                     ]
+                 ]
+               divAttr
+                 [ attr.``class`` "form-group" ]
+                 [ labelAttr
+                     [attr.``for`` "mobilePhone"; attr.``class`` "control-label"]
+                     [text <| translate currentLanguage StrUserValuesMobilePhone]
+                   divAttr [ attr.``class`` "" ]
+                     [ Doc.Input
+                         [ attr.``class`` "form-control"
+                           attr.``type`` "input"
+                           attr.placeholder <| translate currentLanguage StrUserValuesMobilePhone
+                           attr.id "mobilePhone"; attr.value varMobilePhone.Value ] varMobilePhone
+                     ]
+                 ]
 
-               Doc.Button "myBut" [attr.``type`` "submit"; ] (fun () -> subm (createUserValues varGender.Value varDegree.Value varFirstName.Value varLastName.Value varStreet.Value varPostcode.Value varCity.Value varPhone.Value varMobilePhone.Value) |> ignore)
+               Doc.Button (translate currentLanguage StrSubmitEditUserValues) [attr.``type`` "submit"; ] (fun () -> subm (createUserValues varGender.Value varDegree.Value varFirstName.Value varLastName.Value varStreet.Value varPostcode.Value varCity.Value varPhone.Value varMobilePhone.Value) |> ignore)
                textView varMessage.View
                //subm <| createUserValues varGender.Value varDegree.Value varFirstName.Value varLastName.Value varStreet.Value varPostcode.Value varCity.Value varPhone.Value varMobilePhone.Value
             ]
@@ -605,10 +736,9 @@ module Client =
         let varTxtLoginPassword = Var.Create ""
         formAttr
           [ on.submit (fun _ _ ->
-              async {
-                  let x = Server.login (varTxtLoginEmail.Value) (varTxtLoginPassword.Value)
-                  return ()
-              } |> Async.StartImmediate
+              match Server.login (varTxtLoginEmail.Value) (varTxtLoginPassword.Value) with
+              | Ok (v, _) -> ()
+              | Bad xs -> JS.Alert(String.concat ", " xs)
               )
           ]
           [ divAttr

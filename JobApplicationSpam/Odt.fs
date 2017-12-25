@@ -40,7 +40,7 @@ module Odt =
         use process1 = new System.Diagnostics.Process()
         process1.StartInfo.FileName <- ConfigurationManager.AppSettings.["python"]
         process1.StartInfo.UseShellExecute <- false
-        process1.StartInfo.Arguments <- sprintf """ "%s" -f pdf -eUseLossLessCompression=true "%s" """  (ConfigurationManager.AppSettings.["unoconv"]) odtPath
+        process1.StartInfo.Arguments <- sprintf """ "%s" --format pdf -P PaperFormat=A4 -eUseLossLessCompression=true "%s" """  (ConfigurationManager.AppSettings.["unoconv"]) odtPath
         process1.StartInfo.CreateNoWindow <- true
         process1.Start() |> ignore
         process1.WaitForExit()

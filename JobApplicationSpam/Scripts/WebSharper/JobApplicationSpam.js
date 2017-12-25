@@ -1,7 +1,7 @@
 (function()
 {
  "use strict";
- var Global,JobApplicationSpam,Client,Language,Str,AddEmployerAction,SC$1,JobApplicationSpam_GeneratedPrintf,WebSharper,UI,Next,Var,Doc,AttrProxy,AttrModule,Concurrency,Remoting,AjaxRemotingProvider,Strings,Numeric,Seq,Utils;
+ var Global,JobApplicationSpam,Client,Language,Str,AddEmployerAction,SC$1,JobApplicationSpam_GeneratedPrintf,IntelliFactory,Runtime,WebSharper,Utils,Concurrency,Arrays,UI,Next,Var,Doc,AttrProxy,AttrModule,Date,Remoting,AjaxRemotingProvider,Strings,Numeric,Seq;
  Global=window;
  JobApplicationSpam=Global.JobApplicationSpam=Global.JobApplicationSpam||{};
  Client=JobApplicationSpam.Client=JobApplicationSpam.Client||{};
@@ -10,20 +10,24 @@
  AddEmployerAction=Client.AddEmployerAction=Client.AddEmployerAction||{};
  SC$1=Global.StartupCode$JobApplicationSpam$Client=Global.StartupCode$JobApplicationSpam$Client||{};
  JobApplicationSpam_GeneratedPrintf=Global.JobApplicationSpam_GeneratedPrintf=Global.JobApplicationSpam_GeneratedPrintf||{};
+ IntelliFactory=Global.IntelliFactory;
+ Runtime=IntelliFactory&&IntelliFactory.Runtime;
  WebSharper=Global.WebSharper;
+ Utils=WebSharper&&WebSharper.Utils;
+ Concurrency=WebSharper&&WebSharper.Concurrency;
+ Arrays=WebSharper&&WebSharper.Arrays;
  UI=WebSharper&&WebSharper.UI;
  Next=UI&&UI.Next;
  Var=Next&&Next.Var;
  Doc=Next&&Next.Doc;
  AttrProxy=Next&&Next.AttrProxy;
  AttrModule=Next&&Next.AttrModule;
- Concurrency=WebSharper&&WebSharper.Concurrency;
+ Date=Global.Date;
  Remoting=WebSharper&&WebSharper.Remoting;
  AjaxRemotingProvider=Remoting&&Remoting.AjaxRemotingProvider;
  Strings=WebSharper&&WebSharper.Strings;
  Numeric=WebSharper&&WebSharper.Numeric;
  Seq=WebSharper&&WebSharper.Seq;
- Utils=WebSharper&&WebSharper.Utils;
  Language.German={
   $:1
  };
@@ -134,21 +138,124 @@
  };
  Client.createTemplate=function()
  {
-  var varTextArea;
-  varTextArea=Var.Create$1("");
-  return Doc.Element("div",[],[Doc.Element("h1",[],[Doc.TextNode("hallo123")]),Doc.InputArea([AttrProxy.Create("autofocus","autofocus"),AttrModule.Handler("scroll",function()
+  var varUserTitle,varUserCity,varSubject,varBossTitle,varTextArea,c;
+  function resize(el,font,fontSize,fontWeight,defaultWidth)
+  {
+   var str,span;
+   str=Global.String(el.val());
+   str===""?el.width(defaultWidth):(span=Global.jQuery("<span />").attr("style",((((Runtime.Curried(function($1,$2,$3,$4)
+   {
+    return $1("font:"+Utils.toSafe($2)+"; font-size: "+Utils.toSafe($3)+"; font-weight: "+Utils.toSafe($4)+"; visibility: hidden");
+   },4))(Global.id))(font))(fontSize))(fontWeight)).html(str),span.appendTo("body"),el.width(span.width()),Global.jQuery("body:last-child").remove());
+   return null;
+  }
+  function i(evt)
+  {
+   var b;
+   Concurrency.Start((b=null,Concurrency.Delay(function()
+   {
+    var t;
+    t=Global.jQuery("#text");
+    return Concurrency.Combine(Arrays.get(t.get(),0).scrollWidth>t.innerWidth()?Concurrency.Zero():Concurrency.Zero(),Concurrency.Delay(function()
+    {
+     return Concurrency.Return(null);
+    }));
+   })),null);
+  }
+  varUserTitle=Var.Create$1("");
+  varUserCity=Var.Create$1("Fürth");
+  varSubject=Var.Create$1("Bewerbung als Fachinformatiker für Anwendungsentwicklung");
+  varBossTitle=Var.Create$1("");
+  Var.Create$1("Hamburg");
+  varTextArea=Var.Create$1("Sehr $geehrter $chefAnrede $chefNachname,\n1234567890123456789012345678901234567890123456789012345678901234567890\ntest test test test test test test test test test test test test.\n\ntest test.\n\nMit freundlichen Grüßen\n\n\n\nRené Ederer");
+  return Doc.Element("div",[],[Doc.Element("h1",[],[Doc.TextNode("Create a template")]),Doc.Element("div",[AttrProxy.Create("class","page")],[Doc.Element("div",[AttrProxy.Create("style","height: 225pt; background-color: white")],[Doc.Input([AttrProxy.Create("class","grow-input"),AttrModule.Handler("input",function(el)
   {
    return function()
    {
-    return Global.alert("Scrolling!");
+    return resize(Global.jQuery(el),"Arial","12pt","normal",150);
    };
-  }),AttrProxy.Create("style","white-space: nowrap; overflow: hidden; min-height: 400px; font: Arial; font-size: 12pt"),AttrModule.Handler("mousedown",function()
+  }),AttrProxy.Create("placeholder","Dein Titel")],varUserTitle),Doc.Element("input",[AttrProxy.Create("class","grow-input"),AttrModule.Handler("input",function(el)
   {
    return function()
    {
-    return Global.alert(varTextArea.c);
+    return resize(Global.jQuery(el),"Arial","12pt","normal",150);
    };
-  })],varTextArea)]);
+  }),AttrProxy.Create("placeholder","Dein Vorname")],[]),Doc.Element("input",[AttrProxy.Create("class","grow-input"),AttrModule.Handler("input",function(el)
+  {
+   return function()
+   {
+    return resize(Global.jQuery(el),"Arial","12pt","normal",150);
+   };
+  }),AttrProxy.Create("placeholder","Dein Nachname")],[]),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("class","grow-input"),AttrProxy.Create("style","width:150px"),AttrModule.Handler("input",function(el)
+  {
+   return function()
+   {
+    return resize(Global.jQuery(el),"Arial","12pt","normal",150);
+   };
+  }),AttrProxy.Create("placeholder","Deine Straße")],[]),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("class","grow-input"),AttrModule.Handler("input",function(el)
+  {
+   return function()
+   {
+    return resize(Global.jQuery(el),"Arial","12pt","normal",150);
+   };
+  }),AttrProxy.Create("placeholder","Deine Postleitzahl")],[]),Doc.Input([AttrProxy.Create("class","grow-input"),AttrModule.Handler("input",function(el)
+  {
+   return function()
+   {
+    return resize(Global.jQuery(el),"Arial","12pt","normal",150);
+   };
+  }),AttrProxy.Create("placeholder","Deine Stadt")],varUserCity),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("class","grow-input"),AttrProxy.Create("style","width:150px"),AttrModule.Handler("input",function(el)
+  {
+   return function()
+   {
+    return resize(Global.jQuery(el),"Arial","12pt","normal",150);
+   };
+  }),AttrProxy.Create("placeholder","Chef-Anrede")],[]),Doc.Element("br",[],[]),Doc.Input([AttrProxy.Create("class","grow-input"),AttrModule.Handler("input",function(el)
+  {
+   return function()
+   {
+    return resize(Global.jQuery(el),"Arial","12pt","normal",150);
+   };
+  }),AttrProxy.Create("placeholder","Chef-Titel")],varBossTitle),Doc.Element("input",[AttrProxy.Create("class","grow-input"),AttrModule.Handler("input",function(el)
+  {
+   return function()
+   {
+    return resize(Global.jQuery(el),"Arial","12pt","normal",150);
+   };
+  }),AttrProxy.Create("placeholder","Chef-Vorname")],[]),Doc.Element("input",[AttrProxy.Create("class","grow-input"),AttrModule.Handler("input",function(el)
+  {
+   return function()
+   {
+    return resize(Global.jQuery(el),"Arial","12pt","normal",150);
+   };
+  }),AttrProxy.Create("placeholder","Chef-Nachname")],[]),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("class","grow-input"),AttrModule.Handler("input",function(el)
+  {
+   return function()
+   {
+    return resize(Global.jQuery(el),"Arial","12pt","normal",150);
+   };
+  }),AttrProxy.Create("placeholder","Firma-Strasse")],[]),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("class","grow-input"),AttrModule.Handler("input",function(el)
+  {
+   return function()
+   {
+    return resize(Global.jQuery(el),"Arial","12pt","normal",150);
+   };
+  }),AttrProxy.Create("placeholder","Firma-Postleitzahl")],[]),Doc.Element("input",[AttrProxy.Create("class","grow-input"),AttrModule.Handler("input",function(el)
+  {
+   return function()
+   {
+    return resize(Global.jQuery(el),"Arial","12pt","normal",150);
+   };
+  }),AttrProxy.Create("placeholder","Firma-Stadt")],[]),Doc.Element("br",[],[]),Doc.Element("span",[AttrProxy.Create("style","float:right")],[Doc.TextView(varUserCity.v),Doc.TextNode(", "+(c=Date.now(),(new Date(c)).toLocaleDateString()))]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Input([AttrProxy.Create("class","grow-input"),AttrProxy.Create("style","font-weight: bold;"),AttrModule.Handler("input",function(el)
+  {
+   return function()
+   {
+    return resize(Global.jQuery(el),"Arial","12pt","bold",150);
+   };
+  }),AttrProxy.Create("placeholder","Betreff")],varSubject),Doc.Element("br",[],[]),Doc.Element("br",[],[])]),Doc.Element("div",[AttrProxy.Create("style","width:100%; min-height: 322.4645709pt; background-color:red;")],[Doc.InputArea([AttrProxy.Create("id","text"),AttrProxy.Create("autofocus","autofocus"),AttrProxy.Create("style","margin: 0px; padding: 0px; background-color: lighblue; white-space: pre; overflow: hidden; min-height: 322.4645709pt; min-width:100%; font-family: Arial; font-size: 12pt; display: block"),AttrModule.Handler("scroll",function()
+  {
+   return i;
+  })],varTextArea)]),Doc.Element("div",[AttrProxy.Create("style","height:96pt; width: 100%;")],[Doc.Element("br",[],[]),Doc.TextNode("Mit freundlichen Grüßen"),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.TextNode("$meinTitel $meinVorname $meinNachname")])])]);
  };
  Client.showSentJobApplications=function()
  {

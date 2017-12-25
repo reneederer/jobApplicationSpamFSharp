@@ -17,6 +17,7 @@ module Client =
     open System.IO
     open WebSharper.Sitelets
     open HtmlAgilityPack
+    open WebSharper.JQuery
     open System
 
     [<JavaScript>]
@@ -801,9 +802,104 @@ module Client =
 
     [<JavaScript>]
     let createTemplate () = 
-        let varTextArea = Var.Create("")
+        let varUserTitle = Var.Create("")
+        let varUserCity = Var.Create("Fürth")
+        let varSubject = Var.Create("Bewerbung als Fachinformatiker für Anwendungsentwicklung")
+        let varBossTitle = Var.Create("")
+        let varBossCity = Var.Create("Hamburg")
+        let varTextArea = Var.Create("Sehr $geehrter $chefAnrede $chefNachname,\n1234567890123456789012345678901234567890123456789012345678901234567890\ntest test test test test test test test test test test test test.\n\ntest test.\n\nMit freundlichen Grüßen\n\n\n\nRené Ederer")
+        let resize (el : JQuery) font fontSize fontWeight (defaultWidth: int) =
+            let str = el.Val().ToString()
+            if str = ""
+            then el.Width(defaultWidth) |> ignore
+            else
+                let (span : JQuery) = JQuery("<span />").Attr("style", sprintf "font:%s; font-size: %s; font-weight: %s; visibility: hidden" font fontSize fontWeight).Html(str)
+                span.AppendTo("body") |> ignore
+                el.Width(span.Width()) |> ignore
+                JQuery("body:last-child").Remove() |> ignore
+            ()
+        let i evt =
+            async {
+                let t = JQuery("#text")
+                if t.Get().[0].ScrollWidth > (t.InnerWidth() |> float)
+                then
+                    if false then
+                        let cursorPos = JQuery("#text").Prop("selectionStart").ToString() |> Int32.Parse
+                        let v = JQuery("#text").Val() |> string
+                        let textBefore = v.Substring(0,  cursorPos - 1)
+                        let textAfter  = v.Substring(cursorPos - 1, v.Length)
+                        JQuery("#text").Val(textBefore + "\n" + textAfter) |> ignore
+                        JQuery("#text").Prop("selectionEnd", cursorPos + 1) |> ignore
+                return ()
+            } |> Async.Start
         div
-          [ h1 [ text "hallo123" ]
-            Doc.InputArea [attr.autofocus "autofocus"; attr.style "white-space: nowrap; overflow: hidden; min-height: 400px; font: Arial; font-size: 12pt"; on.mouseDown (fun el _ -> JS.Alert(varTextArea.Value))] varTextArea
+          [ h1 [ text "Create a template" ]
+            divAttr [attr.``class`` "page"]
+              [ divAttr [attr.style "height: 225pt; background-color: white"]
+                  [ Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Dein Titel" ] varUserTitle
+                    inputAttr [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Dein Vorname" ] []
+                    inputAttr [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Dein Nachname" ] []
+                    br []
+                    inputAttr [ attr.``class`` "grow-input"; attr.style "width:150px"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Deine Straße" ] []
+                    br []
+                    inputAttr [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Deine Postleitzahl" ] []
+                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Deine Stadt" ] varUserCity
+                    br []
+                    br []
+                    br []
+                    inputAttr [ attr.``class`` "grow-input"; attr.style "width:150px"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Chef-Anrede" ] []
+                    br []
+                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Chef-Titel" ] varBossTitle
+                    inputAttr [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Chef-Vorname" ] []
+                    inputAttr [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Chef-Nachname" ] []
+                    br []
+                    inputAttr [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Firma-Strasse" ] []
+                    br []
+                    inputAttr [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Firma-Postleitzahl" ] []
+                    inputAttr [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Firma-Stadt" ] []
+                    br []
+                    spanAttr [ attr.style "float:right" ]
+                      [ textView <| View.FromVar varUserCity
+                        text <|  ", " + DateTime.Now.ToShortDateString()
+                      ]
+                    br []
+                    br []
+                    Doc.Input [ attr.``class`` "grow-input"; attr.style "font-weight: bold;"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "bold" 150); attr.placeholder "Betreff" ] varSubject
+                    br []
+                    br []
+                  ]
+                divAttr [attr.style "width:100%; min-height: 322.4645709pt; background-color:red;"]
+                  [ Doc.InputArea [ attr.id "text"; attr.autofocus "autofocus"; attr.style "margin: 0px; padding: 0px; background-color: lighblue; white-space: pre; overflow: hidden; min-height: 322.4645709pt; min-width:100%; font-family: Arial; font-size: 12pt; display: block"; on.scroll (fun _ evt -> i evt) ] varTextArea
+                  ]
+                divAttr [ attr.style "height:96pt; width: 100%;" ]
+                  [
+                    br []
+                    text "Mit freundlichen Grüßen"
+                    br []
+                    br []
+                    br []
+                    text "$meinTitel $meinVorname $meinNachname"
+                  ]
+              ]
           ]
+(*        <textarea style="min-width: 100%; height:100%; font-family: inherit; font-size: inherit">
+It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English. Many desktop publishing packages and web page editors now use Lorem Ipsum as their default model text, and a search for 'lorem ipsum' will uncover many web sites still in their infancy. Various versions have evolved over the years, sometimes by accident, sometimes on purpose (injected humour and the like).
+
+Where does it come from?
+
+Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source. Lorem Ipsum comes from sections 1.10.32 and 1.10.33 of "de Finibus Bonorum et Malorum" (The Extremes of Good and Evil) by Cicero, written in 45 BC. This book is a treatise on the theory of ethics, very popular during the Renaissance. The first line of Lorem Ipsum, "Lorem ipsum dolor sit amet..", comes from a line in section 1.10.32.
+        </textarea>
+-->
+*)
+
    
+
+
+
+
+
+
+
+
+
+

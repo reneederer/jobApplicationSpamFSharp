@@ -24,6 +24,7 @@ module Templating =
 
 
     type MainTemplate = Templating.Template<"Main.html">
+    type CreateTemplateTemplate = Templating.Template<"C:/Users/rene/Documents/Visual Studio 2017/Projects/jobApplicationSpamFSharp/JobApplicationSpam/Template.html">
 
     let MenuBar (ctx: Context<EndPoint>) endpoint : Doc list =
         let ( => ) txt act =
@@ -55,7 +56,7 @@ module Templating =
             li ["About" => EndPoint.About]
         ]
     
-    let loggedInUser (ctx: Context<EndPoint>) : string =
+    let loggedInUserEmail (ctx: Context<EndPoint>) : string =
         ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously
         |> Option.map System.Int32.TryParse
         |> Option.bind (fun (b, v) -> if b then Some v else None)
@@ -68,7 +69,15 @@ module Templating =
                 .Title(title)
                 .MenuBar(MenuBar ctx action)
                 .Body(body)
-                .LoggedInUser(loggedInUser ctx)
+                .LoggedInUserEmail(loggedInUserEmail ctx)
+                .Doc()
+        )
+
+    let createTemplate (ctx : Context<EndPoint>) (action : EndPoint) (title: string) (body: Doc list) : Async<Content<'a>>=
+        Content.Page(
+            CreateTemplateTemplate()
+                .Title(title)
+                .Body(body)
                 .Doc()
         )
 
@@ -96,7 +105,7 @@ module Site =
         ]
 
     let createTemplatePage (ctx : Context<EndPoint>) =
-        Templating.main ctx EndPoint.CreateTemplate "Create Template" [
+        Templating.createTemplate ctx EndPoint.CreateTemplate "Create a Template" [
             client <@ Client.createTemplate () @>
         ]
 
@@ -195,7 +204,8 @@ module Site =
             | None, EndPoint.Register -> registerPage ctx
             | Some _, EndPoint.About -> aboutPage ctx
             | Some _, EndPoint.ConfirmEmail -> confirmEmailPage ctx
-            | Some_ , EndPoint.CreateTemplate -> createTemplatePage ctx
+            | Some _ , EndPoint.CreateTemplate -> createTemplatePage ctx
+            | None , EndPoint.CreateTemplate -> createTemplatePage ctx
             | None, _ -> loginPage ctx
         )
 

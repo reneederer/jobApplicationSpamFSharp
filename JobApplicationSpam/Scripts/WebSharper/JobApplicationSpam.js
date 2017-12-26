@@ -145,7 +145,7 @@
    str===""?el.width(defaultWidth):(span=Global.jQuery("<span />").attr("style",((((Runtime.Curried(function($1,$2,$3,$4)
    {
     return $1("font-family:"+Utils.toSafe($2)+"; font-size: "+Utils.toSafe($3)+"; font-weight: "+Utils.toSafe($4)+"; visibility: hidden");
-   },4))(Global.id))(font))(fontSize))(fontWeight)).html(str),span.appendTo("body"),el.width(span.width()),Global.jQuery("body:last-child").remove());
+   },4))(Global.id))(font))(fontSize))(fontWeight)).html(str),span.appendTo("body"),el.width(span.width()),Global.jQuery("body span").last().remove());
    return null;
   }
   function getWidth(s,font,fontSize,fontWeight)
@@ -158,21 +158,18 @@
    }(Global.id)).html(str);
    span.appendTo("body");
    spanWidth=span.width();
-   Global.jQuery("body:last-child").remove();
-   Global.alert(s+"\n\n\n"+Global.String(spanWidth));
+   Global.jQuery("body span:last").remove();
    return spanWidth;
   }
-  function findLineBreak(s1,font,fontSize,fontWeight,container)
+  function findLineBreak(str,containerWidth,font,fontSize,fontWeight)
   {
-   var containerWidth,str,myString;
-   containerWidth=container.innerWidth();
-   str=Strings.Replace(Global.String(container.val())," ","&nbsp;");
+   var myString;
    myString=function(beginIndex,endIndex,n)
    {
     var currentIndex,currentString,width;
     while(true)
-     if(beginIndex>=endIndex)
-      return Strings.Substring(str,0,beginIndex);
+     if(n<0)
+      return"impossible";
      else
       {
        currentIndex=beginIndex+((endIndex-beginIndex+1)/2>>0);
@@ -194,8 +191,9 @@
          n=n-1;
         }
       }
-   }(0,str.length,10);
-   return Global.alert(myString+"\n\n\n\nafter: "+Global.String(container.val()).substring(myString.length));
+   }(0,str.length,16);
+   Global.alert(myString+"\n\n\n\nafter: "+str.substring(myString.length));
+   return Var.Set(varUserLastName,myString);
   }
   varUserTitle=Var.Create$1("");
   varUserFirstName=Var.Create$1("");
@@ -217,7 +215,7 @@
    return function()
    {
     resize(Global.jQuery(el),"Arial","12pt","normal",150);
-    return findLineBreak(Global.String(Global.jQuery(el).val()),"Arial","12pt","normal",Global.jQuery("#mainText"));
+    return findLineBreak(varTextArea.c,Global.jQuery("#mainText").width(),"Arial","12pt","normal");
    };
   }),AttrProxy.Create("placeholder","Dein Titel")],varUserTitle),Doc.Input([AttrProxy.Create("class","grow-input"),AttrModule.Handler("input",function(el)
   {

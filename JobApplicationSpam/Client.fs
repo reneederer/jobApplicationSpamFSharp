@@ -825,23 +825,19 @@ module Client =
                 let (span : JQuery) = JQuery("<span />").Attr("style", sprintf "font-family:%s; font-size: %s; font-weight: %s; visibility: hidden" font fontSize fontWeight).Html(str)
                 span.AppendTo("body") |> ignore
                 el.Width(span.Width()) |> ignore
-                JQuery("body:last-child").Remove() |> ignore
+                JQuery("body span").Last().Remove() |> ignore
             ()
         let getWidth (s : string) font fontSize fontWeight =
             let str = s.ToString().Replace(" ", "&nbsp;")
             let span = JQuery("<span />").Attr("style", sprintf "font-family: Arial; font-size: 12pt; font-weight: normal; letter-spacing:0pt; visibility: hidden;").Html(str)
             span.AppendTo("body") |> ignore
             let spanWidth = span.Width()
-            JQuery("body:last-child").Remove() |> ignore
-            JS.Alert(s + "\n\n\n" + spanWidth.ToString())
+            JQuery("body span:last").Remove() |> ignore
             spanWidth
-        let findLineBreak (s1 : string) font fontSize fontWeight (container : JQuery) =
-            let containerWidth = container.InnerWidth()
-            let str = container.Val().ToString().Replace(" ", "&nbsp;")
+        let findLineBreak (str : string) containerWidth font fontSize fontWeight =
             let rec findLineBreak' beginIndex endIndex n =
-                if beginIndex >= endIndex
-                then
-                    str.Substring(0, beginIndex)
+                if n < 0
+                then "impossible"
                 else
                     let currentIndex = beginIndex + (endIndex - beginIndex + 1) / 2
                     let currentString = str.Substring(0, currentIndex)
@@ -852,17 +848,18 @@ module Client =
                         then str.Substring(0, currentIndex - 1)
                         else
                             let nextEndIndex = currentIndex
-                            findLineBreak' beginIndex nextEndIndex (n - 1)
+                            findLineBreak' beginIndex nextEndIndex (n-1)
                     else
                         let nextBeginIndex = currentIndex
-                        findLineBreak' nextBeginIndex endIndex  (n - 1)
-            let myString = findLineBreak' 0 (str.Length) (10)
-            JS.Alert(myString + "\n\n\n\nafter: " + (container.Val().ToString().Substring(myString.Length)))
+                        findLineBreak' nextBeginIndex endIndex (n-1)
+            let myString = findLineBreak' 0 (str.Length) 16
+            JS.Alert(myString + "\n\n\n\nafter: " + (str.Substring(myString.Length)))
+            varUserLastName.Value <- myString
         div
           [ h1 [ text "Create a template" ]
             divAttr [attr.``class`` "page"]
               [ divAttr [attr.style "height: 225pt; width: 100%; background-color: lightblue"]
-                  [ Doc.Input [ attr.``class`` "grow-input"; attr.autofocus "autofocus"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150; findLineBreak (JQuery(el).Val().ToString()) "Arial" "12pt" "normal" (JQuery("#mainText"))); attr.placeholder "Dein Titel" ] varUserTitle
+                  [ Doc.Input [ attr.``class`` "grow-input"; attr.autofocus "autofocus"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150; findLineBreak varTextArea.Value (JQuery("#mainText").Width()) "Arial" "12pt" "normal"); attr.placeholder "Dein Titel" ] varUserTitle
                     Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Dein Vorname" ] varUserFirstName
                     Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Dein Nachname" ] varUserLastName
                     br []

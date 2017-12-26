@@ -105,7 +105,7 @@ module Site =
         ]
 
     let createTemplatePage (ctx : Context<EndPoint>) =
-        Templating.createTemplate ctx EndPoint.CreateTemplate "Create a Template" [
+        Templating.main ctx EndPoint.CreateTemplate "Create a Template" [
             client <@ Client.createTemplate () @>
         ]
 
@@ -217,6 +217,7 @@ module SelfHostedServer =
     open Microsoft.Owin.FileSystems
     open WebSharper.Owin
     open LetsEncrypt.Owin
+    open System.Web.Http
 
     [<EntryPoint>]
     let main args =
@@ -225,7 +226,7 @@ module SelfHostedServer =
             | [| rootDirectory; url |] ->
                 rootDirectory, url
             | [| url |] -> "..", url
-            | [| |] -> "..", "http://localhost:9000/"
+            | [| |] -> "..", "https://localhost:9000/"
             | _ -> eprintfn "Usage: JobApplicationSpam ROOT_DIRECTORY URL"; exit 1
 
         use server = WebApp.Start(url, fun appB ->

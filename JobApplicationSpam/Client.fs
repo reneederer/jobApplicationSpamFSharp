@@ -336,7 +336,6 @@ module Client =
                 async {
                     varMessage.Value <- "Sending job application..."
                     do! Async.Sleep 2000
-                    JS.Alert(employerId.ToString() + ", " + templateName)
                     return! Server.applyNowByTemplateName employerId templateName
                 }
             
@@ -571,6 +570,7 @@ module Client =
             textView varMessage.View
          ]
     open System
+    open System.ComponentModel
 
     [<JavaScript>]
     let applyNow () =
@@ -803,60 +803,86 @@ module Client =
     [<JavaScript>]
     let createTemplate () = 
         let varUserTitle = Var.Create("")
+        let varUserFirstName = Var.Create("")
+        let varUserLastName = Var.Create("")
+        let varUserStreet = Var.Create("")
+        let varUserPostcode = Var.Create("")
         let varUserCity = Var.Create("Fürth")
-        let varSubject = Var.Create("Bewerbung als Fachinformatiker für Anwendungsentwicklung")
+        let varBossTitulation = Var.Create("")
         let varBossTitle = Var.Create("")
-        let varBossCity = Var.Create("Hamburg")
-        let varTextArea = Var.Create("Sehr $geehrter $chefAnrede $chefNachname,\n1234567890123456789012345678901234567890123456789012345678901234567890\ntest test test test test test test test test test test test test.\n\ntest test.\n\nMit freundlichen Grüßen\n\n\n\nRené Ederer")
+        let varBossFirstName = Var.Create("")
+        let varBossLastName = Var.Create("")
+        let varCompanyStreet = Var.Create("")
+        let varCompanyPostcode = Var.Create("")
+        let varCompanyCity = Var.Create("Hamburg")
+        let varSubject = Var.Create("Bewerbung als Fachinformatiker für Anwendungsentwicklung")
+        let varTextArea = Var.Create("abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz1234567890")
         let resize (el : JQuery) font fontSize fontWeight (defaultWidth: int) =
-            let str = el.Val().ToString()
+            let str = el.Val().ToString().Replace(" ", "&nbsp;")
             if str = ""
             then el.Width(defaultWidth) |> ignore
             else
-                let (span : JQuery) = JQuery("<span />").Attr("style", sprintf "font:%s; font-size: %s; font-weight: %s; visibility: hidden" font fontSize fontWeight).Html(str)
+                let (span : JQuery) = JQuery("<span />").Attr("style", sprintf "font-family:%s; font-size: %s; font-weight: %s; visibility: hidden" font fontSize fontWeight).Html(str)
                 span.AppendTo("body") |> ignore
                 el.Width(span.Width()) |> ignore
                 JQuery("body:last-child").Remove() |> ignore
             ()
-        let i evt =
-            async {
-                let t = JQuery("#text")
-                if t.Get().[0].ScrollWidth > (t.InnerWidth() |> float)
+        let getWidth (s : string) font fontSize fontWeight =
+            let str = s.ToString().Replace(" ", "&nbsp;")
+            let span = JQuery("<span />").Attr("style", sprintf "font-family: Arial; font-size: 12pt; font-weight: normal; letter-spacing:0pt; visibility: hidden;").Html(str)
+            span.AppendTo("body") |> ignore
+            let spanWidth = span.Width()
+            JQuery("body:last-child").Remove() |> ignore
+            JS.Alert(s + "\n\n\n" + spanWidth.ToString())
+            spanWidth
+        let findLineBreak (s1 : string) font fontSize fontWeight (container : JQuery) =
+            let containerWidth = container.InnerWidth()
+            let str = container.Val().ToString().Replace(" ", "&nbsp;")
+            let rec findLineBreak' beginIndex endIndex n =
+                if beginIndex >= endIndex
                 then
-                    if false then
-                        let cursorPos = JQuery("#text").Prop("selectionStart").ToString() |> Int32.Parse
-                        let v = JQuery("#text").Val() |> string
-                        let textBefore = v.Substring(0,  cursorPos - 1)
-                        let textAfter  = v.Substring(cursorPos - 1, v.Length)
-                        JQuery("#text").Val(textBefore + "\n" + textAfter) |> ignore
-                        JQuery("#text").Prop("selectionEnd", cursorPos + 1) |> ignore
-                return ()
-            } |> Async.Start
+                    str.Substring(0, beginIndex)
+                else
+                    let currentIndex = beginIndex + (endIndex - beginIndex + 1) / 2
+                    let currentString = str.Substring(0, currentIndex)
+                    let width = getWidth currentString font fontSize fontWeight
+                    if width > containerWidth
+                    then
+                        if endIndex = currentIndex
+                        then str.Substring(0, currentIndex - 1)
+                        else
+                            let nextEndIndex = currentIndex
+                            findLineBreak' beginIndex nextEndIndex (n - 1)
+                    else
+                        let nextBeginIndex = currentIndex
+                        findLineBreak' nextBeginIndex endIndex  (n - 1)
+            let myString = findLineBreak' 0 (str.Length) (10)
+            JS.Alert(myString + "\n\n\n\nafter: " + (container.Val().ToString().Substring(myString.Length)))
         div
           [ h1 [ text "Create a template" ]
             divAttr [attr.``class`` "page"]
-              [ divAttr [attr.style "height: 225pt; background-color: white"]
-                  [ Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Dein Titel" ] varUserTitle
-                    inputAttr [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Dein Vorname" ] []
-                    inputAttr [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Dein Nachname" ] []
+              [ divAttr [attr.style "height: 225pt; width: 100%; background-color: lightblue"]
+                  [ Doc.Input [ attr.``class`` "grow-input"; attr.autofocus "autofocus"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150; findLineBreak (JQuery(el).Val().ToString()) "Arial" "12pt" "normal" (JQuery("#mainText"))); attr.placeholder "Dein Titel" ] varUserTitle
+                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Dein Vorname" ] varUserFirstName
+                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Dein Nachname" ] varUserLastName
                     br []
-                    inputAttr [ attr.``class`` "grow-input"; attr.style "width:150px"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Deine Straße" ] []
+                    Doc.Input [ attr.``class`` "grow-input"; attr.style "width:150px"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Deine Straße" ] varUserStreet
                     br []
-                    inputAttr [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Deine Postleitzahl" ] []
+                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Deine Postleitzahl" ] varUserPostcode
                     Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Deine Stadt" ] varUserCity
                     br []
                     br []
                     br []
-                    inputAttr [ attr.``class`` "grow-input"; attr.style "width:150px"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Chef-Anrede" ] []
+                    Doc.Input [ attr.``class`` "grow-input"; attr.style "width:150px"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Chef-Anrede" ] varBossTitulation
                     br []
                     Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Chef-Titel" ] varBossTitle
-                    inputAttr [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Chef-Vorname" ] []
-                    inputAttr [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Chef-Nachname" ] []
+                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Chef-Vorname" ] varBossFirstName
+                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Chef-Nachname" ] varBossLastName
                     br []
-                    inputAttr [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Firma-Strasse" ] []
+                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Firma-Strasse" ] varCompanyStreet
                     br []
-                    inputAttr [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Firma-Postleitzahl" ] []
-                    inputAttr [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Firma-Stadt" ] []
+                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Firma-Postleitzahl" ] varCompanyPostcode
+                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Firma-Stadt" ] varCompanyCity
                     br []
                     spanAttr [ attr.style "float:right" ]
                       [ textView <| View.FromVar varUserCity
@@ -868,8 +894,9 @@ module Client =
                     br []
                     br []
                   ]
+                inputAttr [attr.style "width: 16.55cm; border: none; letter-spacing:0pt; margin: 0px; padding: 0px; min-width:100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block" ] []
                 divAttr [attr.style "width:100%; min-height: 322.4645709pt; background-color:red;"]
-                  [ Doc.InputArea [ attr.id "text"; attr.autofocus "autofocus"; attr.style "margin: 0px; padding: 0px; background-color: lighblue; white-space: pre; overflow: hidden; min-height: 322.4645709pt; min-width:100%; font-family: Arial; font-size: 12pt; display: block"; on.scroll (fun _ evt -> i evt) ] varTextArea
+                  [ Doc.InputArea [ attr.id "mainText"; attr.style "wrap: hard; border: none; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; background-color: lighblue; overflow: hidden; min-height: 322.4645709pt; min-width:100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block" ] varTextArea
                   ]
                 divAttr [ attr.style "height:96pt; width: 100%;" ]
                   [

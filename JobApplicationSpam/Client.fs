@@ -174,18 +174,15 @@ module Client =
         let varMobilePhone = Var.Create("")
         async {
             let! currentUserValues = Server.getCurrentUserValues()
-            match currentUserValues with 
-            | Some userValues ->
-                varGender.Value <- userValues.gender
-                varDegree.Value <- userValues.degree
-                varFirstName.Value <- userValues.firstName
-                varLastName.Value <- userValues.lastName
-                varStreet.Value <- userValues.street
-                varPostcode.Value <- userValues.postcode
-                varCity.Value <- userValues.city
-                varPhone.Value <- userValues.phone
-                varMobilePhone.Value <- userValues.mobilePhone
-            | None -> ()
+            varGender.Value <- currentUserValues.gender
+            varDegree.Value <- currentUserValues.degree
+            varFirstName.Value <- currentUserValues.firstName
+            varLastName.Value <- currentUserValues.lastName
+            varStreet.Value <- currentUserValues.street
+            varPostcode.Value <- currentUserValues.postcode
+            varCity.Value <- currentUserValues.city
+            varPhone.Value <- currentUserValues.phone
+            varMobilePhone.Value <- currentUserValues.mobilePhone
         } |> Async.Start
         div [  h1 [text (translate currentLanguage StrEditUserValues)]
                divAttr
@@ -744,12 +741,10 @@ module Client =
         let varTxtLoginPassword = Var.Create ""
         formAttr
           [ on.submit (fun _ _ ->
-              async {
-                  let! loginResult = Server.login (varTxtLoginEmail.Value) (varTxtLoginPassword.Value)
-                  match loginResult with
-                  | Ok (v, _) -> ()
-                  | Bad xs -> JS.Alert(String.concat ", " xs)
-              } |> Async.Start
+              let loginResult = Server.login (varTxtLoginEmail.Value) (varTxtLoginPassword.Value)
+              match loginResult with
+              | Ok (v, _) -> ()
+              | Bad xs -> JS.Alert(String.concat ", " xs)
               )
           ]
           [ divAttr
@@ -813,22 +808,58 @@ module Client =
 
     [<JavaScript>]
     let createTemplate () = 
-        let varUserTitle = Var.Create("")
-        let varUserFirstName = Var.Create("")
-        let varUserLastName = Var.Create("")
-        let varUserStreet = Var.Create("")
-        let varUserPostcode = Var.Create("")
-        let varUserCity = Var.Create("")
-        let varBossTitulation = Var.Create("")
-        let varBossTitle = Var.Create("")
-        let varBossFirstName = Var.Create("")
-        let varBossLastName = Var.Create("")
-        let varCompanyStreet = Var.Create("")
-        let varCompanyPostcode = Var.Create("")
-        let varCompanyCity = Var.Create("")
-        let varSubject = Var.Create("Bewerbung")
-        let varTextArea = Var.Create("abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz1234567890")
-        let varCover = Var.Create(Upload)
+        let varUserValuesFromDb =
+            Var.Create(
+                { gender = Gender.Male
+                  degree = ""
+                  firstName = ""
+                  lastName = ""
+                  street = ""
+                  postcode = ""
+                  city = ""
+                  phone = ""
+                  mobilePhone = ""
+                })
+        async {
+            let! userValues = Server.getCurrentUserValues()
+            varUserValuesFromDb.Value <- userValues
+        } |> Async.Start
+        let varUserGender = Var.Create varUserValuesFromDb.Value.gender
+        let varUserDegree = Var.Create varUserValuesFromDb.Value.degree
+        let varUserFirstName = Var.Create varUserValuesFromDb.Value.firstName
+        let varUserLastName = Var.Create varUserValuesFromDb.Value.lastName
+        let varUserStreet = Var.Create varUserValuesFromDb.Value.street
+        let varUserPostcode = Var.Create varUserValuesFromDb.Value.postcode
+        let varUserCity = Var.Create varUserValuesFromDb.Value.city
+        let varUserPhone = Var.Create varUserValuesFromDb.Value.phone
+        let varUserMobilePhone = Var.Create varUserValuesFromDb.Value.mobilePhone
+        let varCompanyName = Var.Create ""
+        let varCompanyStreet = Var.Create ""
+        let varCompanyPostcode = Var.Create ""
+        let varCompanyCity = Var.Create ""
+        let varBossGender = Var.Create Gender.Male 
+        let varBossDegree = Var.Create ""
+        let varBossFirstName = Var.Create ""
+        let varBossLastName = Var.Create ""
+        let varBossEmail = Var.Create ""
+        let varBossPhone = Var.Create ""
+        let varBossMobilePhone = Var.Create ""
+        let varSubject = Var.Create "Bewerbung als ..."
+        let varMainText = Var.Create ""
+        let varCover = Var.Create Upload
+        let varHtmlJobApplication = Var.Create( {name = ""; pages = [] } )
+        async {
+            let! htmlJobApplication = Server.getHtmlJobApplication 2
+            varHtmlJobApplication.Value <- htmlJobApplication
+            varMainText.Value <- (htmlJobApplication.pages |> Seq.item 0).map.["mainText"]
+        } |> Async.Start
+    
+        let updateMainText () =
+            match varBossGender.Value with
+            | Gender.Female ->
+                varMainText.Value <- "Sehr geehrte Frau " + varBossDegree.Value + " " + varBossLastName.Value + "\n" + varMainText.Value
+            | Gender.Male ->
+                varMainText.Value <- "Sehr geehrter Herr " + varBossDegree.Value + " " + varBossLastName.Value + "\n" + varMainText.Value
         let resize (el : JQuery) font fontSize fontWeight (defaultWidth: int) =
             let str = el.Val().ToString().Replace(" ", "&nbsp;")
             if str = ""
@@ -841,12 +872,12 @@ module Client =
             ()
         let getWidth (s : string) font fontSize fontWeight =
             let str = s.ToString().Replace(" ", "&nbsp;")
-            let span = JQuery("<span />").Attr("style", sprintf "font-family: Arial; font-size: 12pt; font-weight: normal; letter-spacing:0pt; visibility: hidden;").Html(str)
+            let span = JQuery("<span />").Attr("style", sprintf "font-family: %s; font-size: %s; font-weight: %s; letter-spacing:0pt; visibility: hidden;" font fontSize fontWeight).Html(str)
             span.AppendTo("body") |> ignore
             let spanWidth = span.Width()
             JQuery("body span:last").Remove() |> ignore
             spanWidth
-        let findLineBreak (str : string) containerWidth font fontSize fontWeight =
+        let findLineBreak (str : string) textAreaWidth font fontSize fontWeight =
             let rec findLineBreak' beginIndex endIndex n =
                 if n < 0
                 then str.Length
@@ -854,7 +885,7 @@ module Client =
                     let currentIndex = beginIndex + (endIndex - beginIndex + 1) / 2
                     let currentString = str.Substring(0, currentIndex)
                     let width = getWidth currentString font fontSize fontWeight
-                    if width > containerWidth
+                    if width > textAreaWidth
                     then
                         if endIndex = currentIndex
                         then
@@ -867,7 +898,7 @@ module Client =
                         let nextBeginIndex = currentIndex
                         findLineBreak' nextBeginIndex endIndex (n-1)
             findLineBreak' 0 (str.Length) 30
-        let findLineBreaks (str : string) containerWidth font fontSize fontWeight =
+        let getTextAreaLines (str : string) textAreaWidth font fontSize fontWeight =
             let lines = str.Split([|'\n'|]) |> Array.map (fun x -> if x.EndsWith(" ") then x.TrimEnd([|' '|]) + "\n" else x) |> List.ofArray
             let splitLines = 
                 List.unfold
@@ -875,7 +906,7 @@ module Client =
                         match state with
                         | [] -> None
                         | x::xs ->
-                            let splitIndex = findLineBreak x containerWidth font fontSize fontWeight
+                            let splitIndex = findLineBreak x textAreaWidth font fontSize fontWeight
                             let splitIndexSpace =
                                 let ar = x.ToCharArray() |> Array.take splitIndex |> Array.tryFindIndexBack (fun c -> List.contains c [' '; '.'; ','; ';'; '-'])
                                 match ar, splitIndex = x.Length with
@@ -894,9 +925,86 @@ module Client =
                                 Some (front, back:: y::ys)
                     )
                     lines
-            JS.Alert(splitLines |> Seq.length |> string)
-            for l in splitLines do
-                JS.Alert(l)
+            splitLines
+
+        let saveHtmlJobApplication () =
+            let mainText =
+                getTextAreaLines (varMainText.Value) (JQuery("#mainText").Width()) "Arial" "12pt" "normal"
+                |> String.concat "\n"
+            let htmlJobApplication =
+                { name = "hallo"
+                  pages =
+                    [ { name = "Anschreiben"
+                        jobApplicationTemplateId = 1
+                        map = ["mainText", mainText] |> Map.ofList
+                      }
+                    ]
+                }
+            Server.saveHtmlJobApplication htmlJobApplication
+            |> Async.Start
+
+        let varMessage = Var.Create("nothing")
+        let setUserValues () =
+            async {
+                Var.Set varMessage ("Setting user values...")
+                let userValues =
+                    { gender = varUserGender.Value
+                    ; degree = varUserDegree.Value
+                    ; firstName = varUserFirstName.Value
+                    ; lastName = varUserLastName.Value
+                    ; street = varUserStreet.Value
+                    ; postcode = varUserPostcode.Value
+                    ; city = varUserCity.Value
+                    ; phone = varUserPhone.Value
+                    ; mobilePhone = varUserMobilePhone.Value
+                    }
+                    
+                let! result = Server.setUserValues userValues
+                let m =
+                    match result with
+                    | Ok (v, _) ->  v
+                    | Bad v -> sprintf "%A" v
+                do! Async.Sleep(1000)
+                varMessage.Value <- m
+                return ()
+            } |> Async.StartImmediate
+
+        let addEmployer () =
+            let employer =
+                { company = varCompanyName.Value
+                  street = varCompanyStreet.Value
+                  postcode = varCompanyPostcode.Value
+                  city = varCompanyCity.Value
+                  gender = varBossGender.Value
+                  degree = varBossDegree.Value
+                  firstName = varBossFirstName.Value
+                  lastName = varBossLastName.Value
+                  email = varBossEmail.Value
+                  phone = varBossPhone.Value
+                  mobilePhone = varBossMobilePhone.Value
+                }
+            async {
+                varMessage.Value <- "Adding employer..."
+                do! Async.Sleep 2000
+                let! addEmployerResult =  Server.addEmployer employer
+                return ()
+            } |> Async.Start
+
+        let applyNow () =
+            async {
+                varMessage.Value <- "Sending job application..."
+                do! Async.Sleep 2000
+                let employerId = 0
+                let templateName = ""
+                let! applyNowResult = Server.applyNowByTemplateName employerId templateName
+                match applyNowResult with
+                | Ok (v, _) ->
+                    varMessage.Value <- "Job application has been sent"
+                    return ()
+                | Bad xs ->
+                    varMessage.Value <- "Unfortunately, adding employer failed."
+                    return ()
+            } |> Async.StartImmediate
 
         div
           [ h1 [ text "Create a template" ]
@@ -913,7 +1021,7 @@ module Client =
               ]
             divAttr [attr.``class`` "page"]
               [ divAttr [attr.style "height: 225pt; width: 100%; background-color: lightblue"]
-                  [ Doc.Input [ attr.``class`` "grow-input"; attr.autofocus "autofocus"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150; findLineBreaks varTextArea.Value (JQuery("#mainText").Width()) "Arial" "12pt" "normal"); attr.placeholder "Dein Titel" ] varUserTitle
+                  [ Doc.Input [ attr.``class`` "grow-input"; attr.autofocus "autofocus"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Dein Titel" ] varUserDegree
                     Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Dein Vorname" ] varUserFirstName
                     Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Dein Nachname" ] varUserLastName
                     br []
@@ -924,9 +1032,9 @@ module Client =
                     br []
                     br []
                     br []
-                    Doc.Input [ attr.``class`` "grow-input"; attr.style "width:150px"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Chef-Anrede" ] varBossTitulation
+                    Doc.Select [on.change (fun _ _ -> updateMainText ())] (fun x -> match x with Gender.Male -> "Herrn" | Gender.Female -> "Frau") [Gender.Male; Gender.Female] varBossGender
                     br []
-                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Chef-Titel" ] varBossTitle
+                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Chef-Titel" ] varBossDegree
                     Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Chef-Vorname" ] varBossFirstName
                     Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Chef-Nachname" ] varBossLastName
                     br []
@@ -946,7 +1054,7 @@ module Client =
                     br []
                   ]
                 divAttr [attr.style "width:100%; min-height: 322.4645709pt; background-color:red;"]
-                  [ Doc.InputArea [ attr.id "mainText"; attr.style "wrap: soft; border: none; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; background-color: lighblue; overflow: hidden; min-height: 322.4645709pt; min-width:100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block" ] varTextArea
+                  [ Doc.InputArea [ attr.id "mainText"; attr.style "wrap: soft; border: none; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; background-color: lighblue; overflow: hidden; min-height: 322.4645709pt; min-width:100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block" ] varMainText
                   ]
                 divAttr [ attr.style "height:96pt; width: 100%;" ]
                   [
@@ -955,10 +1063,14 @@ module Client =
                     br []
                     br []
                     br []
-                    text "$meinTitel $meinVorname $meinNachname"
+                    textView varUserDegree.View
+                    text " "
+                    textView varUserFirstName.View
+                    text " "
+                    textView varUserLastName.View
                   ]
               ]
-            buttonAttr [attr.value "Abschicken"; on.click (fun _ _ -> ())] []
+            buttonAttr [attr.value "Abschicken"; on.click (fun _ _ -> saveHtmlJobApplication() (*setUserValues (); addEmployer ()*))] []
           ]
 (*        <textarea style="min-width: 100%; height:100%; font-family: inherit; font-size: inherit">
 It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English. Many desktop publishing packages and web page editors now use Lorem Ipsum as their default model text, and a search for 'lorem ipsum' will uncover many web sites still in their infancy. Various versions have evolved over the years, sometimes by accident, sometimes on purpose (injected humour and the like).

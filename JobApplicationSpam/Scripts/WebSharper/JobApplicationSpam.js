@@ -1,7 +1,7 @@
 (function()
 {
  "use strict";
- var Global,JobApplicationSpam,Types,JobApplicationContent,Client,Language,Str,AddEmployerAction,SC$1,JobApplicationSpam_GeneratedPrintf,IntelliFactory,Runtime,WebSharper,Strings,Utils,List,Arrays,Seq,Enumerator,UI,Next,Var,Doc,AttrProxy,AttrModule,Date,Concurrency,Remoting,AjaxRemotingProvider,Numeric;
+ var Global,JobApplicationSpam,Types,JobApplicationContent,Client,Language,Str,AddEmployerAction,SC$1,JobApplicationSpam_GeneratedPrintf,IntelliFactory,Runtime,WebSharper,UI,Next,Var,Strings,Utils,List,Arrays,Collections,Map,Concurrency,Remoting,AjaxRemotingProvider,Seq,Doc,AttrProxy,AttrModule,Date,Numeric;
  Global=window;
  JobApplicationSpam=Global.JobApplicationSpam=Global.JobApplicationSpam||{};
  Types=JobApplicationSpam.Types=JobApplicationSpam.Types||{};
@@ -15,22 +15,23 @@
  IntelliFactory=Global.IntelliFactory;
  Runtime=IntelliFactory&&IntelliFactory.Runtime;
  WebSharper=Global.WebSharper;
+ UI=WebSharper&&WebSharper.UI;
+ Next=UI&&UI.Next;
+ Var=Next&&Next.Var;
  Strings=WebSharper&&WebSharper.Strings;
  Utils=WebSharper&&WebSharper.Utils;
  List=WebSharper&&WebSharper.List;
  Arrays=WebSharper&&WebSharper.Arrays;
+ Collections=WebSharper&&WebSharper.Collections;
+ Map=Collections&&Collections.Map;
+ Concurrency=WebSharper&&WebSharper.Concurrency;
+ Remoting=WebSharper&&WebSharper.Remoting;
+ AjaxRemotingProvider=Remoting&&Remoting.AjaxRemotingProvider;
  Seq=WebSharper&&WebSharper.Seq;
- Enumerator=WebSharper&&WebSharper.Enumerator;
- UI=WebSharper&&WebSharper.UI;
- Next=UI&&UI.Next;
- Var=Next&&Next.Var;
  Doc=Next&&Next.Doc;
  AttrProxy=Next&&Next.AttrProxy;
  AttrModule=Next&&Next.AttrModule;
  Date=Global.Date;
- Concurrency=WebSharper&&WebSharper.Concurrency;
- Remoting=WebSharper&&WebSharper.Remoting;
- AjaxRemotingProvider=Remoting&&Remoting.AjaxRemotingProvider;
  Numeric=WebSharper&&WebSharper.Numeric;
  JobApplicationContent=Types.JobApplicationContent=Runtime.Class({
   toString:function()
@@ -157,7 +158,14 @@
  };
  Client.createTemplate=function()
  {
-  var varUserTitle,varUserFirstName,varUserLastName,varUserStreet,varUserPostcode,varUserCity,varBossTitulation,varBossTitle,varBossFirstName,varBossLastName,varCompanyStreet,varCompanyPostcode,varCompanyCity,varSubject,varTextArea,varCover,c;
+  var varUserValuesFromDb,b,varUserDegree,varUserFirstName,varUserLastName,varUserStreet,varUserPostcode,varUserCity,varCompanyStreet,varCompanyPostcode,varCompanyCity,varBossGender,varBossDegree,varBossFirstName,varBossLastName,varSubject,varMainText,varCover,varHtmlJobApplication,b$1,c;
+  function updateMainText()
+  {
+   if(varBossGender.c.$==0)
+    Var.Set(varMainText,"Sehr geehrter Herr "+varBossDegree.c+" "+varBossLastName.c+"\n"+varMainText.c);
+   else
+    Var.Set(varMainText,"Sehr geehrte Frau "+varBossDegree.c+" "+varBossLastName.c+"\n"+varMainText.c);
+  }
   function resize(el,font,fontSize,fontWeight,defaultWidth)
   {
    var str,span;
@@ -172,16 +180,16 @@
   {
    var str,span,spanWidth;
    str=Strings.Replace(Global.String(s)," ","&nbsp;");
-   span=Global.jQuery("<span />").attr("style",function($1)
+   span=Global.jQuery("<span />").attr("style",((((Runtime.Curried(function($1,$2,$3,$4)
    {
-    return $1("font-family: Arial; font-size: 12pt; font-weight: normal; letter-spacing:0pt; visibility: hidden;");
-   }(Global.id)).html(str);
+    return $1("font-family: "+Utils.toSafe($2)+"; font-size: "+Utils.toSafe($3)+"; font-weight: "+Utils.toSafe($4)+"; letter-spacing:0pt; visibility: hidden;");
+   },4))(Global.id))(font))(fontSize))(fontWeight)).html(str);
    span.appendTo("body");
    spanWidth=span.width();
    Global.jQuery("body span:last").remove();
    return spanWidth;
   }
-  function findLineBreak(str,containerWidth,font,fontSize,fontWeight)
+  function findLineBreak(str,textAreaWidth,font,fontSize,fontWeight)
   {
    var beginIndex,endIndex,n,currentIndex,currentString,width;
    beginIndex=0;
@@ -195,7 +203,7 @@
       currentIndex=beginIndex+((endIndex-beginIndex+1)/2>>0);
       currentString=Strings.Substring(str,0,currentIndex);
       width=getWidth(currentString,font,fontSize,fontWeight);
-      if(width>containerWidth)
+      if(width>textAreaWidth)
       {
        if(endIndex===currentIndex)
         {
@@ -215,20 +223,15 @@
        }
      }
   }
-  function findLineBreaks(str,containerWidth,font,fontSize,fontWeight)
+  function getTextAreaLines(str,textAreaWidth,font,fontSize,fontWeight)
   {
-   var lines,splitLines,e;
-   lines=List.ofArray(Arrays.map(function(x)
-   {
-    return Strings.EndsWith(x," ")?Strings.TrimEnd(x,[" "])+"\n":x;
-   },Strings.SplitChars(str,["\n"],0)));
-   splitLines=List.unfold(function(state)
+   return List.unfold(function(state)
    {
     var x,splitIndex,splitIndexSpace,$1,$2,front,back,$3;
-    return state.$==1?(x=state.$0,splitIndex=findLineBreak(x,containerWidth,font,fontSize,fontWeight),splitIndexSpace=($1=Arrays.tryFindIndexBack(function(c$1)
+    return state.$==1?(x=state.$0,(splitIndex=findLineBreak(x,textAreaWidth,font,fontSize,fontWeight),(splitIndexSpace=($1=Arrays.tryFindIndexBack(function(c$1)
     {
      return List.contains(c$1,List.ofArray([" ",".",",",";","-"]));
-    },Arrays.take(splitIndex,Strings.ToCharArray(x))),$2=splitIndex===x.length,$1!=null&&$1.$==1?$2?splitIndex:$1.$0+1:splitIndex),Global.alert(Global.String(splitIndexSpace)),front=Strings.Substring(x,0,splitIndexSpace),back=x.substring(splitIndexSpace),$3=state.$1,back===""?$3.$==1?{
+    },Arrays.take(splitIndex,Strings.ToCharArray(x))),($2=splitIndex===x.length,$1!=null&&$1.$==1?$2?splitIndex:$1.$0+1:splitIndex)),(Global.alert(Global.String(splitIndexSpace)),front=Strings.Substring(x,0,splitIndexSpace),back=x.substring(splitIndexSpace),$3=state.$1,back===""?$3.$==1?{
      $:1,
      $0:[front,new List.T({
       $:1,
@@ -252,38 +255,85 @@
     }:{
      $:1,
      $0:[front,List.ofArray([back])]
-    }):null;
-   },lines);
-   Global.alert(Global.String(Seq.length(splitLines)));
-   e=Enumerator.Get(splitLines);
-   try
+    })))):null;
+   },List.ofArray(Arrays.map(function(x)
    {
-    while(e.MoveNext())
-     Global.alert(e.Current());
-    return;
-   }
-   finally
-   {
-    if("Dispose"in e)
-     e.Dispose();
-   }
+    return Strings.EndsWith(x," ")?Strings.TrimEnd(x,[" "])+"\n":x;
+   },Strings.SplitChars(str,["\n"],0))));
   }
-  varUserTitle=Var.Create$1("");
-  varUserFirstName=Var.Create$1("");
-  varUserLastName=Var.Create$1("");
-  varUserStreet=Var.Create$1("");
-  varUserPostcode=Var.Create$1("");
-  varUserCity=Var.Create$1("");
-  varBossTitulation=Var.Create$1("");
-  varBossTitle=Var.Create$1("");
-  varBossFirstName=Var.Create$1("");
-  varBossLastName=Var.Create$1("");
+  function saveHtmlJobApplication()
+  {
+   var htmlJobApplication;
+   htmlJobApplication={
+    name:"hallo",
+    pages:List.ofArray([{
+     name:"Anschreiben",
+     jobApplicationTemplateId:1,
+     map:Map.OfArray(Arrays.ofSeq(List.ofArray([["mainText",Strings.concat("\n",getTextAreaLines(varMainText.c,Global.jQuery("#mainText").width(),"Arial","12pt","normal"))]])))
+    }])
+   };
+   Concurrency.Start((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.saveHtmlJobApplication:-1548043932",[htmlJobApplication]),null);
+  }
+  varUserValuesFromDb=Var.Create$1({
+   gender:{
+    $:0
+   },
+   degree:"",
+   firstName:"",
+   lastName:"",
+   street:"",
+   postcode:"",
+   city:"",
+   phone:"",
+   mobilePhone:""
+  });
+  Concurrency.Start((b=null,Concurrency.Delay(function()
+  {
+   return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getCurrentUserValues:-337599557",[]),function(a)
+   {
+    Var.Set(varUserValuesFromDb,a);
+    return Concurrency.Zero();
+   });
+  })),null);
+  Var.Create$1(varUserValuesFromDb.c.gender);
+  varUserDegree=Var.Create$1(varUserValuesFromDb.c.degree);
+  varUserFirstName=Var.Create$1(varUserValuesFromDb.c.firstName);
+  varUserLastName=Var.Create$1(varUserValuesFromDb.c.lastName);
+  varUserStreet=Var.Create$1(varUserValuesFromDb.c.street);
+  varUserPostcode=Var.Create$1(varUserValuesFromDb.c.postcode);
+  varUserCity=Var.Create$1(varUserValuesFromDb.c.city);
+  Var.Create$1(varUserValuesFromDb.c.phone);
+  Var.Create$1(varUserValuesFromDb.c.mobilePhone);
+  Var.Create$1("");
   varCompanyStreet=Var.Create$1("");
   varCompanyPostcode=Var.Create$1("");
   varCompanyCity=Var.Create$1("");
-  varSubject=Var.Create$1("Bewerbung");
-  varTextArea=Var.Create$1("abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz1234567890");
+  varBossGender=Var.Create$1({
+   $:0
+  });
+  varBossDegree=Var.Create$1("");
+  varBossFirstName=Var.Create$1("");
+  varBossLastName=Var.Create$1("");
+  Var.Create$1("");
+  Var.Create$1("");
+  Var.Create$1("");
+  varSubject=Var.Create$1("Bewerbung als ...");
+  varMainText=Var.Create$1("");
   varCover=Var.Create$1(JobApplicationContent.Upload);
+  varHtmlJobApplication=Var.Create$1({
+   name:"",
+   pages:List.T.Empty
+  });
+  Concurrency.Start((b$1=null,Concurrency.Delay(function()
+  {
+   return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getHtmlJobApplication:-164096779",[2]),function(a)
+   {
+    Var.Set(varHtmlJobApplication,a);
+    Var.Set(varMainText,Seq.nth(0,a.pages).map.get_Item("mainText"));
+    return Concurrency.Zero();
+   });
+  })),null);
+  Var.Create$1("nothing");
   return Doc.Element("div",[],[Doc.Element("h1",[],[Doc.TextNode("Create a template")]),Doc.Element("div",[],[Doc.Radio([AttrProxy.Create("id","uploadCover"),AttrModule.Handler("click",function()
   {
    return function()
@@ -306,10 +356,9 @@
   {
    return function()
    {
-    resize(Global.jQuery(el),"Arial","12pt","normal",150);
-    return findLineBreaks(varTextArea.c,Global.jQuery("#mainText").width(),"Arial","12pt","normal");
+    return resize(Global.jQuery(el),"Arial","12pt","normal",150);
    };
-  }),AttrProxy.Create("placeholder","Dein Titel")],varUserTitle),Doc.Input([AttrProxy.Create("class","grow-input"),AttrModule.Handler("input",function(el)
+  }),AttrProxy.Create("placeholder","Dein Titel")],varUserDegree),Doc.Input([AttrProxy.Create("class","grow-input"),AttrModule.Handler("input",function(el)
   {
    return function()
    {
@@ -339,19 +388,26 @@
    {
     return resize(Global.jQuery(el),"Arial","12pt","normal",150);
    };
-  }),AttrProxy.Create("placeholder","Deine Stadt")],varUserCity),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Input([AttrProxy.Create("class","grow-input"),AttrProxy.Create("style","width:150px"),AttrModule.Handler("input",function(el)
+  }),AttrProxy.Create("placeholder","Deine Stadt")],varUserCity),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Select([AttrModule.Handler("change",function()
+  {
+   return function()
+   {
+    return updateMainText();
+   };
+  })],function(x)
+  {
+   return x.$==1?"Frau":"Herrn";
+  },List.ofArray([{
+   $:0
+  },{
+   $:1
+  }]),varBossGender),Doc.Element("br",[],[]),Doc.Input([AttrProxy.Create("class","grow-input"),AttrModule.Handler("input",function(el)
   {
    return function()
    {
     return resize(Global.jQuery(el),"Arial","12pt","normal",150);
    };
-  }),AttrProxy.Create("placeholder","Chef-Anrede")],varBossTitulation),Doc.Element("br",[],[]),Doc.Input([AttrProxy.Create("class","grow-input"),AttrModule.Handler("input",function(el)
-  {
-   return function()
-   {
-    return resize(Global.jQuery(el),"Arial","12pt","normal",150);
-   };
-  }),AttrProxy.Create("placeholder","Chef-Titel")],varBossTitle),Doc.Input([AttrProxy.Create("class","grow-input"),AttrModule.Handler("input",function(el)
+  }),AttrProxy.Create("placeholder","Chef-Titel")],varBossDegree),Doc.Input([AttrProxy.Create("class","grow-input"),AttrModule.Handler("input",function(el)
   {
    return function()
    {
@@ -387,11 +443,11 @@
    {
     return resize(Global.jQuery(el),"Arial","12pt","bold",150);
    };
-  }),AttrProxy.Create("placeholder","Betreff")],varSubject),Doc.Element("br",[],[]),Doc.Element("br",[],[])]),Doc.Element("div",[AttrProxy.Create("style","width:100%; min-height: 322.4645709pt; background-color:red;")],[Doc.InputArea([AttrProxy.Create("id","mainText"),AttrProxy.Create("style","wrap: soft; border: none; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; background-color: lighblue; overflow: hidden; min-height: 322.4645709pt; min-width:100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block")],varTextArea)]),Doc.Element("div",[AttrProxy.Create("style","height:96pt; width: 100%;")],[Doc.Element("br",[],[]),Doc.TextNode("Mit freundlichen Grüßen"),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.TextNode("$meinTitel $meinVorname $meinNachname")])]),Doc.Element("button",[AttrProxy.Create("value","Abschicken"),AttrModule.Handler("click",function()
+  }),AttrProxy.Create("placeholder","Betreff")],varSubject),Doc.Element("br",[],[]),Doc.Element("br",[],[])]),Doc.Element("div",[AttrProxy.Create("style","width:100%; min-height: 322.4645709pt; background-color:red;")],[Doc.InputArea([AttrProxy.Create("id","mainText"),AttrProxy.Create("style","wrap: soft; border: none; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; background-color: lighblue; overflow: hidden; min-height: 322.4645709pt; min-width:100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block")],varMainText)]),Doc.Element("div",[AttrProxy.Create("style","height:96pt; width: 100%;")],[Doc.Element("br",[],[]),Doc.TextNode("Mit freundlichen Grüßen"),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.TextView(varUserDegree.v),Doc.TextNode(" "),Doc.TextView(varUserFirstName.v),Doc.TextNode(" "),Doc.TextView(varUserLastName.v)])]),Doc.Element("button",[AttrProxy.Create("value","Abschicken"),AttrModule.Handler("click",function()
   {
    return function()
    {
-    return null;
+    return saveHtmlJobApplication();
    };
   })],[])]);
  };
@@ -427,14 +483,9 @@
   {
    return function()
    {
-    var b;
-    return Concurrency.Start((b=null,Concurrency.Delay(function()
-    {
-     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.login:2110856612",[varTxtLoginEmail.c,varTxtLoginPassword.c]),function(a)
-     {
-      return a.$==1?(Global.alert(Strings.concat(", ",a.$0)),Concurrency.Zero()):Concurrency.Zero();
-     });
-    })),null);
+    var loginResult;
+    loginResult=(new AjaxRemotingProvider.New()).Sync("JobApplicationSpam:JobApplicationSpam.Server.login:1280212622",[varTxtLoginEmail.c,varTxtLoginPassword.c]);
+    return loginResult.$==1?Global.alert(Strings.concat(", ",loginResult.$0)):null;
    };
   })],[Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","txtLoginEmail")],[Doc.TextNode("Email")]),Doc.Input([AttrProxy.Create("class","form-control"),AttrProxy.Create("id","txtLoginEmail"),AttrProxy.Create("placeholder","Email")],varTxtLoginEmail)]),Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","txtLoginPassword")],[Doc.TextNode("Password")]),Doc.PasswordBox([AttrProxy.Create("class","form-control"),AttrProxy.Create("id","txtLoginPassword"),AttrProxy.Create("placeholder","Password")],varTxtLoginPassword)]),Doc.Element("input",[AttrProxy.Create("type","submit"),AttrProxy.Create("value","Login")],[])]);
  };
@@ -666,10 +717,18 @@
   varMobilePhone=Var.Create$1("");
   Concurrency.Start((b=null,Concurrency.Delay(function()
   {
-   return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getCurrentUserValues:-147253678",[]),function(a)
+   return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getCurrentUserValues:-337599557",[]),function(a)
    {
-    var userValues;
-    return a==null?Concurrency.Zero():(userValues=a.$0,(Var.Set(varGender,userValues.gender),Var.Set(varDegree,userValues.degree),Var.Set(varFirstName,userValues.firstName),Var.Set(varLastName,userValues.lastName),Var.Set(varStreet,userValues.street),Var.Set(varPostcode,userValues.postcode),Var.Set(varCity,userValues.city),Var.Set(varPhone,userValues.phone),Var.Set(varMobilePhone,userValues.mobilePhone),Concurrency.Zero()));
+    Var.Set(varGender,a.gender);
+    Var.Set(varDegree,a.degree);
+    Var.Set(varFirstName,a.firstName);
+    Var.Set(varLastName,a.lastName);
+    Var.Set(varStreet,a.street);
+    Var.Set(varPostcode,a.postcode);
+    Var.Set(varCity,a.city);
+    Var.Set(varPhone,a.phone);
+    Var.Set(varMobilePhone,a.mobilePhone);
+    return Concurrency.Zero();
    });
   })),null);
   return Doc.Element("div",[],[Doc.Element("h1",[],[Doc.TextNode(Client.translate(Client.currentLanguage(),Str.StrEditUserValues))]),Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("class","control-label")],[Doc.TextNode(Client.translate(Client.currentLanguage(),Str.StrUserValuesGender))]),Doc.Element("br",[],[]),Doc.Element("div",[AttrProxy.Create("class","")],[Doc.Radio([AttrProxy.Create("id","male"),AttrProxy.Create("radiogroup","gender")],{

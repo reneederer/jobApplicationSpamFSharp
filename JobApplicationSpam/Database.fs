@@ -246,6 +246,67 @@ module Database =
         | :? PostgresException
         | _ ->
             fail "An error occured while trying to set guid to null"
+    
+    let saveHtmlJobApplication (dbConn : NpgsqlConnection) (htmlJobApplication : HtmlJobApplication) (userId : int) =
+        use command = new NpgsqlCommand("insert into htmlJobApplication (userId, name) values (:userId, :name)", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("name", Guid.NewGuid().ToString())) |> ignore
+        command.ExecuteNonQuery() |> ignore
+        command.Dispose()
+        for page in htmlJobApplication.pages do
+            use command = new NpgsqlCommand("insert into htmlJobApplicationPage(htmlJobApplicationId, htmlJobApplicationPageTemplateId, name) values (2, 1, 'Anschreiben') returning id", dbConn)
+            command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+            let htmlJobApplicationPageId = command.ExecuteScalar() |> string |> Int32.Parse
+            command.Dispose()
+            for mapItem in page.map do
+                use command = new NpgsqlCommand("insert into htmlJobApplicationPageValue(htmlJobApplicationPageId, key, value) values (:htmlJobApplicationPageId, :key, :value)", dbConn)
+                command.Parameters.Add(new NpgsqlParameter("htmlJobApplicationPageId", htmlJobApplicationPageId)) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("key", mapItem.Key)) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("value", mapItem.Value)) |> ignore
+                command.ExecuteNonQuery() |> ignore
+                command.Dispose()
        
+    let getHtmlJobApplication (dbConn : NpgsqlConnection) (htmlJobApplicationId : int) =
+        use command = new NpgsqlCommand("select name from htmlJobApplication where id = :htmlJobApplicationId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("htmlJobApplicationId", htmlJobApplicationId)) |> ignore
+        use reader = command.ExecuteReader()
+        reader.Read() |> ignore
+        let htmlJobApplicationName =
+            reader.GetString(0)
+        reader.Dispose()
+        command.Dispose()
+
+        use command = new NpgsqlCommand("select id, htmlJobApplicationPageTemplateId, name from htmlJobApplicationPage where htmlJobApplicationId = :htmlJobApplicationId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("htmlJobApplicationId", htmlJobApplicationId)) |> ignore
+        use reader = command.ExecuteReader()
+        let pageData =
+            [ while reader.Read() do
+                yield reader.GetInt32(0), reader.GetInt32(1), reader.GetString(2) 
+            ]
+        reader.Dispose()
+        command.Dispose()
+
+        
+        let pages =
+            pageData
+            |> List.map
+                (fun (htmlJobApplicationPageId, htmlJobApplicationPageTemplateId, htmlJobApplicationPageName) ->
+                    use command = new NpgsqlCommand("select key, value from htmlJobApplicationPageValue where htmlJobApplicationPageId = :htmlJobApplicationPageId", dbConn)
+                    command.Parameters.Add(new NpgsqlParameter("htmlJobApplicationPageId", htmlJobApplicationPageId)) |> ignore
+                    use reader = command.ExecuteReader()
+                    let map =
+                        [ while reader.Read() do
+                            yield (reader.GetString(0), reader.GetString(1))
+                        ]
+                        |> Map.ofList
+
+                    { name = htmlJobApplicationPageName
+                      jobApplicationTemplateId = htmlJobApplicationPageTemplateId
+                      map = map
+                    }
+                )
+        { name = htmlJobApplicationName
+          pages = pages
+        }
 
 

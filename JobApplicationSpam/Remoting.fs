@@ -52,7 +52,9 @@ module Server =
             async {
                 use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
                 dbConn.Open()
-                return Database.getUserValues dbConn userId
+                match Database.getUserValues dbConn userId with
+                | Some userValues -> return userValues
+                | None -> return failwith "An error occured" 
             }
         | None -> failwith "There is no user logged in."
 
@@ -349,21 +351,19 @@ module Server =
 
     [<Remote>]
     let login (email : string) (password : string) =
-        async {
-            use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
-            dbConn.Open()
-            match (Database.getIdPasswordSaltAndGuid dbConn email) with
-            | Bad v -> 
-                 return fail "Email or password wrong."
-            | Ok ((userId, hashedPassword, salt, None), _) ->
-                if generateHash password salt 1000 64 = hashedPassword
-                then
-                    do! GetContext().UserSession.LoginUser(string userId)
-                    return ok <| string userId
-                else return  fail "Email or password wrong."
-            | Ok ((_, _, _, Some guid), _) ->
-                return fail "Please confirm your email"
-        }
+        use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
+        dbConn.Open()
+        match (Database.getIdPasswordSaltAndGuid dbConn email) with
+        | Bad v -> 
+             fail "Email or password wrong."
+        | Ok ((userId, hashedPassword, salt, None), _) ->
+            if generateHash password salt 1000 64 = hashedPassword
+            then
+                GetContext().UserSession.LoginUser(string userId) |> Async.RunSynchronously
+                ok <| string userId
+            else fail "Email or password wrong."
+        | Ok ((_, _, _, Some guid), _) ->
+            fail "Please confirm your email"
 
     [<Remote>]
     let register email (password1 : string) password2 =
@@ -409,17 +409,35 @@ module Server =
 
     [<Remote>]
     let getTemplateNames () =
+        let oUserId = getCurrentUserId() |> Async.RunSynchronously
         async {
             use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
             dbConn.Open()
-            let! oUserId = getCurrentUserId()
             match oUserId with
             | Some userId ->
                 return Database.getTemplateNames dbConn userId
+            | None -> return failwith "User is not logged in"
+        }
+
+    [<Remote>]
+    let saveHtmlJobApplication (htmlJobApplication : HtmlJobApplication) =
+        let oUserId = getCurrentUserId() |> Async.RunSynchronously
+        async {
+            use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
+            dbConn.Open()
+            match oUserId with
+            | Some userId ->
+                return Database.saveHtmlJobApplication dbConn htmlJobApplication userId
             | None -> return! failwith "User is not logged in"
         }
 
-
+    [<Remote>]
+    let getHtmlJobApplication (htmlJobApplicationId : int) =
+        async {
+            use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
+            dbConn.Open()
+            return Database.getHtmlJobApplication dbConn htmlJobApplicationId
+        }
 
 
 

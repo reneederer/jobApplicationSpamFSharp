@@ -99,6 +99,7 @@ module Site =
         ]
     
     let loginPage (ctx : Context<EndPoint>) =
+        let user = ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously
         Templating.main ctx EndPoint.Login "Login" [
             h1 [text "Login"]
             client <@ Client.login () @>
@@ -205,7 +206,6 @@ module Site =
             | Some _, EndPoint.About -> aboutPage ctx
             | Some _, EndPoint.ConfirmEmail -> confirmEmailPage ctx
             | Some _ , EndPoint.CreateTemplate -> createTemplatePage ctx
-            | None , EndPoint.CreateTemplate -> createTemplatePage ctx
             | None, _ -> loginPage ctx
         )
 

@@ -2,6 +2,10 @@
 
 set client_encoding to 'UTF8';
 
+drop table if exists htmlJobApplicationPageValue;
+drop table if exists htmlJobApplicationPage;
+drop table if exists htmlJobApplication;
+drop table if exists htmlJobApplicationPageTemplate;
 drop table if exists jobCenterContract;
 drop table if exists jobApplicationStatus;
 drop table if exists jobApplicationStatusValue;
@@ -21,7 +25,10 @@ create table jobApplication(id serial primary key, userId int not null, employer
 create table jobApplicationStatusValue(id int primary key, status varchar(50));
 create table jobApplicationStatus(id serial primary key, jobApplicationId int, statusChangedOn date, dueOn timestamp, statusValueId int, statusMessage varchar(200), foreign key(jobApplicationId) references jobApplication(id), foreign key(statusValueId) references jobApplicationStatusValue(id));
 create table jobCenterContract(id serial primary key, userId int not null, repeatEvery int not null, jobApplicationCount int not null, expireDate date not null, foreign key(userId) references users(id));
-
+create table htmlJobApplicationPageTemplate(id serial primary key, name varchar(50), odtPath varchar(100));
+create table htmlJobApplication(id serial primary key, userId int not null, name varchar(100) not null, foreign key(userId) references users(id));
+create table htmlJobApplicationPage(id serial primary key, htmlJobApplicationId int not null, htmlJobApplicationPageTemplateId int not null, name varchar(50) not null, foreign key(htmlJobApplicationId) references htmlJobApplication(id), foreign key(htmlJobApplicationPageTemplateId) references htmlJobApplicationPageTemplate(id));
+create table htmlJobApplicationPageValue(id serial primary key, htmlJobApplicationPageId int not null, key varchar(100) not null, value text not null, foreign key(htmlJobApplicationPageId) references htmlJobApplicationPage(id));
 
 insert into users(email, password, salt, guid) values('rene', '1234', 'salt', null);
 insert into users(email, password, salt, guid) values('rene.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null);
@@ -75,7 +82,11 @@ insert into jobApplicationStatus(jobApplicationId, statusChangedOn, dueOn, statu
 insert into jobApplicationStatus(jobApplicationId, statusChangedOn, dueOn, statusValueId, statusMessage)
     values(6, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 1, 'Forwarded by Ms Götz');
 
-/*insert into jobCenterContract(id, userId, repeatOn, jobApplicationCount, expireDate) values(1, 1, , 6, curdate())*/
+
+insert into htmlJobApplicationPageTemplate(name, odtPath) values('Anschreiben nach DIN 5008', 'c:/users/rene/desktop/bewerbung_neu.odt');
+insert into htmlJobApplication(userId, name) values(2, 'mein htmlTemplate');
+insert into htmlJobApplicationPage (htmlJobApplicationId, htmlJobApplicationPageTemplateId, name) values(1, 1, 'mein Anschreiben');
+insert into htmlJobApplicationPageValue(htmlJobApplicationPageId, key, value) values (1, 'mainText', 'Sehr geehrte Damen und Herren\n\nhiermit bewerbe ich mich auf Ihre Stellenzeige\nauf LinkedIn\n\nMit freundlichen Grüßen\n\n\n\nRené Ederer');
 
 
 

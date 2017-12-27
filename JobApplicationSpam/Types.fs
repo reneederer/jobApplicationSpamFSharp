@@ -68,5 +68,17 @@ module Types =
             | Create -> "Create"
             | Ignore -> "Ignore"
 
+    //[<WebSharper.JavaScript>]
+    type HtmlJobApplicationPage =
+        { name : string
+          jobApplicationTemplateId : int
+          map : Map<string, string>
+        }
+
+    //[<WebSharper.JavaScript>]
+    type HtmlJobApplication =
+        { name : string
+          pages : list<HtmlJobApplicationPage>
+        }
 
 

@@ -1,7 +1,7 @@
 (function()
 {
  "use strict";
- var Global,JobApplicationSpam,Types,JobApplicationContent,Client,Language,Str,AddEmployerAction,SC$1,JobApplicationSpam_GeneratedPrintf,IntelliFactory,Runtime,WebSharper,Strings,Utils,UI,Next,Var,Doc,AttrProxy,AttrModule,Date,Concurrency,Remoting,AjaxRemotingProvider,Numeric,List,Seq;
+ var Global,JobApplicationSpam,Types,JobApplicationContent,Client,Language,Str,AddEmployerAction,SC$1,JobApplicationSpam_GeneratedPrintf,IntelliFactory,Runtime,WebSharper,Strings,Utils,List,Arrays,Seq,Enumerator,UI,Next,Var,Doc,AttrProxy,AttrModule,Date,Concurrency,Remoting,AjaxRemotingProvider,Numeric;
  Global=window;
  JobApplicationSpam=Global.JobApplicationSpam=Global.JobApplicationSpam||{};
  Types=JobApplicationSpam.Types=JobApplicationSpam.Types||{};
@@ -17,6 +17,10 @@
  WebSharper=Global.WebSharper;
  Strings=WebSharper&&WebSharper.Strings;
  Utils=WebSharper&&WebSharper.Utils;
+ List=WebSharper&&WebSharper.List;
+ Arrays=WebSharper&&WebSharper.Arrays;
+ Seq=WebSharper&&WebSharper.Seq;
+ Enumerator=WebSharper&&WebSharper.Enumerator;
  UI=WebSharper&&WebSharper.UI;
  Next=UI&&UI.Next;
  Var=Next&&Next.Var;
@@ -28,8 +32,6 @@
  Remoting=WebSharper&&WebSharper.Remoting;
  AjaxRemotingProvider=Remoting&&Remoting.AjaxRemotingProvider;
  Numeric=WebSharper&&WebSharper.Numeric;
- List=WebSharper&&WebSharper.List;
- Seq=WebSharper&&WebSharper.Seq;
  JobApplicationContent=Types.JobApplicationContent=Runtime.Class({
   toString:function()
   {
@@ -181,52 +183,105 @@
   }
   function findLineBreak(str,containerWidth,font,fontSize,fontWeight)
   {
-   var myString;
-   myString=function(beginIndex,endIndex,n)
-   {
-    var currentIndex,currentString,width;
-    while(true)
-     if(n<0)
-      return str;
-     else
+   var beginIndex,endIndex,n,currentIndex,currentString,width;
+   beginIndex=0;
+   endIndex=str.length;
+   n=30;
+   while(true)
+    if(n<0)
+     return str.length;
+    else
+     {
+      currentIndex=beginIndex+((endIndex-beginIndex+1)/2>>0);
+      currentString=Strings.Substring(str,0,currentIndex);
+      width=getWidth(currentString,font,fontSize,fontWeight);
+      if(width>containerWidth)
       {
-       currentIndex=beginIndex+((endIndex-beginIndex+1)/2>>0);
-       currentString=Strings.Substring(str,0,currentIndex);
-       width=getWidth(currentString,font,fontSize,fontWeight);
-       if(width>containerWidth)
-       {
-        if(endIndex===currentIndex)
-         return Strings.Substring(str,0,currentIndex-1);
-        else
-         {
-          endIndex=currentIndex;
-          n=n-1;
-         }
-       }
+       if(endIndex===currentIndex)
+        {
+         Global.alert(Global.String(currentIndex-1));
+         return currentIndex-1;
+        }
        else
         {
-         beginIndex=currentIndex;
+         endIndex=currentIndex;
          n=n-1;
         }
       }
-   }(0,str.length,16);
-   Global.alert(myString+"\n\n\n\nafter: "+str.substring(myString.length));
-   return Var.Set(varUserLastName,myString);
+      else
+       {
+        beginIndex=currentIndex;
+        n=n-1;
+       }
+     }
+  }
+  function findLineBreaks(str,containerWidth,font,fontSize,fontWeight)
+  {
+   var lines,splitLines,e;
+   lines=List.ofArray(Arrays.map(function(x)
+   {
+    return Strings.EndsWith(x," ")?Strings.TrimEnd(x,[" "])+"\n":x;
+   },Strings.SplitChars(str,["\n"],0)));
+   splitLines=List.unfold(function(state)
+   {
+    var x,splitIndex,splitIndexSpace,$1,$2,front,back,$3;
+    return state.$==1?(x=state.$0,splitIndex=findLineBreak(x,containerWidth,font,fontSize,fontWeight),splitIndexSpace=($1=Arrays.tryFindIndexBack(function(c$1)
+    {
+     return List.contains(c$1,List.ofArray([" ",".",",",";","-"]));
+    },Arrays.take(splitIndex,Strings.ToCharArray(x))),$2=splitIndex===x.length,$1!=null&&$1.$==1?$2?splitIndex:$1.$0+1:splitIndex),Global.alert(Global.String(splitIndexSpace)),front=Strings.Substring(x,0,splitIndexSpace),back=x.substring(splitIndexSpace),$3=state.$1,back===""?$3.$==1?{
+     $:1,
+     $0:[front,new List.T({
+      $:1,
+      $0:$3.$0,
+      $1:$3.$1
+     })]
+    }:{
+     $:1,
+     $0:[front,List.T.Empty]
+    }:$3.$==1?{
+     $:1,
+     $0:[front,new List.T({
+      $:1,
+      $0:back,
+      $1:new List.T({
+       $:1,
+       $0:$3.$0,
+       $1:$3.$1
+      })
+     })]
+    }:{
+     $:1,
+     $0:[front,List.ofArray([back])]
+    }):null;
+   },lines);
+   Global.alert(Global.String(Seq.length(splitLines)));
+   e=Enumerator.Get(splitLines);
+   try
+   {
+    while(e.MoveNext())
+     Global.alert(e.Current());
+    return;
+   }
+   finally
+   {
+    if("Dispose"in e)
+     e.Dispose();
+   }
   }
   varUserTitle=Var.Create$1("");
   varUserFirstName=Var.Create$1("");
   varUserLastName=Var.Create$1("");
   varUserStreet=Var.Create$1("");
   varUserPostcode=Var.Create$1("");
-  varUserCity=Var.Create$1("Fürth");
+  varUserCity=Var.Create$1("");
   varBossTitulation=Var.Create$1("");
   varBossTitle=Var.Create$1("");
   varBossFirstName=Var.Create$1("");
   varBossLastName=Var.Create$1("");
   varCompanyStreet=Var.Create$1("");
   varCompanyPostcode=Var.Create$1("");
-  varCompanyCity=Var.Create$1("Hamburg");
-  varSubject=Var.Create$1("Bewerbung als Fachinformatiker für Anwendungsentwicklung");
+  varCompanyCity=Var.Create$1("");
+  varSubject=Var.Create$1("Bewerbung");
   varTextArea=Var.Create$1("abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz1234567890");
   varCover=Var.Create$1(JobApplicationContent.Upload);
   return Doc.Element("div",[],[Doc.Element("h1",[],[Doc.TextNode("Create a template")]),Doc.Element("div",[],[Doc.Radio([AttrProxy.Create("id","uploadCover"),AttrModule.Handler("click",function()
@@ -252,7 +307,7 @@
    return function()
    {
     resize(Global.jQuery(el),"Arial","12pt","normal",150);
-    return findLineBreak(varTextArea.c,Global.jQuery("#mainText").width(),"Arial","12pt","normal");
+    return findLineBreaks(varTextArea.c,Global.jQuery("#mainText").width(),"Arial","12pt","normal");
    };
   }),AttrProxy.Create("placeholder","Dein Titel")],varUserTitle),Doc.Input([AttrProxy.Create("class","grow-input"),AttrModule.Handler("input",function(el)
   {
@@ -332,7 +387,7 @@
    {
     return resize(Global.jQuery(el),"Arial","12pt","bold",150);
    };
-  }),AttrProxy.Create("placeholder","Betreff")],varSubject),Doc.Element("br",[],[]),Doc.Element("br",[],[])]),Doc.Element("input",[AttrProxy.Create("style","width: 16.55cm; border: none; letter-spacing:0pt; margin: 0px; padding: 0px; min-width:100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block")],[]),Doc.Element("div",[AttrProxy.Create("style","width:100%; min-height: 322.4645709pt; background-color:red;")],[Doc.InputArea([AttrProxy.Create("id","mainText"),AttrProxy.Create("style","wrap: hard; border: none; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; background-color: lighblue; overflow: hidden; min-height: 322.4645709pt; min-width:100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block")],varTextArea)]),Doc.Element("div",[AttrProxy.Create("style","height:96pt; width: 100%;")],[Doc.Element("br",[],[]),Doc.TextNode("Mit freundlichen Grüßen"),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.TextNode("$meinTitel $meinVorname $meinNachname")])]),Doc.Element("button",[AttrProxy.Create("value","Abschicken"),AttrModule.Handler("click",function()
+  }),AttrProxy.Create("placeholder","Betreff")],varSubject),Doc.Element("br",[],[]),Doc.Element("br",[],[])]),Doc.Element("div",[AttrProxy.Create("style","width:100%; min-height: 322.4645709pt; background-color:red;")],[Doc.InputArea([AttrProxy.Create("id","mainText"),AttrProxy.Create("style","wrap: soft; border: none; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; background-color: lighblue; overflow: hidden; min-height: 322.4645709pt; min-width:100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block")],varTextArea)]),Doc.Element("div",[AttrProxy.Create("style","height:96pt; width: 100%;")],[Doc.Element("br",[],[]),Doc.TextNode("Mit freundlichen Grüßen"),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.TextNode("$meinTitel $meinVorname $meinNachname")])]),Doc.Element("button",[AttrProxy.Create("value","Abschicken"),AttrModule.Handler("click",function()
   {
    return function()
    {

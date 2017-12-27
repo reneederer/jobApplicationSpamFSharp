@@ -818,15 +818,15 @@ module Client =
         let varUserLastName = Var.Create("")
         let varUserStreet = Var.Create("")
         let varUserPostcode = Var.Create("")
-        let varUserCity = Var.Create("Fürth")
+        let varUserCity = Var.Create("")
         let varBossTitulation = Var.Create("")
         let varBossTitle = Var.Create("")
         let varBossFirstName = Var.Create("")
         let varBossLastName = Var.Create("")
         let varCompanyStreet = Var.Create("")
         let varCompanyPostcode = Var.Create("")
-        let varCompanyCity = Var.Create("Hamburg")
-        let varSubject = Var.Create("Bewerbung als Fachinformatiker für Anwendungsentwicklung")
+        let varCompanyCity = Var.Create("")
+        let varSubject = Var.Create("Bewerbung")
         let varTextArea = Var.Create("abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz1234567890")
         let varCover = Var.Create(Upload)
         let resize (el : JQuery) font fontSize fontWeight (defaultWidth: int) =
@@ -849,7 +849,7 @@ module Client =
         let findLineBreak (str : string) containerWidth font fontSize fontWeight =
             let rec findLineBreak' beginIndex endIndex n =
                 if n < 0
-                then str
+                then str.Length
                 else
                     let currentIndex = beginIndex + (endIndex - beginIndex + 1) / 2
                     let currentString = str.Substring(0, currentIndex)
@@ -857,16 +857,47 @@ module Client =
                     if width > containerWidth
                     then
                         if endIndex = currentIndex
-                        then str.Substring(0, currentIndex - 1)
+                        then
+                            JS.Alert(currentIndex - 1 |> string)
+                            currentIndex - 1
                         else
                             let nextEndIndex = currentIndex
                             findLineBreak' beginIndex nextEndIndex (n-1)
                     else
                         let nextBeginIndex = currentIndex
                         findLineBreak' nextBeginIndex endIndex (n-1)
-            let myString = findLineBreak' 0 (str.Length) 16
-            JS.Alert(myString + "\n\n\n\nafter: " + (str.Substring(myString.Length)))
-            varUserLastName.Value <- myString
+            findLineBreak' 0 (str.Length) 30
+        let findLineBreaks (str : string) containerWidth font fontSize fontWeight =
+            let lines = str.Split([|'\n'|]) |> Array.map (fun x -> if x.EndsWith(" ") then x.TrimEnd([|' '|]) + "\n" else x) |> List.ofArray
+            let splitLines = 
+                List.unfold
+                    (fun state ->
+                        match state with
+                        | [] -> None
+                        | x::xs ->
+                            let splitIndex = findLineBreak x containerWidth font fontSize fontWeight
+                            let splitIndexSpace =
+                                let ar = x.ToCharArray() |> Array.take splitIndex |> Array.tryFindIndexBack (fun c -> List.contains c [' '; '.'; ','; ';'; '-'])
+                                match ar, splitIndex = x.Length with
+                                | None, _ -> splitIndex
+                                | _, true -> splitIndex
+                                | Some v, false -> v + 1
+                            JS.Alert(splitIndexSpace |> string)
+                            let front = x.Substring(0, splitIndexSpace)
+                            let back = x.Substring(splitIndexSpace)
+                            match back, xs with
+                            | "", [] -> Some (front, [])
+                            | _, [] -> Some (front, [back])
+                            | "", y::ys ->
+                                Some (front, y::ys)
+                            | _, y::ys ->
+                                Some (front, back:: y::ys)
+                    )
+                    lines
+            JS.Alert(splitLines |> Seq.length |> string)
+            for l in splitLines do
+                JS.Alert(l)
+
         div
           [ h1 [ text "Create a template" ]
             div
@@ -882,7 +913,7 @@ module Client =
               ]
             divAttr [attr.``class`` "page"]
               [ divAttr [attr.style "height: 225pt; width: 100%; background-color: lightblue"]
-                  [ Doc.Input [ attr.``class`` "grow-input"; attr.autofocus "autofocus"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150; findLineBreak varTextArea.Value (JQuery("#mainText").Width()) "Arial" "12pt" "normal"); attr.placeholder "Dein Titel" ] varUserTitle
+                  [ Doc.Input [ attr.``class`` "grow-input"; attr.autofocus "autofocus"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150; findLineBreaks varTextArea.Value (JQuery("#mainText").Width()) "Arial" "12pt" "normal"); attr.placeholder "Dein Titel" ] varUserTitle
                     Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Dein Vorname" ] varUserFirstName
                     Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Dein Nachname" ] varUserLastName
                     br []
@@ -914,9 +945,8 @@ module Client =
                     br []
                     br []
                   ]
-                inputAttr [attr.style "width: 16.55cm; border: none; letter-spacing:0pt; margin: 0px; padding: 0px; min-width:100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block" ] []
                 divAttr [attr.style "width:100%; min-height: 322.4645709pt; background-color:red;"]
-                  [ Doc.InputArea [ attr.id "mainText"; attr.style "wrap: hard; border: none; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; background-color: lighblue; overflow: hidden; min-height: 322.4645709pt; min-width:100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block" ] varTextArea
+                  [ Doc.InputArea [ attr.id "mainText"; attr.style "wrap: soft; border: none; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; background-color: lighblue; overflow: hidden; min-height: 322.4645709pt; min-width:100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block" ] varTextArea
                   ]
                 divAttr [ attr.style "height:96pt; width: 100%;" ]
                   [

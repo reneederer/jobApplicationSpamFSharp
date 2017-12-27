@@ -102,30 +102,11 @@ module Server =
     [<Remote>]
     let addEmployer (employer : Employer) =
         let oUserId = getCurrentUserId() |> Async.RunSynchronously
-        let addEmployerDB (dbConn : NpgsqlConnection) (employer : Employer) (userId : int) =
-            use command = new NpgsqlCommand("insert into employer (userId, company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone) values(:userId, :company, :street, :postcode, :city, :gender, :degree, :firstName, :lastName, :email, :phone, :mobilePhone) returning id", dbConn)
-            command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
-            command.Parameters.Add(new NpgsqlParameter("company", employer.company)) |> ignore
-            command.Parameters.Add(new NpgsqlParameter("street", employer.street)) |> ignore
-            command.Parameters.Add(new NpgsqlParameter("postcode", employer.postcode)) |> ignore
-            command.Parameters.Add(new NpgsqlParameter("city", employer.city)) |> ignore
-            command.Parameters.Add(new NpgsqlParameter("gender", if employer.gender = Gender.Male then 'm' else 'f')) |> ignore
-            command.Parameters.Add(new NpgsqlParameter("degree", employer.degree)) |> ignore
-            command.Parameters.Add(new NpgsqlParameter("firstName", employer.firstName)) |> ignore
-            command.Parameters.Add(new NpgsqlParameter("lastName", employer.lastName)) |> ignore
-            command.Parameters.Add(new NpgsqlParameter("email", employer.email)) |> ignore
-            command.Parameters.Add(new NpgsqlParameter("phone", employer.phone)) |> ignore
-            command.Parameters.Add(new NpgsqlParameter("mobilePhone", employer.mobilePhone)) |> ignore
-            try
-                ok (command.ExecuteScalar() |> string |> Int32.Parse)
-            with
-            | (e : Exception) ->
-                fail ("An error occured while trying to add employer." + e.Message)
         async {
             use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
             dbConn.Open()
             match oUserId with
-            | Some userId -> return addEmployerDB dbConn employer userId
+            | Some userId -> return Database.addEmployer dbConn employer userId
             | None -> return fail "Please login first"
         }
 
@@ -189,11 +170,8 @@ module Server =
                           ("$meineEmail", userEmail)
                           ("$meinMobilTelefon", userValues.mobilePhone)
                           ("$meinTelefon", userValues.phone)
-                          ("$absatz1", "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.")
-                          ("$absatz2", "LLLLorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.")
-                          ("$absatz2", "hallo")
                           ("$datumHeute", DateTime.Today.ToString("dd.MM.yyyy"))
-                        ] |> Map.ofList
+                        ] |> List.sortByDescending (fun (k, v) -> k.Length)
                     Odt.replaceInOdt template.filePaths.[0] "c:/users/rene/myodt/" "c:/users/rene/myodt1/m1.odt" myMap |> ignore
                     //sendEmail "rene.ederer.nbg@gmail.com" "René Ederer" employer.email template.emailSubject template.emailBody template.pdfPaths
                     return ok (Odt.odtToPdf "c:/users/rene/myodt1/m1.odt")
@@ -270,11 +248,8 @@ module Server =
                           ("$meinTelefon", userValues.phone)
                           ("$meineMobilNr", userValues.mobilePhone)
                           ("$meineTelefonNr", userValues.phone)
-                          ("$zeile1", "Hiermit bewerbe ich mich auf Ihre Stellenanzeige")
-                          ("$zeile2", "vom 24.12 in den Nürnberger Nachrichten.")
-                          ("$zeile3", "Ich hoffe auf eine positive Rückmeldung.")
                           ("$datumHeute", DateTime.Today.ToString("dd.MM.yyyy"))
-                        ] |> List.sortByDescending (fun (x, _) -> x.Length) |> Map.ofList
+                        ] |> List.sortByDescending (fun (k, v) -> k.Length)
                     let replacedOdtPath = Odt.replaceInOdt template.filePaths.[0] (Path.Combine(Environment.CurrentDirectory, "users/tmp_" + Guid.NewGuid().ToString())) (Path.Combine(Environment.CurrentDirectory, "users/" + userId.ToString() + "/" + DateTime.Now.ToString("dd_MM_yyyy_HH_mm_ss") + "_" + Guid.NewGuid().ToString())) myMap
                     //sendEmail "rene.ederer.nbg@gmail.com" "René Ederer" employer.email template.emailSubject template.emailBody template.pdfPaths
                     return ok (Odt.odtToPdf replacedOdtPath)
@@ -458,3 +433,64 @@ module Server =
         }
 
 
+    [<Remote>]
+    let applyNowWithHtmlTemplate (employer : Employer) (htmlJobApplication : HtmlJobApplication) (userValues : UserValues) =
+        let oUserId = getCurrentUserId() |> Async.RunSynchronously
+        //async {
+        match oUserId with 
+        | None -> failwith "No user loggeg in"
+        | Some userId ->
+            use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
+            dbConn.Open()
+            let odtPaths =
+                [ for currentPage in htmlJobApplication.pages do
+                    let htmlJobApplicationPageTemplatePath = Database.getHtmlJobApplicationPageTemplatePath dbConn currentPage.jobApplicationPageTemplateId
+                    let userEmail = Database.getEmailByUserId dbConn userId
+                    let lines =
+                        let emptyLines = List.init 50 (fun i -> sprintf "$line%i" (i + 1), "")
+                        let currentPageLines = currentPage.map.["mainText"].Split([|'\n'|])
+                        let len = currentPageLines.Length
+                        (currentPageLines
+                        |> Array.mapi (fun i x -> sprintf "$line%i" (i + 1), x)
+                        |> List.ofArray)
+                        @ List.skip len emptyLines
+
+                    let myList =
+                        (
+                        [ ("$firmaName", employer.company)
+                          ("$firmaStrasse", employer.street)
+                          ("$firmaPlz", employer.postcode)
+                          ("$firmaStadt", employer.city)
+                          ("$chefAnredeBriefkopf", match employer.gender with Gender.Male -> "Herrn" | Gender.Female -> "Frau")
+                          ("$chefAnrede", employer.gender.ToString())
+                          ("$geehrter", match employer.gender with Gender.Male -> "geehrter" | Gender.Female -> "geehrte")
+                          ("$chefTitel", employer.degree)
+                          ("$chefVorname", employer.firstName)
+                          ("$chefNachname", employer.lastName)
+                          ("$chefEmail", employer.email)
+                          ("$chefTelefon", employer.phone)
+                          ("$chefMobil", employer.mobilePhone)
+                          ("$meinGeschlecht", userValues.gender.ToString())
+                          ("$meinTitel", userValues.degree)
+                          ("$meinVorname", userValues.firstName)
+                          ("$meinNachname", userValues.lastName)
+                          ("$meineStrasse", userValues.street)
+                          ("$meinePlz", userValues.postcode)
+                          ("$meineStadt", userValues.city)
+                          ("$meineEmail", userEmail)
+                          ("$meinMobilTelefon", userValues.mobilePhone)
+                          ("$meineTelefonnr", userValues.phone)
+                          ("$datumHeute", DateTime.Today.ToString("dd.MM.yyyy"))
+                        ] @ lines)
+                        |> List.sortByDescending (fun (key, _) -> key.Length)
+                    let tmpPath = "c:/users/rene/myodt1/" + Guid.NewGuid().ToString()
+                    yield Odt.replaceInOdt htmlJobApplicationPageTemplatePath "c:/users/rene/myodt/" tmpPath myList
+                ]
+                //sendEmail "rene.ederer.nbg@gmail.com" "René Ederer" employer.email template.emailSubject template.emailBody template.pdfPaths
+            let pdfPaths =
+                [ for odtPath in odtPaths do
+                    yield Odt.odtToPdf odtPath
+                ]
+            Odt.mergePdfs pdfPaths "c:/users/rene/myodt1/mygreatpdf.pdf"
+            //return ()
+        //}

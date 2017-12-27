@@ -158,7 +158,7 @@
  };
  Client.createTemplate=function()
  {
-  var varUserValuesFromDb,b,varUserGender,varUserDegree,varUserFirstName,varUserLastName,varUserStreet,varUserPostcode,varUserCity,varUserPhone,varUserMobilePhone,varCompanyStreet,varCompanyPostcode,varCompanyCity,varBossGender,varBossDegree,varBossFirstName,varBossLastName,varSubject,varMainText,varCover,varHtmlJobApplication,varHtmlJobApplicationNames,varHtmlJobApplicationName,b$1,c;
+  var varUserValuesFromDb,b,varUserGender,varUserDegree,varUserFirstName,varUserLastName,varUserStreet,varUserPostcode,varUserCity,varUserPhone,varUserMobilePhone,varCompanyName,varCompanyStreet,varCompanyPostcode,varCompanyCity,varBossGender,varBossDegree,varBossFirstName,varBossLastName,varBossEmail,varBossPhone,varBossMobilePhone,varSubject,varMainText,varCover,varHtmlJobApplication,varHtmlJobApplicationNames,varHtmlJobApplicationName,varTxtSaveAs,varHtmlJobApplicationId,varOAddEmployerId,b$1,varMessage,c;
   function fillHtmlJobApplication(htmlJobApplicationOffset)
   {
    var b$2;
@@ -288,18 +288,128 @@
     return Strings.EndsWith(x," ")?Strings.TrimEnd(x,[" "])+"\n":x;
    },Strings.SplitChars(str,["\n"],0))));
   }
-  function saveHtmlJobApplication()
+  function saveHtmlJobApplication(htmlJobApplicationName)
   {
-   var htmlJobApplication;
-   htmlJobApplication={
-    name:varHtmlJobApplicationName.c,
-    pages:List.ofArray([{
-     name:"Anschreiben",
-     jobApplicationTemplateId:1,
-     map:Map.OfArray(Arrays.ofSeq(List.ofArray([["mainText",Strings.concat("\n",getTextAreaLines(varMainText.c,Global.jQuery("#mainText").width(),"Arial","12pt","normal"))]])))
-    }])
+   var b$2;
+   Concurrency.Start((b$2=null,Concurrency.Delay(function()
+   {
+    var htmlJobApplication;
+    htmlJobApplication={
+     name:htmlJobApplicationName,
+     pages:List.ofArray([{
+      name:"Anschreiben",
+      jobApplicationPageTemplateId:1,
+      map:Map.OfArray(Arrays.ofSeq(List.ofArray([["mainText",Strings.concat("\n",getTextAreaLines(varMainText.c,Global.jQuery("#mainText").width(),"Arial","12pt","normal"))]])))
+     }])
+    };
+    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.saveHtmlJobApplication:-1556746703",[htmlJobApplication]),function(a)
+    {
+     Var.Set(varHtmlJobApplicationId,a);
+     return Concurrency.Zero();
+    });
+   })),null);
+  }
+  function setUserValues()
+  {
+   var b$2;
+   Concurrency.StartImmediate((b$2=null,Concurrency.Delay(function()
+   {
+    var userValues;
+    Var.Set(varMessage,"Setting user values...");
+    userValues={
+     gender:varUserGender.c,
+     degree:varUserDegree.c,
+     firstName:varUserFirstName.c,
+     lastName:varUserLastName.c,
+     street:varUserStreet.c,
+     postcode:varUserPostcode.c,
+     city:varUserCity.c,
+     phone:varUserPhone.c,
+     mobilePhone:varUserMobilePhone.c
+    };
+    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.setUserValues:1230958299",[userValues]),function(a)
+    {
+     var m;
+     m=a.$==1?(function($1)
+     {
+      return function($2)
+      {
+       return $1(Utils.printList(Utils.prettyPrint,$2));
+      };
+     }(Global.id))(a.$0):a.$0;
+     return Concurrency.Bind(Concurrency.Sleep(1000),function()
+     {
+      Var.Set(varMessage,m);
+      return Concurrency.Return(null);
+     });
+    });
+   })),null);
+  }
+  function addEmployer()
+  {
+   var employer,b$2;
+   employer={
+    company:varCompanyName.c,
+    street:varCompanyStreet.c,
+    postcode:varCompanyPostcode.c,
+    city:varCompanyCity.c,
+    gender:varBossGender.c,
+    degree:varBossDegree.c,
+    firstName:varBossFirstName.c,
+    lastName:varBossLastName.c,
+    email:varBossEmail.c,
+    phone:varBossPhone.c,
+    mobilePhone:varBossMobilePhone.c
    };
-   Concurrency.Start((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.saveHtmlJobApplication:-1548043932",[htmlJobApplication]),null);
+   Concurrency.Start((b$2=null,Concurrency.Delay(function()
+   {
+    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.addEmployer:-762170454",[employer]),function(a)
+    {
+     Var.Set(varOAddEmployerId,a.$==1?null:{
+      $:1,
+      $0:a.$0
+     });
+     return Concurrency.Zero();
+    });
+   })),null);
+  }
+  function applyNowWithHtmlTemplate()
+  {
+   var b$2;
+   Concurrency.Start((b$2=null,Concurrency.Delay(function()
+   {
+    var htmlJobApplication,userValues,employer;
+    return varOAddEmployerId.c==null?Concurrency.Zero():(htmlJobApplication={
+     name:varHtmlJobApplication.c.name,
+     pages:List.ofArray([{
+      name:"Anschreiben",
+      jobApplicationPageTemplateId:1,
+      map:Map.OfArray(Arrays.ofSeq(List.ofArray([["mainText",varMainText.c]])))
+     }])
+    },(userValues={
+     gender:varUserGender.c,
+     degree:varUserDegree.c,
+     firstName:varUserFirstName.c,
+     lastName:varUserLastName.c,
+     street:varUserStreet.c,
+     postcode:varUserPostcode.c,
+     city:varUserCity.c,
+     phone:varUserPhone.c,
+     mobilePhone:varUserMobilePhone.c
+    },(employer={
+     company:varCompanyName.c,
+     street:varCompanyStreet.c,
+     postcode:varCompanyPostcode.c,
+     city:varCompanyCity.c,
+     gender:varBossGender.c,
+     degree:varBossDegree.c,
+     firstName:varBossFirstName.c,
+     lastName:varBossLastName.c,
+     email:varBossEmail.c,
+     phone:varBossPhone.c,
+     mobilePhone:varBossMobilePhone.c
+    },((new AjaxRemotingProvider.New()).Send("JobApplicationSpam:JobApplicationSpam.Server.applyNowWithHtmlTemplate:2021728765",[employer,htmlJobApplication,userValues]),Concurrency.Zero()))));
+   })),null);
   }
   varUserValuesFromDb=Var.Create$1({
    gender:{
@@ -331,7 +441,7 @@
   varUserCity=Var.Create$1(varUserValuesFromDb.c.city);
   varUserPhone=Var.Create$1(varUserValuesFromDb.c.phone);
   varUserMobilePhone=Var.Create$1(varUserValuesFromDb.c.mobilePhone);
-  Var.Create$1("");
+  varCompanyName=Var.Create$1("");
   varCompanyStreet=Var.Create$1("");
   varCompanyPostcode=Var.Create$1("");
   varCompanyCity=Var.Create$1("");
@@ -341,9 +451,9 @@
   varBossDegree=Var.Create$1("");
   varBossFirstName=Var.Create$1("");
   varBossLastName=Var.Create$1("");
-  Var.Create$1("");
-  Var.Create$1("");
-  Var.Create$1("");
+  varBossEmail=Var.Create$1("");
+  varBossPhone=Var.Create$1("");
+  varBossMobilePhone=Var.Create$1("");
   varSubject=Var.Create$1("Bewerbung als ...");
   varMainText=Var.Create$1("");
   varCover=Var.Create$1(JobApplicationContent.Upload);
@@ -353,6 +463,9 @@
   });
   varHtmlJobApplicationNames=Var.Create$1(List.ofArray([""]));
   varHtmlJobApplicationName=Var.Create$1("");
+  varTxtSaveAs=Var.Create$1("");
+  varHtmlJobApplicationId=Var.Create$1(0);
+  varOAddEmployerId=Var.Create$1(null);
   fillHtmlJobApplicationNames();
   Concurrency.Start((b$1=null,Concurrency.Delay(function()
   {
@@ -370,7 +483,7 @@
     return Concurrency.Zero();
    });
   })),null);
-  Var.Create$1("nothing");
+  varMessage=Var.Create$1("nothing");
   return Doc.Element("div",[],[Doc.Element("h1",[],[Doc.TextNode("Create a template")]),Doc.SelectDyn([AttrProxy.Create("style","min-width: 300px"),AttrProxy.Create("id","selectHtmlJobApplicationName"),AttrModule.Handler("change",function(el)
   {
    return function()
@@ -487,11 +600,20 @@
    {
     return resize(Global.jQuery(el),"Arial","12pt","bold",150);
    };
-  }),AttrProxy.Create("placeholder","Betreff")],varSubject),Doc.Element("br",[],[]),Doc.Element("br",[],[])]),Doc.Element("div",[AttrProxy.Create("style","width:100%; min-height: 322.4645709pt; background-color:red;")],[Doc.InputArea([AttrProxy.Create("id","mainText"),AttrProxy.Create("style","wrap: soft; border: none; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; background-color: lighblue; overflow: hidden; min-height: 322.4645709pt; min-width:100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block")],varMainText)]),Doc.Element("div",[AttrProxy.Create("style","height:96pt; width: 100%;")],[Doc.Element("br",[],[]),Doc.TextNode("Mit freundlichen Grüßen"),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.TextView(varUserDegree.v),Doc.TextNode(" "),Doc.TextView(varUserFirstName.v),Doc.TextNode(" "),Doc.TextView(varUserLastName.v)])]),Doc.Element("button",[AttrProxy.Create("value","Abschicken"),AttrModule.Handler("click",function()
+  }),AttrProxy.Create("placeholder","Betreff")],varSubject),Doc.Element("br",[],[]),Doc.Element("br",[],[])]),Doc.Element("div",[AttrProxy.Create("style","width:100%; min-height: 322.4645709pt; background-color:red;")],[Doc.InputArea([AttrProxy.Create("id","mainText"),AttrProxy.Create("style","wrap: soft; border: none; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; background-color: lighblue; overflow: hidden; min-height: 322.4645709pt; min-width:100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block")],varMainText)]),Doc.Element("div",[AttrProxy.Create("style","height:96pt; width: 100%;")],[Doc.Element("br",[],[]),Doc.TextNode("Mit freundlichen Grüßen"),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.TextView(varUserDegree.v),Doc.TextNode(" "),Doc.TextView(varUserFirstName.v),Doc.TextNode(" "),Doc.TextView(varUserLastName.v)])]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("value","Speichern als"),AttrModule.Handler("click",function()
   {
    return function()
    {
-    return saveHtmlJobApplication();
+    return saveHtmlJobApplication(varTxtSaveAs.c);
+   };
+  })],[Doc.TextNode("Speichern als")]),Doc.Input([],varTxtSaveAs),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("value","Abschicken"),AttrModule.Handler("click",function()
+  {
+   return function()
+   {
+    setUserValues();
+    addEmployer();
+    saveHtmlJobApplication(varHtmlJobApplicationName.c);
+    return applyNowWithHtmlTemplate();
    };
   })],[])]);
  };

@@ -850,6 +850,9 @@ module Client =
         let varHtmlJobApplication = Var.Create( {name = ""; pages = [] } )
         let varHtmlJobApplicationNames = Var.Create([""])
         let varHtmlJobApplicationName = Var.Create("")
+        let varTxtSaveAs = Var.Create("")
+        let varHtmlJobApplicationId = Var.Create(0)
+        let varOAddEmployerId = Var.Create(None)
         let fillHtmlJobApplication htmlJobApplicationOffset =
             async {
                 let! htmlJobApplication = Server.getHtmlJobApplicationOffset htmlJobApplicationOffset
@@ -951,21 +954,23 @@ module Client =
                     lines
             splitLines
 
-        let saveHtmlJobApplication () =
-            let mainText =
-                getTextAreaLines (varMainText.Value) (JQuery("#mainText").Width()) "Arial" "12pt" "normal"
-                |> String.concat "\n"
-            let htmlJobApplication =
-                { name = varHtmlJobApplicationName.Value
-                  pages =
-                    [ { name = "Anschreiben"
-                        jobApplicationTemplateId = 1
-                        map = ["mainText", mainText] |> Map.ofList
-                      }
-                    ]
-                }
-            Server.saveHtmlJobApplication htmlJobApplication
-            |> Async.Start
+        let saveHtmlJobApplication htmlJobApplicationName =
+            async {
+                let mainText =
+                    getTextAreaLines (varMainText.Value) (JQuery("#mainText").Width()) "Arial" "12pt" "normal"
+                    |> String.concat "\n"
+                let htmlJobApplication =
+                    { name = htmlJobApplicationName
+                      pages =
+                        [ { name = "Anschreiben"
+                            jobApplicationPageTemplateId = 1
+                            map = ["mainText", mainText] |> Map.ofList
+                          }
+                        ]
+                    }
+                let! htmlJobApplicationId = Server.saveHtmlJobApplication htmlJobApplication
+                varHtmlJobApplicationId.Value <- htmlJobApplicationId
+            } |> Async.Start
 
         let varMessage = Var.Create("nothing")
         let setUserValues () =
@@ -1008,27 +1013,54 @@ module Client =
                   mobilePhone = varBossMobilePhone.Value
                 }
             async {
-                varMessage.Value <- "Adding employer..."
-                do! Async.Sleep 2000
                 let! addEmployerResult =  Server.addEmployer employer
-                return ()
+                let oAddEmployerId =
+                    match addEmployerResult with
+                    | Ok (v, _) -> Some v
+                    | Bad _ -> None
+                varOAddEmployerId.Value <- oAddEmployerId
             } |> Async.Start
 
-        let applyNow () =
+        let applyNowWithHtmlTemplate () =
             async {
-                varMessage.Value <- "Sending job application..."
-                do! Async.Sleep 2000
-                let employerId = 0
-                let templateName = ""
-                let! applyNowResult = Server.applyNowByTemplateName employerId templateName
-                match applyNowResult with
-                | Ok (v, _) ->
-                    varMessage.Value <- "Job application has been sent"
-                    return ()
-                | Bad xs ->
-                    varMessage.Value <- "Unfortunately, adding employer failed."
-                    return ()
-            } |> Async.StartImmediate
+                match varOAddEmployerId.Value with
+                | Some employerId ->
+                    let htmlJobApplication =
+                        { name = varHtmlJobApplication.Value.name
+                          pages =
+                            [ { name = "Anschreiben"
+                                jobApplicationPageTemplateId = 1
+                                map = [("mainText", varMainText.Value)] |> Map.ofList
+                              }
+                            ]
+                        }
+                    let userValues =
+                        { gender = varUserGender.Value
+                          degree = varUserDegree.Value
+                          firstName = varUserFirstName.Value
+                          lastName = varUserLastName.Value
+                          street = varUserStreet.Value
+                          postcode = varUserPostcode.Value
+                          city = varUserCity.Value
+                          phone = varUserPhone.Value
+                          mobilePhone = varUserMobilePhone.Value
+                        }
+                    let employer =
+                        { company = varCompanyName.Value
+                          street = varCompanyStreet.Value
+                          postcode = varCompanyPostcode.Value
+                          city = varCompanyCity.Value
+                          gender = varBossGender.Value
+                          degree = varBossDegree.Value
+                          firstName = varBossFirstName.Value
+                          lastName = varBossLastName.Value
+                          email = varBossEmail.Value
+                          phone = varBossPhone.Value
+                          mobilePhone = varBossMobilePhone.Value
+                        }
+                    do Server.applyNowWithHtmlTemplate employer htmlJobApplication userValues
+                | None -> ()
+            } |> Async.Start
 
         div
           [ h1 [ text "Create a template" ]
@@ -1095,7 +1127,10 @@ module Client =
                     textView varUserLastName.View
                   ]
               ]
-            buttonAttr [attr.value "Abschicken"; on.click (fun _ _ -> saveHtmlJobApplication() (*setUserValues (); addEmployer ()*))] []
+            inputAttr [attr.``type`` "button"; attr.value "Speichern als"; on.click (fun _ _ -> saveHtmlJobApplication varTxtSaveAs.Value (*setUserValues (); addEmployer ()*))] [text "Speichern als"]
+            Doc.Input [] varTxtSaveAs
+            br []
+            inputAttr [attr.``type`` "button"; attr.value "Abschicken"; on.click (fun _ _ -> setUserValues (); addEmployer (); saveHtmlJobApplication varHtmlJobApplicationName.Value; applyNowWithHtmlTemplate())] []
           ]
 (*        <textarea style="min-width: 100%; height:100%; font-family: inherit; font-size: inherit">
 It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English. Many desktop publishing packages and web page editors now use Lorem Ipsum as their default model text, and a search for 'lorem ipsum' will uncover many web sites still in their infancy. Various versions have evolved over the years, sometimes by accident, sometimes on purpose (injected humour and the like).

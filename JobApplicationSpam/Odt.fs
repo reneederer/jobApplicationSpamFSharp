@@ -7,9 +7,10 @@ module Odt =
     open PdfSharp
     open PdfSharp.Pdf
     open PdfSharp.Pdf.IO
+    open WebSharper.UI.Next.Html.Tags
 
     let private replaceAll text map =
-        Map.fold (fun (state : string) (key : string) (value : string) -> state.Replace(key, value)) text map
+        List.fold (fun (state:string) (k: string, v: string) -> state.Replace(k, v)) text map
 
     let private replaceInFile path map =
         let content = File.ReadAllText(path)
@@ -40,16 +41,17 @@ module Odt =
         use process1 = new System.Diagnostics.Process()
         process1.StartInfo.FileName <- ConfigurationManager.AppSettings.["python"]
         process1.StartInfo.UseShellExecute <- false
-        process1.StartInfo.Arguments <- sprintf """ "%s" --format pdf -P PaperFormat=A4 -eUseLossLessCompression=true "%s" """  (ConfigurationManager.AppSettings.["unoconv"]) odtPath
+        process1.StartInfo.Arguments <- sprintf """ "%s" --format pdf -eUseLossLessCompression=true "%s" """  (ConfigurationManager.AppSettings.["unoconv"]) odtPath
         process1.StartInfo.CreateNoWindow <- true
         process1.Start() |> ignore
         process1.WaitForExit()
         if File.Exists(odtPath.Substring(0, odtPath.Length - 4) + ".pdf")
         then
             odtPath.Substring(0, odtPath.Length - 4) + ".pdf"
-        else failwith "Could not convert odt file to pdf."
+        else failwith "Could not convert odt file to pdf: " + odtPath
     
     let mergePdfs (pdfPaths : list<string>) (outputPath : string) =
+        Directory.CreateDirectory(Path.GetDirectoryName(outputPath)) |> ignore
         use outputDocument = new PdfDocument ()
         for pdfPath in pdfPaths do
             let inputDocument = PdfReader.Open(pdfPath, PdfDocumentOpenMode.Import)

@@ -67,11 +67,12 @@ module Types =
             | Upload -> "Upload"
             | Create -> "Create"
             | Ignore -> "Ignore"
+     
 
     //[<WebSharper.JavaScript>]
     type HtmlJobApplicationPage =
         { name : string
-          jobApplicationTemplateId : int
+          jobApplicationPageTemplateId : int
           map : Map<string, string>
         }
 

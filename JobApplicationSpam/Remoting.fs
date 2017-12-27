@@ -28,9 +28,11 @@ module Server =
     [<Remote>]
     let getCurrentUserId () =
         GetContext().UserSession.GetLoggedInUser()
-        |> Async.RunSynchronously
-        |> Option.map (Int32.TryParse)
-        |> Option.bind (fun (parsed, v) -> if parsed then Some v else None)
+        |> Async.map (fun a ->
+            a
+            |> Option.map (Int32.TryParse)
+            |> Option.bind (fun (parsed, v) -> if parsed then Some v else None)
+        )
 
     let sendEmail fromAddress fromName toAddress subject body attachmentPaths =
         use smtpClient = new SmtpClient(ConfigurationManager.AppSettings.["email_server"], ConfigurationManager.AppSettings.["email_port"] |> Int32.TryParse |> snd)
@@ -45,18 +47,20 @@ module Server =
     
     [<Remote>]
     let getCurrentUserValues () =
-        match getCurrentUserId() with
+        match getCurrentUserId() |> Async.RunSynchronously with
         | Some userId ->
-            use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
-            dbConn.Open()
-            Database.getUserValues dbConn userId
+            async {
+                use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
+                dbConn.Open()
+                return Database.getUserValues dbConn userId
+            }
         | None -> failwith "There is no user logged in."
 
 
 
     [<Remote>]
     let setUserValues (userValues : UserValues) =
-        let oUserId = getCurrentUserId()
+        let oUserId = getCurrentUserId() |> Async.RunSynchronously
         async {
             match oUserId with
             | Some userId ->
@@ -95,7 +99,7 @@ module Server =
     
     [<Remote>]
     let addEmployer (employer : Employer) =
-        let oUserId = getCurrentUserId()
+        let oUserId = getCurrentUserId() |> Async.RunSynchronously
         let addEmployerDB (dbConn : NpgsqlConnection) (employer : Employer) (userId : int) =
             use command = new NpgsqlCommand("insert into employer (userId, company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone) values(:userId, :company, :street, :postcode, :city, :gender, :degree, :firstName, :lastName, :email, :phone, :mobilePhone) returning id", dbConn)
             command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
@@ -125,7 +129,7 @@ module Server =
 
     [<Remote>]
     let applyNow (employerId : int) (templateId : int) =
-        let oUserId = getCurrentUserId() 
+        let oUserId = getCurrentUserId() |> Async.RunSynchronously
         async {
             match oUserId with 
             | None -> return fail "Please login first"
@@ -188,7 +192,7 @@ module Server =
                           ("$absatz2", "hallo")
                           ("$datumHeute", DateTime.Today.ToString("dd.MM.yyyy"))
                         ] |> Map.ofList
-                    Odt.replaceInOdt template.filePaths.[0] "c:/users/rene/myodt/" "c:/users/rene/myodt1/m1.odt" myMap
+                    Odt.replaceInOdt template.filePaths.[0] "c:/users/rene/myodt/" "c:/users/rene/myodt1/m1.odt" myMap |> ignore
                     //sendEmail "rene.ederer.nbg@gmail.com" "René Ederer" employer.email template.emailSubject template.emailBody template.pdfPaths
                     return ok (Odt.odtToPdf "c:/users/rene/myodt1/m1.odt")
                 | Ok _, Bad vs ->
@@ -204,7 +208,7 @@ module Server =
     
     [<Remote>]
     let applyNowByTemplateName (employerId : int) (templateName : string) =
-        let oUserId = getCurrentUserId() 
+        let oUserId = getCurrentUserId() |> Async.RunSynchronously
         async {
             match oUserId with 
             | None -> return fail "Please login first"
@@ -345,68 +349,75 @@ module Server =
 
     [<Remote>]
     let login (email : string) (password : string) =
-        use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
-        dbConn.Open()
-        match (Database.getIdPasswordSaltAndGuid dbConn email) with
-        | Bad v -> 
-             fail "Email or password wrong."
-        | Ok ((userId, hashedPassword, salt, None), _) ->
-            if generateHash password salt 1000 64 = hashedPassword
-            then
-                GetContext().UserSession.LoginUser(string userId) |> Async.RunSynchronously
-                ok <| string userId
-            else fail "Email or password wrong."
-        | Ok ((_, _, _, Some guid), _) ->
-            fail "Please confirm your email"
+        async {
+            use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
+            dbConn.Open()
+            match (Database.getIdPasswordSaltAndGuid dbConn email) with
+            | Bad v -> 
+                 return fail "Email or password wrong."
+            | Ok ((userId, hashedPassword, salt, None), _) ->
+                if generateHash password salt 1000 64 = hashedPassword
+                then
+                    do! GetContext().UserSession.LoginUser(string userId)
+                    return ok <| string userId
+                else return  fail "Email or password wrong."
+            | Ok ((_, _, _, Some guid), _) ->
+                return fail "Please confirm your email"
+        }
 
     [<Remote>]
     let register email (password1 : string) password2 =
-        use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
-        dbConn.Open()
-        match (Database.userEmailExists dbConn email), password1, password2 with
-        | _ when password1 <> password2 -> fail "Passwords are not equal"
-        | Bad v, _, _ -> Bad v
-        | Ok (true, _), _, _ -> fail "Email already exists"
-        | Ok (false, _), _, _ -> 
-            let salt = generateSalt(64)
-            let hashedPassword = generateHash password1 salt 1000 64
-            let guid = Guid.NewGuid().ToString()
-            match Database.insertNewUser dbConn email hashedPassword salt guid with
-            | Bad v ->
-                Bad v
-            | Ok _ ->
-                sendEmail
-                    "rene.ederer.nbg@gmail.com"
-                    "bewerbungsspam.de"
-                    email
-                    "Please confirm your email address"
-                    ("Dear user,\n\nplease visit this link to confirm your email address.\nhttp://bewerbungsspam.de/confirmemail?email=rene.ederer.nbg@gmail.com&guid=" + guid + "\nPlease excuse the inconvenience.\n\nYour team from www.bewerbungsspam.de")
-                    []
-                ok ()
+        async {
+            use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
+            dbConn.Open()
+            match (Database.userEmailExists dbConn email), password1, password2 with
+            | _ when password1 <> password2 -> return fail "Passwords are not equal"
+            | Bad v, _, _ -> return Bad v
+            | Ok (true, _), _, _ -> return fail "Email already exists"
+            | Ok (false, _), _, _ -> 
+                let salt = generateSalt(64)
+                let hashedPassword = generateHash password1 salt 1000 64
+                let guid = Guid.NewGuid().ToString()
+                match Database.insertNewUser dbConn email hashedPassword salt guid with
+                | Bad v ->
+                    return Bad v
+                | Ok _ ->
+                    sendEmail
+                        "rene.ederer.nbg@gmail.com"
+                        "bewerbungsspam.de"
+                        email
+                        "Please confirm your email address"
+                        ("Dear user,\n\nplease visit this link to confirm your email address.\nhttp://bewerbungsspam.de/confirmemail?email=rene.ederer.nbg@gmail.com&guid=" + guid + "\nPlease excuse the inconvenience.\n\nYour team from www.bewerbungsspam.de")
+                        []
+                    return ok ()
+        }
 
     [<Remote>]
     let confirmEmail email guid =
-        trial {
+        async {
             use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
             dbConn.Open()
-            let! dbGuidOpt = Database.getGuid dbConn email
-            match dbGuidOpt with
-            | None -> return! (fail "Email already confirmed")
+            let oDbGuidOpt = Database.getGuid dbConn email
+            match oDbGuidOpt with
+            | None -> return ok "Email already confirmed"
             | Some dbGuid when guid = dbGuid ->
-                return! Database.setGuidToNull dbConn email
+                return Database.setGuidToNull dbConn email
             | Some _ ->
-                return! fail "Unknown guid"
+                return fail "Unknown guid"
 
         }
 
     [<Remote>]
     let getTemplateNames () =
-        use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
-        dbConn.Open()
-        match getCurrentUserId () with
-        | Some userId ->
-            Database.getTemplateNames dbConn userId
-        | None -> failwith "User is not logged in"
+        async {
+            use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
+            dbConn.Open()
+            let! oUserId = getCurrentUserId()
+            match oUserId with
+            | Some userId ->
+                return Database.getTemplateNames dbConn userId
+            | None -> return! failwith "User is not logged in"
+        }
 
 
 

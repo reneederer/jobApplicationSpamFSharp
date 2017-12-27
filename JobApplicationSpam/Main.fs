@@ -178,7 +178,7 @@ module Site =
         let message =
             match ctx.Request.Get.["email"], ctx.Request.Get.["guid"] with
             | Some email, Some guid->
-                match Server.confirmEmail email guid with
+                match Server.confirmEmail email guid |> Async.RunSynchronously with
                 | Ok _ -> "Great! Your email has been confirmed."
                 | Bad vs -> "Email confirmation has failed."
             | Some _, None

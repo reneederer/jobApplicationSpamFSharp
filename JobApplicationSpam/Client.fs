@@ -172,18 +172,21 @@ module Client =
         let varCity = Var.Create("")
         let varPhone = Var.Create("")
         let varMobilePhone = Var.Create("")
-        match Server.getCurrentUserValues () with 
-        | Some userValues ->
-            varGender.Value <- userValues.gender
-            varDegree.Value <- userValues.degree
-            varFirstName.Value <- userValues.firstName
-            varLastName.Value <- userValues.lastName
-            varStreet.Value <- userValues.street
-            varPostcode.Value <- userValues.postcode
-            varCity.Value <- userValues.city
-            varPhone.Value <- userValues.phone
-            varMobilePhone.Value <- userValues.mobilePhone
-        | None -> ()
+        async {
+            let! currentUserValues = Server.getCurrentUserValues()
+            match currentUserValues with 
+            | Some userValues ->
+                varGender.Value <- userValues.gender
+                varDegree.Value <- userValues.degree
+                varFirstName.Value <- userValues.firstName
+                varLastName.Value <- userValues.lastName
+                varStreet.Value <- userValues.street
+                varPostcode.Value <- userValues.postcode
+                varCity.Value <- userValues.city
+                varPhone.Value <- userValues.phone
+                varMobilePhone.Value <- userValues.mobilePhone
+            | None -> ()
+        } |> Async.Start
         div [  h1 [text (translate currentLanguage StrEditUserValues)]
                divAttr
                  [ attr.``class`` "form-group" ]
@@ -370,8 +373,14 @@ module Client =
         let varEmail = Var.Create ""
         let varPhone = Var.Create ""
         let varMobilePhone = Var.Create ""
-        let templateList = Server.getTemplateNames ()
-        let varTemplate = Var.Create(Seq.tryItem 0 templateList |> Option.defaultValue "")
+
+        let varTemplate = Var.Create("")
+        let varTemplateList = Var.Create([])
+        async {
+            let! templateList = Server.getTemplateNames ()
+            varTemplateList.Value <- templateList
+            varTemplate.Value <- Seq.tryItem 0 templateList |> Option.defaultValue ""
+        } |> Async.Start
         let varAddEmployerAction = Var.Create JustAddEmployer
         formAttr
           [ attr.``class`` "form-horizontal"; ]
@@ -557,7 +566,7 @@ module Client =
                             attr.value varMobilePhone.Value
                           ]
                           id
-                          templateList
+                          varTemplateList.Value
                           varTemplate
                       ]
                   ]
@@ -735,9 +744,12 @@ module Client =
         let varTxtLoginPassword = Var.Create ""
         formAttr
           [ on.submit (fun _ _ ->
-              match Server.login (varTxtLoginEmail.Value) (varTxtLoginPassword.Value) with
-              | Ok (v, _) -> ()
-              | Bad xs -> JS.Alert(String.concat ", " xs)
+              async {
+                  let! loginResult = Server.login (varTxtLoginEmail.Value) (varTxtLoginPassword.Value)
+                  match loginResult with
+                  | Ok (v, _) -> ()
+                  | Bad xs -> JS.Alert(String.concat ", " xs)
+              } |> Async.Start
               )
           ]
           [ divAttr
@@ -799,7 +811,6 @@ module Client =
         h1 [text "hallo"]
 
 
-
     [<JavaScript>]
     let createTemplate () = 
         let varUserTitle = Var.Create("")
@@ -817,6 +828,7 @@ module Client =
         let varCompanyCity = Var.Create("Hamburg")
         let varSubject = Var.Create("Bewerbung als Fachinformatiker für Anwendungsentwicklung")
         let varTextArea = Var.Create("abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz1234567890abcdefghijklmnopqrstuvwxyz1234567890")
+        let varCover = Var.Create(Upload)
         let resize (el : JQuery) font fontSize fontWeight (defaultWidth: int) =
             let str = el.Val().ToString().Replace(" ", "&nbsp;")
             if str = ""
@@ -837,7 +849,7 @@ module Client =
         let findLineBreak (str : string) containerWidth font fontSize fontWeight =
             let rec findLineBreak' beginIndex endIndex n =
                 if n < 0
-                then "impossible"
+                then str
                 else
                     let currentIndex = beginIndex + (endIndex - beginIndex + 1) / 2
                     let currentString = str.Substring(0, currentIndex)
@@ -857,6 +869,17 @@ module Client =
             varUserLastName.Value <- myString
         div
           [ h1 [ text "Create a template" ]
+            div
+              [ Doc.Radio [attr.id "uploadCover"; on.click (fun _ _ -> JS.Alert(varCover.Value.ToString())); attr.radiogroup "cover" ] Upload varCover
+                labelAttr [ attr.``for`` "uploadCover" ] [text "Hochladen"]
+                br []
+                Doc.Radio [attr.id "createCover"; on.click (fun _ _ -> JS.Alert(varCover.Value.ToString())); attr.radiogroup "cover" ] Create varCover
+                labelAttr [ attr.``for`` "createCover" ] [text "Online erstellen"]
+                br []
+                Doc.Radio [attr.id "ignoreCover"; on.click (fun _ _ -> JS.Alert(varCover.Value.ToString())); attr.radiogroup "cover" ] Ignore varCover
+                labelAttr [ attr.``for`` "ignoreCover" ] [text "Nicht verwenden"]
+                br []
+              ]
             divAttr [attr.``class`` "page"]
               [ divAttr [attr.style "height: 225pt; width: 100%; background-color: lightblue"]
                   [ Doc.Input [ attr.``class`` "grow-input"; attr.autofocus "autofocus"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150; findLineBreak varTextArea.Value (JQuery("#mainText").Width()) "Arial" "12pt" "normal"); attr.placeholder "Dein Titel" ] varUserTitle
@@ -905,6 +928,7 @@ module Client =
                     text "$meinTitel $meinVorname $meinNachname"
                   ]
               ]
+            buttonAttr [attr.value "Abschicken"; on.click (fun _ _ -> ())] []
           ]
 (*        <textarea style="min-width: 100%; height:100%; font-family: inherit; font-size: inherit">
 It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English. Many desktop publishing packages and web page editors now use Lorem Ipsum as their default model text, and a search for 'lorem ipsum' will uncover many web sites still in their infancy. Various versions have evolved over the years, sometimes by accident, sometimes on purpose (injected humour and the like).

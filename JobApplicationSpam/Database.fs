@@ -231,15 +231,10 @@ module Database =
     let getGuid (dbConn : NpgsqlConnection) (email : string) =
         use command = new NpgsqlCommand("select guid from users where email = :email", dbConn)
         command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
-        try
-            let guidStr = command.ExecuteScalar().ToString()
-            if String.IsNullOrEmpty guidStr
-                then ok None
-                else ok (Some guidStr)
-        with
-        | :? PostgresException
-        | _ ->
-            fail "An error occured while trying to get guid"
+        let guidStr = command.ExecuteScalar().ToString()
+        if String.IsNullOrEmpty guidStr
+            then None
+            else Some guidStr
 
     let setGuidToNull (dbConn : NpgsqlConnection) (email : string) =
         use command = new NpgsqlCommand("update users set guid = null where email = :email", dbConn)

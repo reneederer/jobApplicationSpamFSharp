@@ -56,5 +56,17 @@ module Types =
           filePaths : list<string>
         }
 
+    [<WebSharper.JavaScript>]
+    type JobApplicationContent =
+    | Upload
+    | Create
+    | Ignore
+    with
+        override this.ToString() =
+            match this with 
+            | Upload -> "Upload"
+            | Create -> "Create"
+            | Ignore -> "Ignore"
+
 
 

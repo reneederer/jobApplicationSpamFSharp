@@ -848,10 +848,33 @@ module Client =
         let varMainText = Var.Create ""
         let varCover = Var.Create Upload
         let varHtmlJobApplication = Var.Create( {name = ""; pages = [] } )
+        let varHtmlJobApplicationNames = Var.Create([""])
+        let varHtmlJobApplicationName = Var.Create("")
+        let fillHtmlJobApplication htmlJobApplicationOffset =
+            async {
+                let! htmlJobApplication = Server.getHtmlJobApplicationOffset htmlJobApplicationOffset
+                varHtmlJobApplication.Value <- htmlJobApplication
+                JQuery("#mainText").Val((htmlJobApplication.pages |> Seq.item 0).map.["mainText"].Replace("\\n", "\n")) |> ignore
+            } |> Async.Start
+        let fillHtmlJobApplicationNames () =
+            async {
+                let! htmlJobApplicationNames = Server.getHtmlJobApplicationNames()
+                varHtmlJobApplicationName.Value <- htmlJobApplicationNames.[0]
+                varHtmlJobApplicationNames.Value <- htmlJobApplicationNames
+                fillHtmlJobApplication (Seq.length htmlJobApplicationNames - 1)
+            } |> Async.Start
+        fillHtmlJobApplicationNames ()
         async {
-            let! htmlJobApplication = Server.getHtmlJobApplication 2
-            varHtmlJobApplication.Value <- htmlJobApplication
-            varMainText.Value <- (htmlJobApplication.pages |> Seq.item 0).map.["mainText"]
+                let! userValues = Server.getCurrentUserValues ()
+                varUserGender.Value <- userValues.gender
+                varUserDegree.Value <- userValues.degree
+                varUserFirstName.Value <- userValues.firstName
+                varUserLastName.Value <- userValues.lastName
+                varUserStreet.Value <- userValues.street
+                varUserPostcode.Value <- userValues.postcode
+                varUserCity.Value <- userValues.city
+                varUserPhone.Value <- userValues.phone
+                varUserMobilePhone.Value <- userValues.mobilePhone
         } |> Async.Start
     
         let updateMainText () =
@@ -860,6 +883,7 @@ module Client =
                 varMainText.Value <- "Sehr geehrte Frau " + varBossDegree.Value + " " + varBossLastName.Value + "\n" + varMainText.Value
             | Gender.Male ->
                 varMainText.Value <- "Sehr geehrter Herr " + varBossDegree.Value + " " + varBossLastName.Value + "\n" + varMainText.Value
+
         let resize (el : JQuery) font fontSize fontWeight (defaultWidth: int) =
             let str = el.Val().ToString().Replace(" ", "&nbsp;")
             if str = ""
@@ -932,7 +956,7 @@ module Client =
                 getTextAreaLines (varMainText.Value) (JQuery("#mainText").Width()) "Arial" "12pt" "normal"
                 |> String.concat "\n"
             let htmlJobApplication =
-                { name = "hallo"
+                { name = varHtmlJobApplicationName.Value
                   pages =
                     [ { name = "Anschreiben"
                         jobApplicationTemplateId = 1
@@ -1008,6 +1032,7 @@ module Client =
 
         div
           [ h1 [ text "Create a template" ]
+            Doc.SelectDyn [attr.style "min-width: 300px"; attr.id "selectHtmlJobApplicationName"; on.change (fun el _ -> fillHtmlJobApplication el?selectedIndex)] id varHtmlJobApplicationNames.View varHtmlJobApplicationName
             div
               [ Doc.Radio [attr.id "uploadCover"; on.click (fun _ _ -> JS.Alert(varCover.Value.ToString())); attr.radiogroup "cover" ] Upload varCover
                 labelAttr [ attr.``for`` "uploadCover" ] [text "Hochladen"]
@@ -1021,7 +1046,7 @@ module Client =
               ]
             divAttr [attr.``class`` "page"]
               [ divAttr [attr.style "height: 225pt; width: 100%; background-color: lightblue"]
-                  [ Doc.Input [ attr.``class`` "grow-input"; attr.autofocus "autofocus"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Dein Titel" ] varUserDegree
+                  [ Doc.Input [ attr.``class`` "grow-input"; attr.autofocus "autofocus"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150; fillHtmlJobApplicationNames ()); attr.placeholder "Dein Titel" ] varUserDegree
                     Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Dein Vorname" ] varUserFirstName
                     Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Dein Nachname" ] varUserLastName
                     br []

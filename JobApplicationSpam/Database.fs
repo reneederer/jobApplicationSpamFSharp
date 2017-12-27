@@ -49,7 +49,7 @@ module Database =
         use command = new NpgsqlCommand("select company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone from employer where userId = :userId limit 1 offset :offset", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("offset", offset)) |> ignore
-        let reader = command.ExecuteReader()
+        use reader = command.ExecuteReader()
         failwith "Not implemenetedddd"
 
     let getUserIdByEmail (dbConn : NpgsqlConnection) (email : string) =
@@ -308,5 +308,21 @@ module Database =
         { name = htmlJobApplicationName
           pages = pages
         }
+    
+    let getHtmlJobApplicationOffset (dbConn : NpgsqlConnection) (userId : int) (htmlJobApplicationOffset : int) =
+        use command = new NpgsqlCommand("select id from htmlJobApplication where userId = :userId offset :htmlJobApplicationOffset limit 1", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("htmlJobApplicationOffset", htmlJobApplicationOffset)) |> ignore
+        let htmlJobApplicationId = command.ExecuteScalar() |> string |> Int32.Parse
+        command.Dispose()
+        getHtmlJobApplication dbConn htmlJobApplicationId
+
+    let getHtmlJobApplicationNames (dbConn : NpgsqlConnection) (userId : int) =
+        use command = new NpgsqlCommand("select name from htmlJobApplication where userId = :userId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        use reader = command.ExecuteReader()
+        [ while reader.Read() do
+            yield reader.GetString(0)
+        ]
 
 

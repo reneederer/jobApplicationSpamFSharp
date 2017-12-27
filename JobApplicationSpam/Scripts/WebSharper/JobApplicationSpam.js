@@ -1,7 +1,7 @@
 (function()
 {
  "use strict";
- var Global,JobApplicationSpam,Types,JobApplicationContent,Client,Language,Str,AddEmployerAction,SC$1,JobApplicationSpam_GeneratedPrintf,IntelliFactory,Runtime,WebSharper,UI,Next,Var,Strings,Utils,List,Arrays,Collections,Map,Concurrency,Remoting,AjaxRemotingProvider,Seq,Doc,AttrProxy,AttrModule,Date,Numeric;
+ var Global,JobApplicationSpam,Types,JobApplicationContent,Client,Language,Str,AddEmployerAction,SC$1,JobApplicationSpam_GeneratedPrintf,IntelliFactory,Runtime,WebSharper,Concurrency,Remoting,AjaxRemotingProvider,UI,Next,Var,Strings,Seq,Utils,List,Arrays,Collections,Map,Doc,AttrProxy,AttrModule,Date,Numeric;
  Global=window;
  JobApplicationSpam=Global.JobApplicationSpam=Global.JobApplicationSpam||{};
  Types=JobApplicationSpam.Types=JobApplicationSpam.Types||{};
@@ -15,19 +15,19 @@
  IntelliFactory=Global.IntelliFactory;
  Runtime=IntelliFactory&&IntelliFactory.Runtime;
  WebSharper=Global.WebSharper;
+ Concurrency=WebSharper&&WebSharper.Concurrency;
+ Remoting=WebSharper&&WebSharper.Remoting;
+ AjaxRemotingProvider=Remoting&&Remoting.AjaxRemotingProvider;
  UI=WebSharper&&WebSharper.UI;
  Next=UI&&UI.Next;
  Var=Next&&Next.Var;
  Strings=WebSharper&&WebSharper.Strings;
+ Seq=WebSharper&&WebSharper.Seq;
  Utils=WebSharper&&WebSharper.Utils;
  List=WebSharper&&WebSharper.List;
  Arrays=WebSharper&&WebSharper.Arrays;
  Collections=WebSharper&&WebSharper.Collections;
  Map=Collections&&Collections.Map;
- Concurrency=WebSharper&&WebSharper.Concurrency;
- Remoting=WebSharper&&WebSharper.Remoting;
- AjaxRemotingProvider=Remoting&&Remoting.AjaxRemotingProvider;
- Seq=WebSharper&&WebSharper.Seq;
  Doc=Next&&Next.Doc;
  AttrProxy=Next&&Next.AttrProxy;
  AttrModule=Next&&Next.AttrModule;
@@ -158,7 +158,34 @@
  };
  Client.createTemplate=function()
  {
-  var varUserValuesFromDb,b,varUserDegree,varUserFirstName,varUserLastName,varUserStreet,varUserPostcode,varUserCity,varCompanyStreet,varCompanyPostcode,varCompanyCity,varBossGender,varBossDegree,varBossFirstName,varBossLastName,varSubject,varMainText,varCover,varHtmlJobApplication,b$1,c;
+  var varUserValuesFromDb,b,varUserGender,varUserDegree,varUserFirstName,varUserLastName,varUserStreet,varUserPostcode,varUserCity,varUserPhone,varUserMobilePhone,varCompanyStreet,varCompanyPostcode,varCompanyCity,varBossGender,varBossDegree,varBossFirstName,varBossLastName,varSubject,varMainText,varCover,varHtmlJobApplication,varHtmlJobApplicationNames,varHtmlJobApplicationName,b$1,c;
+  function fillHtmlJobApplication(htmlJobApplicationOffset)
+  {
+   var b$2;
+   Concurrency.Start((b$2=null,Concurrency.Delay(function()
+   {
+    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getHtmlJobApplicationOffset:-164096779",[htmlJobApplicationOffset]),function(a)
+    {
+     Var.Set(varHtmlJobApplication,a);
+     Global.jQuery("#mainText").val(Strings.Replace(Seq.nth(0,a.pages).map.get_Item("mainText"),"\\n","\n"));
+     return Concurrency.Zero();
+    });
+   })),null);
+  }
+  function fillHtmlJobApplicationNames()
+  {
+   var b$2;
+   Concurrency.Start((b$2=null,Concurrency.Delay(function()
+   {
+    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getHtmlJobApplicationNames:1994133801",[]),function(a)
+    {
+     Var.Set(varHtmlJobApplicationName,a.get_Item(0));
+     Var.Set(varHtmlJobApplicationNames,a);
+     fillHtmlJobApplication(Seq.length(a)-1);
+     return Concurrency.Zero();
+    });
+   })),null);
+  }
   function updateMainText()
   {
    if(varBossGender.c.$==0)
@@ -265,7 +292,7 @@
   {
    var htmlJobApplication;
    htmlJobApplication={
-    name:"hallo",
+    name:varHtmlJobApplicationName.c,
     pages:List.ofArray([{
      name:"Anschreiben",
      jobApplicationTemplateId:1,
@@ -295,15 +322,15 @@
     return Concurrency.Zero();
    });
   })),null);
-  Var.Create$1(varUserValuesFromDb.c.gender);
+  varUserGender=Var.Create$1(varUserValuesFromDb.c.gender);
   varUserDegree=Var.Create$1(varUserValuesFromDb.c.degree);
   varUserFirstName=Var.Create$1(varUserValuesFromDb.c.firstName);
   varUserLastName=Var.Create$1(varUserValuesFromDb.c.lastName);
   varUserStreet=Var.Create$1(varUserValuesFromDb.c.street);
   varUserPostcode=Var.Create$1(varUserValuesFromDb.c.postcode);
   varUserCity=Var.Create$1(varUserValuesFromDb.c.city);
-  Var.Create$1(varUserValuesFromDb.c.phone);
-  Var.Create$1(varUserValuesFromDb.c.mobilePhone);
+  varUserPhone=Var.Create$1(varUserValuesFromDb.c.phone);
+  varUserMobilePhone=Var.Create$1(varUserValuesFromDb.c.mobilePhone);
   Var.Create$1("");
   varCompanyStreet=Var.Create$1("");
   varCompanyPostcode=Var.Create$1("");
@@ -324,17 +351,33 @@
    name:"",
    pages:List.T.Empty
   });
+  varHtmlJobApplicationNames=Var.Create$1(List.ofArray([""]));
+  varHtmlJobApplicationName=Var.Create$1("");
+  fillHtmlJobApplicationNames();
   Concurrency.Start((b$1=null,Concurrency.Delay(function()
   {
-   return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getHtmlJobApplication:-164096779",[2]),function(a)
+   return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getCurrentUserValues:-337599557",[]),function(a)
    {
-    Var.Set(varHtmlJobApplication,a);
-    Var.Set(varMainText,Seq.nth(0,a.pages).map.get_Item("mainText"));
+    Var.Set(varUserGender,a.gender);
+    Var.Set(varUserDegree,a.degree);
+    Var.Set(varUserFirstName,a.firstName);
+    Var.Set(varUserLastName,a.lastName);
+    Var.Set(varUserStreet,a.street);
+    Var.Set(varUserPostcode,a.postcode);
+    Var.Set(varUserCity,a.city);
+    Var.Set(varUserPhone,a.phone);
+    Var.Set(varUserMobilePhone,a.mobilePhone);
     return Concurrency.Zero();
    });
   })),null);
   Var.Create$1("nothing");
-  return Doc.Element("div",[],[Doc.Element("h1",[],[Doc.TextNode("Create a template")]),Doc.Element("div",[],[Doc.Radio([AttrProxy.Create("id","uploadCover"),AttrModule.Handler("click",function()
+  return Doc.Element("div",[],[Doc.Element("h1",[],[Doc.TextNode("Create a template")]),Doc.SelectDyn([AttrProxy.Create("style","min-width: 300px"),AttrProxy.Create("id","selectHtmlJobApplicationName"),AttrModule.Handler("change",function(el)
+  {
+   return function()
+   {
+    return fillHtmlJobApplication(el.selectedIndex);
+   };
+  })],Global.id,varHtmlJobApplicationNames.v,varHtmlJobApplicationName),Doc.Element("div",[],[Doc.Radio([AttrProxy.Create("id","uploadCover"),AttrModule.Handler("click",function()
   {
    return function()
    {
@@ -356,7 +399,8 @@
   {
    return function()
    {
-    return resize(Global.jQuery(el),"Arial","12pt","normal",150);
+    resize(Global.jQuery(el),"Arial","12pt","normal",150);
+    return fillHtmlJobApplicationNames();
    };
   }),AttrProxy.Create("placeholder","Dein Titel")],varUserDegree),Doc.Input([AttrProxy.Create("class","grow-input"),AttrModule.Handler("input",function(el)
   {

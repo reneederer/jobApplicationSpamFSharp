@@ -431,14 +431,30 @@ module Server =
             | None -> return! failwith "User is not logged in"
         }
 
+
     [<Remote>]
-    let getHtmlJobApplication (htmlJobApplicationId : int) =
+    let getHtmlJobApplicationOffset (htmlJobApplicationOffset : int) =
+        let oUserId = getCurrentUserId() |> Async.RunSynchronously
+        async {
+            match oUserId with
+            | Some userId ->
+                use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
+                dbConn.Open()
+                return Database.getHtmlJobApplicationOffset dbConn userId htmlJobApplicationOffset
+            | None -> return failwith "No user logged in"
+        }
+
+    [<Remote>]
+    let getHtmlJobApplicationNames () =
+        let oUserId = getCurrentUserId() |> Async.RunSynchronously
         async {
             use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
             dbConn.Open()
-            return Database.getHtmlJobApplication dbConn htmlJobApplicationId
+            match oUserId with
+            | Some userId ->
+                return Database.getHtmlJobApplicationNames dbConn userId
+            | None ->
+                return failwith "No user logged in"
         }
-
-
 
 

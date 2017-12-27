@@ -1,7 +1,4 @@
-﻿\c jobapplicationspam;
-
-set client_encoding to 'UTF8';
-
+﻿;set client_encoding to 'UTF8';
 drop table if exists htmlJobApplicationPageValue;
 drop table if exists htmlJobApplicationPage;
 drop table if exists htmlJobApplication;

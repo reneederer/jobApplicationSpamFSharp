@@ -195,10 +195,9 @@ module Database =
         addedUserValuesId
     
     let userEmailExists (dbConn : NpgsqlConnection) (email : string) =
-        use command = new NpgsqlCommand("select count(*) from users where email = :email", dbConn)
+        use command = new NpgsqlCommand("select count(*) from users where email = :email limit 1", dbConn)
         command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
-        let emailCount = command.ExecuteScalar() |> string |> Int32.Parse
-        let emailExists = emailCount = 1
+        let emailExists = (command.ExecuteScalar() |> string |> Int32.Parse) = 1
         log.Debug(sprintf "%s = %b" email emailExists)
         emailExists
 
@@ -206,12 +205,16 @@ module Database =
         use command = new NpgsqlCommand("select id, password, salt, guid from users where email = :email limit 1", dbConn)
         command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
         use reader = command.ExecuteReader()
-        reader.Read() |> ignore
         let ret =
-              reader.GetInt32(0)
-            , reader.["password"] |> string
-            , reader.["salt"] |> string
-            , if reader.IsDBNull(3) then None else Some (reader.["guid"] |> string)
+            if reader.Read()
+            then
+                Some
+                    ( reader.GetInt32(0)
+                    , reader.["password"] |> string
+                    , reader.["salt"] |> string
+                    , if reader.IsDBNull(3) then None else Some (reader.GetString(3))
+                    )
+            else None
         log.Debug(sprintf "%s = %A" email ret)
         ret
 
@@ -230,18 +233,23 @@ module Database =
     let getGuid (dbConn : NpgsqlConnection) (email : string) =
         use command = new NpgsqlCommand("select guid from users where email = :email", dbConn)
         command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
-        let guidStr = command.ExecuteScalar().ToString()
-        let guid =
-            if String.IsNullOrEmpty guidStr
-            then None
-            else Some guidStr
-        log.Debug(sprintf "%s = %A" email guid)
-        guid
+        let guid = command.ExecuteScalar()
+        if guid = null then raise (new Exception("No record with email: " + email))
+        let oGuid =
+            match guid |> string with
+            | null -> None
+            | "" -> None
+            | guidStr -> Some guidStr
+        log.Debug(sprintf "%s = %A" email oGuid)
+        oGuid
 
     let setGuidToNull (dbConn : NpgsqlConnection) (email : string) =
-        use command = new NpgsqlCommand("update users set guid = null where email = :email", dbConn)
+        use command = new NpgsqlCommand("update users set guid = null where email = :email and guid is not null", dbConn)
         command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
-        command.ExecuteNonQuery() |> ignore
+        let affectedRowCount = command.ExecuteNonQuery()
+        if affectedRowCount <> 1
+        then
+            failwith <| "Email does not exist or guid was already null: " + email
         log.Debug(sprintf "%s = ()" email)
     
     let saveHtmlJobApplication (dbConn : NpgsqlConnection) (htmlJobApplication : HtmlJobApplication) (userId : int) =

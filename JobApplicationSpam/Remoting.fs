@@ -74,31 +74,6 @@ module Server =
             | None -> return fail "Please login."
         }
 
-
-    let userEmailExists (dbConn : NpgsqlConnection) (email : string) =
-        use command = new NpgsqlCommand("select count(*) from users where email = :email", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
-        try
-            ok ((command.ExecuteScalar() |> string |> Int32.Parse) = 1)
-        with
-        | :? PostgresException
-        | _ ->
-            fail "An error occured while checking if email exists"
-    
-    [<Remote>]
-    let emailExists email = 
-        async {
-            use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
-            dbConn.Open()
-            let emailExists = userEmailExists dbConn email
-            let resultStr =
-                match emailExists with
-                | Ok (true, _) -> sprintf "Email %s does exist." email
-                | Ok (false, _) -> sprintf "Email %s does not exist" email
-                | Bad _ -> "an error occurred"
-            return resultStr
-        }
-
     
     [<Remote>]
     let addEmployer (employer : Employer) =
@@ -331,14 +306,16 @@ module Server =
         use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
         dbConn.Open()
         match Database.getIdPasswordSaltAndGuid dbConn email with
-        | userId, hashedPassword, salt, None ->
+        | Some (userId, hashedPassword, salt, None) ->
             if generateHash password salt 1000 64 = hashedPassword
             then
                 GetContext().UserSession.LoginUser(string userId) |> Async.RunSynchronously
                 ok <| string userId
             else fail "Email or password wrong."
-        |  _, _, _, Some guid ->
+        |  Some (_, _, _, Some guid) ->
             fail "Please confirm your email"
+        | None ->
+            fail "Email is unknown"
 
     [<Remote>]
     let register email (password1 : string) password2 =
@@ -362,7 +339,7 @@ module Server =
                     "Please confirm your email address"
                     ("Dear user,\n\nplease visit this link to confirm your email address.\nhttp://bewerbungsspam.de/confirmemail?email=rene.ederer.nbg@gmail.com&guid=" + guid + "\nPlease excuse the inconvenience.\n\nYour team from www.bewerbungsspam.de")
                     []
-                return ok ()
+                return ok "Please confirm your email"
         }
 
     [<Remote>]

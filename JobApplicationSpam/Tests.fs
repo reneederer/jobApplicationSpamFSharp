@@ -17,7 +17,7 @@ module MyTests =
     let mutable dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
     dbConn.Open()
     let mutable transaction = dbConn.BeginTransaction()
-    
+
     [<SetUp>]
     let setup () =
         dbConn <- new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspamtest")
@@ -72,6 +72,73 @@ module MyTests =
                 userValues
                 userId
         Database.getUserValues dbConn userId |> should equal (Some userValues)
+
+    [<Test; CategoryAttribute("Database")>]
+    let ``userEmailExists "rene.ederer(at)gmail.com (existing) should return true`` () =
+        Database.userEmailExists dbConn "rene.ederer.nbg@gmail.com" |> should equal true
+
+
+    [<Test; CategoryAttribute("Database")>]
+    let ``userEmailExists "some.nonexisting(at)gmail.com (nonexisting) should return false`` () =
+        Database.userEmailExists dbConn "some.nonexisting.nbg@gmail.com" |> should equal false
+
+
+    [<Test; CategoryAttribute("Database")>]
+    let ``getIdPasswordSaltAndGuid "rene.ederer.nbg(at)gmail.com" (existing) should return a tuple`` () =
+        let expected =
+            ( 1
+            , "r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA=="
+            , "JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og=="
+            , (None : option<string>)
+            )
+        Database.getIdPasswordSaltAndGuid dbConn "rene.ederer.nbg@gmail.com" |> should equal (Some expected)
+
+    [<Test; CategoryAttribute("Database")>]
+    let ``getIdPasswordSaltAndGuid "some.nonexisting(at)gmail.com" (nonexisting) should return a tuple`` () =
+        Database.getIdPasswordSaltAndGuid dbConn "some.nonexisting@gmail.com" |> should equal None
+
+
+    [<Test; CategoryAttribute("Database")>]
+    let ``insertNewUser "some.nonexisting(at)gmail.com" (existing) should throw an Exception`` () =
+        let insertedNewUserId = Database.insertNewUser dbConn "some.nonexisting@gmail.com" "password" "salt" "guid"
+        let email = Database.getEmailByUserId dbConn insertedNewUserId
+        email |> should equal (Some "some.nonexisting@gmail.com")
+
+    [<Test; CategoryAttribute("Database")>]
+    let ``insertNewUser "rene.ederer.nbg(at)gmail.com" (existing) should throw a PostgresException`` () =
+        (fun () -> Database.insertNewUser dbConn "rene.ederer.nbg@gmail.com" "password" "salt" "guid" |> ignore)
+        |> should throw typeof<PostgresException>
+
+    [<Test; CategoryAttribute("Database")>]
+    let ``getGuid "some.nonexisting(at)gmail.com" (nonexisting) should throw an exception`` () =
+        (fun () -> Database.getGuid dbConn "some.nonexisting@gmail.com" |> ignore)
+        |> should throw typeof<Exception>
+
+
+    [<Test; CategoryAttribute("Database")>]
+    let ``getGuid "rene.ederer.nbg(at)gmail.com" (existing with guid=null) should return None`` () =
+        Database.getGuid dbConn "rene.ederer.nbg@gmail.com" |> should equal None
+
+    [<Test; CategoryAttribute("Database")>]
+    let ``getGuid "helmut.goerke(at)gmail.com" (existing with guid=someGuid) should return Some "..."`` () =
+        (Database.getGuid dbConn "helmut.goerke@gmail.com" |> Option.isSome) |> should be True
+
+
+    [<Test; CategoryAttribute("Database")>]
+    let ``setGuidToNull "rene.ederer.nbg(at)gmail.com" (existing, guid is null) should throw an Exception`` () =
+        (fun () -> Database.setGuidToNull dbConn "rene.ederer.nbg@gmail.com" |> ignore)
+        |> should throw typeof<Exception>
+
+    [<Test; CategoryAttribute("Database")>]
+    let ``setGuidToNull "some.nonexisting(at)gmail.com" (nonexisting) should throw an Exception`` () =
+        (fun () -> Database.setGuidToNull dbConn "some.nonexisting@gmail.com" |> ignore)
+        |> should throw typeof<Exception>
+
+    [<Test; CategoryAttribute("Database")>]
+    let ``setGuidToNull "helmut.goerke(at)gmail.com" (existing, guid not null) should set guid to null`` () =
+        Database.setGuidToNull dbConn "helmut.goerke@gmail.com"
+        Database.getGuid dbConn "helmut.goerke@gmail.com" |> Option.isNone |> should be True
+
 
 
 

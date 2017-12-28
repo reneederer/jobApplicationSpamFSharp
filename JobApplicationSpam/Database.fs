@@ -5,44 +5,47 @@ module Database =
     open Types
     open Chessie.ErrorHandling
     open System.Data
+    open log4net.Config
+    open log4net
+    open System.Reflection
+    open System.IO
 
-    let getUserValuesId (dbConn : NpgsqlConnection) (userId : int) =
-        use command = new NpgsqlCommand("select count(*) from userValues where userId = :userId", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
-        try
-            match command.ExecuteScalar() |> string |> Int32.Parse with
-            | 1 ->
-                ok userId
-            | 0 -> fail "Not found"
-            | _ -> failwith "More than 1 record with same userId in table userValues"
-        with
-        | :? PostgresException
-        | _ ->
-            fail "An error occured while trying to add user."
+    let log = LogManager.GetLogger(MethodBase.GetCurrentMethod().GetType())
 
     let getEmailByUserId (dbConn : NpgsqlConnection) (userId : int) =
         use command = new NpgsqlCommand("select email from users where id = :userId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
-        command.ExecuteScalar() |> string
+        use reader = command.ExecuteReader()
+        let oEmail =
+            if reader.Read()
+            then Some <| reader.GetString(0)
+            else None
+        log.Debug(sprintf "%i = %A" userId oEmail)
+        oEmail
         
     let getEmployer (dbConn : NpgsqlConnection) (employerId : int) =
         use command = new NpgsqlCommand("select company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone from employer where id = :employerId limit 1", dbConn)
         command.Parameters.Add(new NpgsqlParameter("employerId", employerId)) |> ignore
         use reader = command.ExecuteReader()
-        reader.Read() |> ignore
-        ok
-          { company = reader.GetString(0)
-            street = reader.GetString(1)
-            postcode = reader.GetString(2)
-            city = reader.GetString(3)
-            gender = Gender.fromString(reader.GetString(4))
-            degree = reader.GetString(5)
-            firstName = reader.GetString(6)
-            lastName = reader.GetString(7)
-            email = reader.GetString(8)
-            phone = reader.GetString(9)
-            mobilePhone = reader.GetString(10)
-          }
+        let oEmployer =
+            if reader.Read()
+            then
+              Some
+                  { company = reader.GetString(0)
+                    street = reader.GetString(1)
+                    postcode = reader.GetString(2)
+                    city = reader.GetString(3)
+                    gender = Gender.fromString(reader.GetString(4))
+                    degree = reader.GetString(5)
+                    firstName = reader.GetString(6)
+                    lastName = reader.GetString(7)
+                    email = reader.GetString(8)
+                    phone = reader.GetString(9)
+                    mobilePhone = reader.GetString(10)
+                  }
+            else None
+        log.Debug(sprintf "%i = %A" employerId oEmployer)
+        oEmployer
     
     let addEmployer (dbConn : NpgsqlConnection) (employer : Employer) (userId : int) =
         use command = new NpgsqlCommand("insert into employer (userId, company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone) values(:userId, :company, :street, :postcode, :city, :gender, :degree, :firstName, :lastName, :email, :phone, :mobilePhone) returning id", dbConn)
@@ -58,19 +61,12 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("email", employer.email)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("phone", employer.phone)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("mobilePhone", employer.mobilePhone)) |> ignore
-        try
-            ok (command.ExecuteScalar() |> string |> Int32.Parse)
-        with
-        | (e : Exception) ->
-            fail ("An error occured while trying to add employer." + e.Message)
+        let addedEmployerId = command.ExecuteScalar() |> string |> Int32.Parse
+        log.Debug(sprintf "%A %i = %i" employer userId addedEmployerId)
+        addedEmployerId
 
-    let getFirstEmployerOffset12ekjksdfa (dbConn : NpgsqlConnection) (userId : int) (offset : int) =
-        use command = new NpgsqlCommand("select company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone from employer where userId = :userId limit 1 offset :offset", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("offset", offset)) |> ignore
-        use reader = command.ExecuteReader()
-        failwith "Not implemenetedddd"
 
+(*
     let getUserIdByEmail (dbConn : NpgsqlConnection) (email : string) =
         use command = new NpgsqlCommand("select id from users where email = :email", dbConn)
         command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
@@ -80,6 +76,7 @@ module Database =
         | :? NpgsqlException as e ->
             reraise()
         | e -> fail "Email not found"
+        *)
     
 
     let getTemplateForJobApplication (dbConn : NpgsqlConnection) (templateId : int) =
@@ -155,116 +152,97 @@ module Database =
         use command =
             new NpgsqlCommand("""
                 select gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone
-                from userValues where userId = :userId limit 1"""
+                from userValues where userId = :userId order by id desc limit 1"""
                 , dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         use reader = command.ExecuteReader()
-        if reader.Read()
-        then
-            Some
-                { gender = reader.GetString(0) |> Gender.fromString
-                  degree = reader.GetString(1)
-                  firstName = reader.GetString(2)
-                  lastName = reader.GetString(3)
-                  street = reader.GetString(4)
-                  postcode = reader.GetString(5)
-                  city = reader.GetString(6)
-                  phone = reader.GetString(7)
-                  mobilePhone = reader.GetString(8)
-                }
-        else None
+        let oUserValues =
+            if reader.Read()
+            then
+                Some
+                    { gender = reader.GetString(0) |> Gender.fromString
+                      degree = reader.GetString(1)
+                      firstName = reader.GetString(2)
+                      lastName = reader.GetString(3)
+                      street = reader.GetString(4)
+                      postcode = reader.GetString(5)
+                      city = reader.GetString(6)
+                      phone = reader.GetString(7)
+                      mobilePhone = reader.GetString(8)
+                    }
+            else None
+        log.Debug(sprintf "%i = %A" userId oUserValues)
+        oUserValues
 
-    let setUserValues (dbConn : NpgsqlConnection) (userValues : UserValues) (userId : int) =
-        use command =
-            match getUserValuesId dbConn userId with
-            | Ok (userValuesId, _) ->
-                let command = new NpgsqlCommand("""
-                    update userValues set
-                        (gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone)
-                        = (:gender, :degree, :firstName, :lastName, :street, :postcode, :city, :phone, :mobilePhone)
-                        where userId = :userValuesId"""
-                    , dbConn)
-                command.Parameters.Add(new NpgsqlParameter("gender", userValues.gender.ToString())) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("degree", userValues.degree)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("firstName", userValues.firstName)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("lastName", userValues.lastName)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("street", userValues.street)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("postcode", userValues.postcode)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("city", userValues.city)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("phone", userValues.phone)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("mobilePhone", userValues.mobilePhone)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("userValuesId", userValuesId)) |> ignore
-                command
-            | Bad _ ->
-                let command = new NpgsqlCommand("""
-                    insert into userValues
-                        (userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone)
-                        values (:userId, :gender, :degree, :firstName, :lastName, :street, :postcode, :city, :phone, :mobilePhone)"""
-                    , dbConn)
-                command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("gender", userValues.gender.ToString())) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("degree", userValues.degree)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("firstName", userValues.firstName)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("lastName", userValues.lastName)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("street", userValues.street)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("postcode", userValues.postcode)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("city", userValues.city)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("phone", userValues.phone)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("mobilePhone", userValues.mobilePhone)) |> ignore
-                command
-        command.ExecuteNonQuery () |> ignore
+    let addUserValues (dbConn : NpgsqlConnection) (userValues : UserValues) (userId : int) =
+        use command = new NpgsqlCommand("""
+            insert into userValues
+                (userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone)
+                values (:userId, :gender, :degree, :firstName, :lastName, :street, :postcode, :city, :phone, :mobilePhone) returning id"""
+            , dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("gender", userValues.gender.ToString())) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("degree", userValues.degree)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("firstName", userValues.firstName)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("lastName", userValues.lastName)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("street", userValues.street)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("postcode", userValues.postcode)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("city", userValues.city)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("phone", userValues.phone)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("mobilePhone", userValues.mobilePhone)) |> ignore
+        let addedUserValuesId = command.ExecuteScalar() |> string |> Int32.Parse
+        log.Debug(sprintf "%A %i = %i" userValues userId addedUserValuesId)
+        addedUserValuesId
     
     let userEmailExists (dbConn : NpgsqlConnection) (email : string) =
         use command = new NpgsqlCommand("select count(*) from users where email = :email", dbConn)
         command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
-        try
-            ok (Int32.Parse(command.ExecuteScalar().ToString()) = 1)
-        with
-        | :? PostgresException
-        | _ ->
-            fail "An error occured while checking if email exists"
+        let emailCount = command.ExecuteScalar() |> string |> Int32.Parse
+        let emailExists = emailCount = 1
+        log.Debug(sprintf "%s = %b" email emailExists)
+        emailExists
 
     let getIdPasswordSaltAndGuid (dbConn : NpgsqlConnection) (email : string) =
-        use command = new NpgsqlCommand("select id, password, salt, guid from users where email = :email", dbConn)
+        use command = new NpgsqlCommand("select id, password, salt, guid from users where email = :email limit 1", dbConn)
         command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
-        try
-            use reader = command.ExecuteReader()
-            reader.Read() |> ignore
-            ok (reader.GetInt32(0), reader.GetString(1), reader.GetString(2), if reader.IsDBNull(3) then None else Some <| reader.GetString(3))
-        with
-        | :? PostgresException
-        | _ ->
-            fail "An error occured while trying read password"
+        use reader = command.ExecuteReader()
+        reader.Read() |> ignore
+        let ret =
+              reader.GetInt32(0)
+            , reader.["password"] |> string
+            , reader.["salt"] |> string
+            , if reader.IsDBNull(3) then None else Some (reader.["guid"] |> string)
+        log.Debug(sprintf "%s = %A" email ret)
+        ret
 
 
     let insertNewUser (dbConn : NpgsqlConnection) (email : string) (password : string) (salt : string) (guid : string) =
-        use command = new NpgsqlCommand("insert into users(email, password, salt, guid) values(:email, :password, :salt, :guid)", dbConn)
+        use command = new NpgsqlCommand("insert into users(email, password, salt, guid) values(:email, :password, :salt, :guid) returning id", dbConn)
         command.Parameters.AddRange(
             [| new NpgsqlParameter("email", email)
                new NpgsqlParameter("password", password)
                new NpgsqlParameter("salt", salt)
                new NpgsqlParameter("guid", guid) |])
-        command.ExecuteNonQuery() |> ignore
-        ok "Added new user"
+        let insertedNewUserId = command.ExecuteScalar() |> string |> Int32.Parse
+        log.Debug(sprintf "%s %s %s %s = %i" email password salt guid insertedNewUserId)
+        insertedNewUserId
 
     let getGuid (dbConn : NpgsqlConnection) (email : string) =
         use command = new NpgsqlCommand("select guid from users where email = :email", dbConn)
         command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
         let guidStr = command.ExecuteScalar().ToString()
-        if String.IsNullOrEmpty guidStr
+        let guid =
+            if String.IsNullOrEmpty guidStr
             then None
             else Some guidStr
+        log.Debug(sprintf "%s = %A" email guid)
+        guid
 
     let setGuidToNull (dbConn : NpgsqlConnection) (email : string) =
         use command = new NpgsqlCommand("update users set guid = null where email = :email", dbConn)
         command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
-        try
-            command.ExecuteNonQuery() |> ignore
-            ok "Set guid to null"
-        with
-        | :? PostgresException
-        | _ ->
-            fail "An error occured while trying to set guid to null"
+        command.ExecuteNonQuery() |> ignore
+        log.Debug(sprintf "%s = ()" email)
     
     let saveHtmlJobApplication (dbConn : NpgsqlConnection) (htmlJobApplication : HtmlJobApplication) (userId : int) =
         use transaction = dbConn.BeginTransaction()
@@ -357,3 +335,8 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("htmlJobApplicationPageTemplateId", htmlJobApplicationPageTemplateId)) |> ignore
         command.ExecuteScalar() |> string
 
+    let getHtmlJobApplicationPageTemplateNames (dbConn : NpgsqlConnection) =
+        use command = new NpgsqlCommand("select name from htmlJobApplicationPageTemplate", dbConn)
+        use reader = command.ExecuteReader()
+        [ while reader.Read() do
+            yield reader.GetString(0) ]

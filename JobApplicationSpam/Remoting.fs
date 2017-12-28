@@ -7,6 +7,7 @@ open Chessie.ErrorHandling
 open System
 open JobApplicationSpam.Types
 open System.Configuration
+
 module DB = JobApplicationSpam.Database
 
 
@@ -61,14 +62,14 @@ module Server =
 
 
     [<Remote>]
-    let setUserValues (userValues : UserValues) =
+    let addUserValues (userValues : UserValues) =
         let oUserId = getCurrentUserId() |> Async.RunSynchronously
         async {
             match oUserId with
             | Some userId ->
                 use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
                 dbConn.Open()
-                Database.setUserValues dbConn userValues userId
+                let insertedUserValuesId = Database.addUserValues dbConn userValues userId
                 return ok "User values have been updated."
             | None -> return fail "Please login."
         }
@@ -106,7 +107,7 @@ module Server =
             use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
             dbConn.Open()
             match oUserId with
-            | Some userId -> return Database.addEmployer dbConn employer userId
+            | Some userId -> return ok (Database.addEmployer dbConn employer userId)
             | None -> return fail "Please login first"
         }
 
@@ -119,10 +120,10 @@ module Server =
             | Some userId ->
                 use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
                 dbConn.Open()
-                let employerResult = Database.getEmployer dbConn employerId
+                let oEmployer= Database.getEmployer dbConn employerId
                 let templateResult = Database.getTemplateForJobApplication dbConn templateId
-                match employerResult, templateResult with
-                | Ok (employer, _), Ok (template, _) ->
+                match oEmployer, templateResult with
+                | Some employer, Ok (template, _) ->
                     use command = new NpgsqlCommand("insert into jobApplication (userId, employerId, jobApplicationTemplateId) values(:userId, :employerId, :jobApplicationTemplateId) returning id", dbConn)
                     command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
                     command.Parameters.Add(new NpgsqlParameter("employerId", employerId)) |> ignore
@@ -145,7 +146,8 @@ module Server =
                               phone = ""
                               mobilePhone = ""
                             }
-                    let userEmail = Database.getEmailByUserId dbConn userId
+                    let userEmail =
+                        Database.getEmailByUserId dbConn userId |> Option.defaultValue ""
                     let myMap =
                         [ ("$firmaName", employer.company)
                           ("$firmaStrasse", employer.street)
@@ -175,14 +177,14 @@ module Server =
                     Odt.replaceInOdt template.filePaths.[0] "c:/users/rene/myodt/" "c:/users/rene/myodt1/m1.odt" myMap |> ignore
                     //sendEmail "rene.ederer.nbg@gmail.com" "René Ederer" employer.email template.emailSubject template.emailBody template.pdfPaths
                     return ok (Odt.odtToPdf "c:/users/rene/myodt1/m1.odt")
-                | Ok _, Bad vs ->
+                | Some _, Bad vs ->
                     failwith (String.concat ", " vs)
                     return fail "An error occured while trying to upload template"
-                | Bad _, Ok _ ->
+                | None, Ok _ ->
                     failwith "soeerr"
                     return fail "An error occured while trying to upload template"
-                | Bad xs, Bad ys ->
-                    failwith ((String.concat ", " xs) +  "::::" + (String.concat ", " ys))
+                | None, Bad ys ->
+                    failwith ("Employer was None, furthermore: " +  "::::" + (String.concat ", " ys))
                     return fail "An error occured while trying to upload template"
             }
     
@@ -195,10 +197,10 @@ module Server =
             | Some userId ->
                 use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
                 dbConn.Open()
-                let employerResult = Database.getEmployer dbConn employerId
+                let oEmployer = Database.getEmployer dbConn employerId
                 let templateResult = Database.getTemplateForJobApplicationByTemplateName dbConn userId templateName
-                match employerResult, templateResult with
-                | Ok (employer, _), Ok ((templateId, template), _) ->
+                match oEmployer, templateResult with
+                | Some employer, Ok ((templateId, template), _) ->
                     use command = new NpgsqlCommand("insert into jobApplication (userId, employerId, jobApplicationTemplateId) values(:userId, :employerId, :jobApplicationTemplateId) returning id", dbConn)
                     command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
                     command.Parameters.Add(new NpgsqlParameter("employerId", employerId)) |> ignore
@@ -221,7 +223,7 @@ module Server =
                               phone = ""
                               mobilePhone = ""
                             }
-                    let userEmail = Database.getEmailByUserId dbConn userId
+                    let userEmail = Database.getEmailByUserId dbConn userId |> Option.defaultValue ""
                     let myMap =
                         [ ("$firmaName", employer.company)
                           ("$firmaStrasse", employer.street)
@@ -253,14 +255,14 @@ module Server =
                     let replacedOdtPath = Odt.replaceInOdt template.filePaths.[0] (Path.Combine(Environment.CurrentDirectory, "users/tmp_" + Guid.NewGuid().ToString())) (Path.Combine(Environment.CurrentDirectory, "users/" + userId.ToString() + "/" + DateTime.Now.ToString("dd_MM_yyyy_HH_mm_ss") + "_" + Guid.NewGuid().ToString())) myMap
                     //sendEmail "rene.ederer.nbg@gmail.com" "René Ederer" employer.email template.emailSubject template.emailBody template.pdfPaths
                     return ok (Odt.odtToPdf replacedOdtPath)
-                | Ok _, Bad vs ->
+                | Some _, Bad vs ->
                     failwith (String.concat ", " vs)
                     return fail "An error occured while trying to upload template"
-                | Bad _, Ok _ ->
+                | None, Ok _ ->
                     failwith "soeerr"
                     return fail "An error occured while trying to upload template"
-                | Bad xs, Bad ys ->
-                    failwith ((String.concat ", " xs) +  "::::" + (String.concat ", " ys))
+                | None, Bad ys ->
+                    failwith ("Employer was None, furthermore: " +  "::::" + (String.concat ", " ys))
                     return fail "An error occured while trying to upload template"
             }
 
@@ -328,16 +330,14 @@ module Server =
     let login (email : string) (password : string) =
         use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
         dbConn.Open()
-        match (Database.getIdPasswordSaltAndGuid dbConn email) with
-        | Bad v -> 
-             fail "Email or password wrong."
-        | Ok ((userId, hashedPassword, salt, None), _) ->
+        match Database.getIdPasswordSaltAndGuid dbConn email with
+        | userId, hashedPassword, salt, None ->
             if generateHash password salt 1000 64 = hashedPassword
             then
                 GetContext().UserSession.LoginUser(string userId) |> Async.RunSynchronously
                 ok <| string userId
             else fail "Email or password wrong."
-        | Ok ((_, _, _, Some guid), _) ->
+        |  _, _, _, Some guid ->
             fail "Please confirm your email"
 
     [<Remote>]
@@ -345,26 +345,24 @@ module Server =
         async {
             use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
             dbConn.Open()
-            match (Database.userEmailExists dbConn email), password1, password2 with
-            | _ when password1 <> password2 -> return fail "Passwords are not equal"
-            | Bad v, _, _ -> return Bad v
-            | Ok (true, _), _, _ -> return fail "Email already exists"
-            | Ok (false, _), _, _ -> 
+            if password1 <> password2
+            then
+                return fail "Passwords are not equal"
+            elif not <| Database.userEmailExists dbConn email
+            then
+                return fail "Email already exists"
+            else
                 let salt = generateSalt(64)
                 let hashedPassword = generateHash password1 salt 1000 64
                 let guid = Guid.NewGuid().ToString()
-                match Database.insertNewUser dbConn email hashedPassword salt guid with
-                | Bad v ->
-                    return Bad v
-                | Ok _ ->
-                    sendEmail
-                        "rene.ederer.nbg@gmail.com"
-                        "bewerbungsspam.de"
-                        email
-                        "Please confirm your email address"
-                        ("Dear user,\n\nplease visit this link to confirm your email address.\nhttp://bewerbungsspam.de/confirmemail?email=rene.ederer.nbg@gmail.com&guid=" + guid + "\nPlease excuse the inconvenience.\n\nYour team from www.bewerbungsspam.de")
-                        []
-                    return ok ()
+                sendEmail
+                    "rene.ederer.nbg@gmail.com"
+                    "bewerbungsspam.de"
+                    email
+                    "Please confirm your email address"
+                    ("Dear user,\n\nplease visit this link to confirm your email address.\nhttp://bewerbungsspam.de/confirmemail?email=rene.ederer.nbg@gmail.com&guid=" + guid + "\nPlease excuse the inconvenience.\n\nYour team from www.bewerbungsspam.de")
+                    []
+                return ok ()
         }
 
     [<Remote>]
@@ -376,7 +374,8 @@ module Server =
             match oDbGuidOpt with
             | None -> return ok "Email already confirmed"
             | Some dbGuid when guid = dbGuid ->
-                return Database.setGuidToNull dbConn email
+                Database.setGuidToNull dbConn email
+                return ok "Email confirmed"
             | Some _ ->
                 return fail "Unknown guid"
 
@@ -445,7 +444,7 @@ module Server =
             let odtPaths =
                 [ for currentPage in htmlJobApplication.pages do
                     let htmlJobApplicationPageTemplatePath = Database.getHtmlJobApplicationPageTemplatePath dbConn currentPage.jobApplicationPageTemplateId
-                    let userEmail = Database.getEmailByUserId dbConn userId
+                    let userEmail = Database.getEmailByUserId dbConn userId |> Option.defaultValue ""
                     let lines =
                         let emptyLines = List.init 50 (fun i -> sprintf "$line%i" (i + 1), "")
                         let currentPageLines = currentPage.map.["mainText"].Split([|'\n'|])
@@ -494,3 +493,11 @@ module Server =
             Odt.mergePdfs pdfPaths "c:/users/rene/myodt1/mygreatpdf.pdf"
             //return ()
         //}
+    
+    [<Remote>]
+    let getHtmlJobApplicationPageTemplateNames () =
+        async {
+            use dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
+            dbConn.Open()
+            return Database.getHtmlJobApplicationPageTemplateNames dbConn
+        }

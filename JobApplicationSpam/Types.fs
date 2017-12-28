@@ -2,6 +2,8 @@
 module Types =
     open WebSharper.UI.Next
     open WebSharper.Sitelets
+    open log4net
+    open log4net.Core
 
     type Gender =
     | Male

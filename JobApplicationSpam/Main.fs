@@ -5,6 +5,7 @@ open WebSharper.Sitelets
 open WebSharper.UI.Next
 open WebSharper.UI.Next.Server
 open System.IO
+open Chessie.ErrorHandling
 
 type EndPoint =
     | [<EndPoint "/">] Home
@@ -56,11 +57,10 @@ module Templating =
             li ["About" => EndPoint.About]
         ]
     
-    let loggedInUserEmail (ctx: Context<EndPoint>) : string =
+    let loggedInUserEmail (ctx: Context<EndPoint>) =
         ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously
-        |> Option.map System.Int32.TryParse
-        |> Option.bind (fun (b, v) -> if b then Some v else None)
-        |> Option.map (Server.getEmailByUserId >> Async.RunSynchronously)
+        |> Option.map (System.Int32.Parse)
+        |> Option.bind (Server.getEmailByUserId >> Async.RunSynchronously)
         |> Option.defaultValue ""
 
     let main (ctx : Context<EndPoint>) (action : EndPoint) (title: string) (body: Doc list) : Async<Content<'a>>=
@@ -221,6 +221,7 @@ module SelfHostedServer =
 
     [<EntryPoint>]
     let main args =
+        log4net.Config.XmlConfigurator.Configure(new FileInfo("log4net.config")) |> ignore
         let rootDirectory, url =
             match args with
             | [| rootDirectory; url |] ->

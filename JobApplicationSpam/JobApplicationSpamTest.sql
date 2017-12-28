@@ -27,11 +27,11 @@ create table htmlJobApplication(id serial primary key, userId int not null, name
 create table htmlJobApplicationPage(id serial primary key, htmlJobApplicationId int not null, htmlJobApplicationPageTemplateId int not null, name varchar(50) not null, foreign key(htmlJobApplicationId) references htmlJobApplication(id), foreign key(htmlJobApplicationPageTemplateId) references htmlJobApplicationPageTemplate(id));
 create table htmlJobApplicationPageValue(id serial primary key, htmlJobApplicationPageId int not null, key varchar(100) not null, value text not null, foreign key(htmlJobApplicationPageId) references htmlJobApplicationPage(id));
 
-insert into users(email, password, salt, guid) values('rene', '1234', 'salt', null);
 insert into users(email, password, salt, guid) values('rene.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null);
+insert into users(email, password, salt, guid) values('helmut.goerke@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', 'someguid');
 
-insert into userValues(userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone) values(1, 'm', '', 'rene', 'ederer', 'taabsrr. 24A', '90429', 'Nürnberg', '', '01520 2723494');
-insert into userValues(userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone) values(2, 'm', '', 'René', 'Ederer', 'Raabstr. 24A', '90429', 'Nürnberg', '', '01520 2723494');
+insert into userValues(userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone) values(1, 'm', '', 'René', 'Ederer', 'Raabstr. 24A', '90429', 'Nürnberg', 'kein Telefon', 'kein Handy');
+insert into userValues(userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone) values(2, 'm', '', 'Helmut', 'Görke', 'Raabstr. 24A', '90429', 'Nürnberg', '', '01520 2723494');
 
 insert into jobApplicationTemplate(userId, templateName, userAppliesAs, emailSubject, emailBody) values(2, 'Mein Template', 'Fachinformatiker für Anwendungsentwicklung', 'Bewerbung als Fachinformatiker für Anwendungsentwicklung', 'Sehr $geehrter $chefAnrede $chefNachname,\n\nanbei schicke ich Ihnen meine Bewerbungsunterlagen.\nDas Jobcenter kann während der Einarbeitungszeit (auch mehrere Monate) bis zu 50% der Gehaltskosten übernehmen.\nMeine Sachbearbeiterin Frau Götz (jobcenter-nuernberg-stadt.mitte-ag-team@jobcenter-ge.de) gibt Ihnen gerne nähere Auskunft.\nÜber eine Einladung zu einem Bewerbungsgespräch würder ich mich sehr freuen.\n\nMit freundlichen Grüßen\n\n\n$meinVorname $meinNachname\n$meineStrasse\n$meinePlz $meineStadt\n$meineMobilnr');
 insert into jobApplicationTemplate(userId, templateName, userAppliesAs, emailSubject, emailBody) values(2, 'Mein Template ohne Anhang', 'Fachinformatiker für Anwendungsentwicklung', 'Bewerbung als Fachinformatiker für Anwendungsentwicklung', 'Sehr $geehrter $chefAnrede $chefNachname,\n\nanbei schicke ich Ihnen meine Bewerbungsunterlagen.\nDas Jobcenter kann während der Einarbeitungszeit (auch mehrere Monate) bis zu 50% der Gehaltskosten übernehmen.\nMeine Sachbearbeiterin Frau Götz (jobcenter-nuernberg-stadt.mitte-ag-team@jobcenter-ge.de) gibt Ihnen gerne nähere Auskunft.\nÜber eine Einladung zu einem Bewerbungsgespräch würder ich mich sehr freuen.\n\nMit freundlichen Grüßen\n\n\n$meinVorname $meinNachname\n$meineStrasse\n$meinePlz $meineStadt\n$meineMobilnr');
@@ -45,11 +45,8 @@ insert into jobApplicationTemplateFile (jobApplicationTemplateId, filePath) valu
 insert into jobApplicationTemplateFile(jobApplicationTemplateId, filePath) values(2, 'C:/Users/rene/Desktop/bewerbung_neu.odt');
 
 insert into employer(userId, company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'BJC BEST JOB IT SERVICES GmbH', 'Alte Rabenstraße 32', '20148', 'Hamburg', 'f', '', 'Katrin', 'Thoms', 'Katrin.Thoms@bjc-its.de', '+49 (40) 5 14 00 7180', '');
-insert into employer(userId, company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'Deutsche Anwaltshotline AG', 'Am Plärrer 7', '90443', 'Nürnberg', 'm', '', 'Jonas', 'Zimmermann', 'mail@deutsche-anwaltshotline.de', '+49 911 3765690', '');
-insert into employer(userId, company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'ANG.-Punkt und gut! GmbH', 'Südwestpark 37-41', '90449', 'Nürnberg', 'f', '', 'Jaqueline', 'Strauß', 'bewerbung@ang.de', '+49 911 525700', '+49 1778876348');
 insert into employer(userId, company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'iQ-Bewerbermanagement', 'Obernstr. 111', '28832', 'Achim bei Bremen', 'f', '', 'Nele', 'Sommerfeld', 'nele.sommerfeld@iq-bewerbermanagement.de', '+49 40 6003852232', '');
 insert into employer(userId, company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'engineering people GmbH', 'Südwestpark 60', '90449', 'Nürnberg',  'm', '', 'Haluk', 'Acar','haluk.acar@engineering-people.de', '+49 911 239560316', '');
-insert into employer(userId, company, gender, street, postcode, city, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'BFI Informationssysteme GmbH', 'Ötterichweg 7', '90411', 'Nürnberg', 'm', '', 'Michael', 'Schlund', 'Michael.Schlund@bfi-info.de', '0911 9457668', '');
 
 
 insert into jobApplicationStatusValue(id, status) values(1, 'Waiting for reply after sending job application');
@@ -62,9 +59,6 @@ insert into jobApplicationStatusValue(id, status) values(6, 'Job application acc
 insert into jobApplication(userId, employerId, jobApplicationTemplateId) values(1, 1, 1);
 insert into jobApplication(userId, employerId, jobApplicationTemplateId) values(1, 2, 1);
 insert into jobApplication(userId, employerId, jobApplicationTemplateId) values(1, 3, 1);
-insert into jobApplication(userId, employerId, jobApplicationTemplateId) values(1, 4, 1);
-insert into jobApplication(userId, employerId, jobApplicationTemplateId) values(1, 5, 1);
-insert into jobApplication(userId, employerId, jobApplicationTemplateId) values(1, 6, 1);
 
 insert into jobApplicationStatus(jobApplicationId, statusChangedOn, dueOn, statusValueId, statusMessage)
     values(1, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 1, '');
@@ -72,12 +66,6 @@ insert into jobApplicationStatus(jobApplicationId, statusChangedOn, dueOn, statu
     values(2, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 1, '');
 insert into jobApplicationStatus(jobApplicationId, statusChangedOn, dueOn, statusValueId, statusMessage)
     values(3, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 1, '');
-insert into jobApplicationStatus(jobApplicationId, statusChangedOn, dueOn, statusValueId, statusMessage)
-    values(4, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 1, '');
-insert into jobApplicationStatus(jobApplicationId, statusChangedOn, dueOn, statusValueId, statusMessage)
-    values(5, to_timestamp('26.01.2017', '%d.%m.%Y'), null, 1, '');
-insert into jobApplicationStatus(jobApplicationId, statusChangedOn, dueOn, statusValueId, statusMessage)
-    values(6, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 1, 'Forwarded by Ms Götz');
 
 
 insert into htmlJobApplicationPageTemplate(name, odtPath) values('Anschreiben nach DIN 5008', 'c:/users/rene/desktop/bewerbung_neu.odt');

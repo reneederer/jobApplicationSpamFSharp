@@ -154,7 +154,7 @@ module Client =
         let subm userValues =
             async {
                 Var.Set varMessage ("Setting user values...")
-                let! result = Server.setUserValues userValues
+                let! result = Server.addUserValues userValues
                 let m =
                     match result with
                     | Ok (v, _) ->  v
@@ -162,7 +162,7 @@ module Client =
                 do! Async.Sleep(1000)
                 varMessage.Value <- m
                 return ()
-            } |> Async.StartImmediate
+            } |> Async.Start
         let varGender = Var.Create Gender.Male 
         let varDegree = Var.Create("")
         let varFirstName = Var.Create("")
@@ -310,6 +310,8 @@ module Client =
 
     [<JavaScript>]
     let addEmployer () : Elt =
+        div []
+        (*
         let createEmployer company street postcode city gender degree firstName lastName email phone mobilePhone =
             { company = company
               street = street
@@ -326,7 +328,7 @@ module Client =
         let varMessage = Var.Create("")
         let varCanSubmit = Var.Create(true)
         let subm employer templateName =
-            let addEmployer123 () : Async<Result<int, string>> =
+            let addEmployer123 () =
                 async {
                     varMessage.Value <- "Adding employer..."
                     do! Async.Sleep 2000
@@ -342,22 +344,17 @@ module Client =
             
             let b =
                 async {
-                    let! addEmployerResult = addEmployer123 ()
-                    match addEmployerResult with
-                    | Ok (employerId, _) ->
-                        let! applyNowResult = applyNow123 employerId templateName
-                        match applyNowResult with
-                        | Ok (v, _) ->
-                            varMessage.Value <- "Job application has been sent"
-                            return ()
-                        | Bad xs ->
-                            varMessage.Value <- "Unfortunately, adding employer failed."
-                            return ()
+                    let! employerId = addEmployer123 ()
+                    let! applyNowResult = applyNow123 employerId templateName
+                    match applyNowResult with
+                    | Ok (v, _) ->
+                        varMessage.Value <- "Job application has been sent"
+                        return ()
                     | Bad xs ->
                         varMessage.Value <- "Unfortunately, adding employer failed."
                         return ()
                 }
-            b |> Async.Ignore |> Async.StartImmediate
+            b |> Async.Ignore |> Async.Start
             varCanSubmit.Value <- true
         let varCompany = Var.Create ""
         let varStreet = Var.Create ""
@@ -575,6 +572,7 @@ module Client =
               ]
             textView varMessage.View
          ]
+         *)
     open System
     open System.ComponentModel
 
@@ -599,7 +597,7 @@ module Client =
                     with
                     | e ->
                         message.Value <- "Bewerbung konnte nicht bearbeitet werden." + e.Message
-                } |> Async.StartImmediate
+                } |> Async.Start
             with
             | e ->
                 message.Value <- "Es trat ein Fehler auf: " + e.Message
@@ -776,7 +774,7 @@ module Client =
               async {
                   let x = Server.register (varTxtRegisterEmail.Value) (varTxtRegisterPassword1.Value) (varTxtRegisterPassword2.Value)
                   return ()
-              } |> Async.StartImmediate
+              } |> Async.Start
               )
           ]
           [ divAttr
@@ -847,12 +845,14 @@ module Client =
         let varSubject = Var.Create "Bewerbung als ..."
         let varMainText = Var.Create ""
         let varCover = Var.Create Upload
-        let varHtmlJobApplication = Var.Create( {name = ""; pages = [] } )
-        let varHtmlJobApplicationNames = Var.Create([""])
-        let varHtmlJobApplicationName = Var.Create("")
-        let varTxtSaveAs = Var.Create("")
-        let varHtmlJobApplicationId = Var.Create(0)
-        let varOAddEmployerId = Var.Create(None)
+        let varHtmlJobApplication = Var.Create {name = ""; pages = [] }
+        let varHtmlJobApplicationNames = Var.Create [""]
+        let varHtmlJobApplicationName = Var.Create ""
+        let varHtmlJobApplicationPageTemplateNames = Var.Create [""]
+        let varHtmlJobApplicationPageTemplateName = Var.Create ""
+        let varTxtSaveAs = Var.Create ""
+        let varHtmlJobApplicationId = Var.Create 0
+        let varOAddEmployerId = Var.Create None
         let fillHtmlJobApplication htmlJobApplicationOffset =
             async {
                 let! htmlJobApplication = Server.getHtmlJobApplicationOffset htmlJobApplicationOffset
@@ -862,8 +862,16 @@ module Client =
         let fillHtmlJobApplicationNames () =
             async {
                 let! htmlJobApplicationNames = Server.getHtmlJobApplicationNames()
-                varHtmlJobApplicationName.Value <- htmlJobApplicationNames.[0]
-                varHtmlJobApplicationNames.Value <- htmlJobApplicationNames
+                if not <| List.isEmpty htmlJobApplicationNames
+                then
+                    varHtmlJobApplicationName.Value <- htmlJobApplicationNames.[0]
+                    varHtmlJobApplicationNames.Value <- htmlJobApplicationNames
+
+                let! htmlJobApplicationPageTemplateNames = Server.getHtmlJobApplicationPageTemplateNames ()
+                if not <| List.isEmpty htmlJobApplicationPageTemplateNames then
+                    varHtmlJobApplicationPageTemplateName.Value <- htmlJobApplicationPageTemplateNames.[0]
+                    varHtmlJobApplicationPageTemplateNames.Value <- htmlJobApplicationPageTemplateNames
+
                 fillHtmlJobApplication (Seq.length htmlJobApplicationNames - 1)
             } |> Async.Start
         fillHtmlJobApplicationNames ()
@@ -988,7 +996,7 @@ module Client =
                     ; mobilePhone = varUserMobilePhone.Value
                     }
                     
-                let! result = Server.setUserValues userValues
+                let! result = Server.addUserValues userValues
                 let m =
                     match result with
                     | Ok (v, _) ->  v
@@ -996,7 +1004,7 @@ module Client =
                 do! Async.Sleep(1000)
                 varMessage.Value <- m
                 return ()
-            } |> Async.StartImmediate
+            } |> Async.Start
 
         let addEmployer () =
             let employer =
@@ -1065,6 +1073,7 @@ module Client =
         div
           [ h1 [ text "Create a template" ]
             Doc.SelectDyn [attr.style "min-width: 300px"; attr.id "selectHtmlJobApplicationName"; on.change (fun el _ -> fillHtmlJobApplication el?selectedIndex)] id varHtmlJobApplicationNames.View varHtmlJobApplicationName
+            Doc.SelectDyn [attr.style "min-width: 300px"; attr.id "selectHtmlJobApplicationPageTemplate"; ] id varHtmlJobApplicationPageTemplateNames.View varHtmlJobApplicationPageTemplateName
             div
               [ Doc.Radio [attr.id "uploadCover"; on.click (fun _ _ -> JS.Alert(varCover.Value.ToString())); attr.radiogroup "cover" ] Upload varCover
                 labelAttr [ attr.``for`` "uploadCover" ] [text "Hochladen"]

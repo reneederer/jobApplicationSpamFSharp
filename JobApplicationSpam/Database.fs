@@ -13,6 +13,7 @@ module Database =
     let log = LogManager.GetLogger(MethodBase.GetCurrentMethod().GetType())
 
     let getEmailByUserId (dbConn : NpgsqlConnection) (userId : int) =
+        log.Debug(sprintf "%i" userId)
         use command = new NpgsqlCommand("select email from users where id = :userId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         use reader = command.ExecuteReader()
@@ -24,6 +25,7 @@ module Database =
         oEmail
         
     let getEmployer (dbConn : NpgsqlConnection) (employerId : int) =
+        log.Debug(sprintf "%i" employerId)
         use command = new NpgsqlCommand("select company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone from employer where id = :employerId limit 1", dbConn)
         command.Parameters.Add(new NpgsqlParameter("employerId", employerId)) |> ignore
         use reader = command.ExecuteReader()
@@ -48,6 +50,7 @@ module Database =
         oEmployer
     
     let addEmployer (dbConn : NpgsqlConnection) (employer : Employer) (userId : int) =
+        log.Debug(sprintf "%A %i" employer userId)
         use command = new NpgsqlCommand("insert into employer (userId, company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone) values(:userId, :company, :street, :postcode, :city, :gender, :degree, :firstName, :lastName, :email, :phone, :mobilePhone) returning id", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("company", employer.company)) |> ignore
@@ -66,89 +69,8 @@ module Database =
         addedEmployerId
 
 
-(*
-    let getUserIdByEmail (dbConn : NpgsqlConnection) (email : string) =
-        use command = new NpgsqlCommand("select id from users where email = :email", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
-        try
-            ok (command.ExecuteScalar() |> string |> Int32.Parse)
-        with
-        | :? NpgsqlException as e ->
-            reraise()
-        | e -> fail "Email not found"
-        *)
-    
-
-    let getTemplateForJobApplication (dbConn : NpgsqlConnection) (templateId : int) =
-        use command = new NpgsqlCommand("select emailSubject, emailBody from jobApplicationTemplate where id = :templateId", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("templateId", templateId)) |> ignore
-        use reader = command.ExecuteReader()
-        reader.Read() |> ignore
-        let emailSubject = reader.GetString(0)
-        let emailBody = reader.GetString(1)
-        reader.Dispose()
-        command.Dispose()
-        use command1 = new NpgsqlCommand("select filePath from jobApplicationTemplateFile where jobApplicationTemplateId = :templateId", dbConn)
-        command1.Parameters.Add(new NpgsqlParameter("templateId", templateId)) |> ignore
-        use reader1 = command1.ExecuteReader()
-        let mutable filePaths = list.Empty
-        while reader1.Read() do
-            filePaths <- reader1.GetString(0) :: filePaths
-        ok
-          { emailSubject = emailSubject
-            emailBody = emailBody
-            filePaths = filePaths
-          }
-
-
-
-    let getTemplateForJobApplicationByTemplateName (dbConn : NpgsqlConnection) (userId : int) (templateName : string) : Result<int * TemplateForJobApplication, string>=
-        use command = new NpgsqlCommand("select id, emailSubject, emailBody from jobApplicationTemplate where userId = :userId and templateName = :templateName", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("templateName", templateName)) |> ignore
-        use reader = command.ExecuteReader()
-        reader.Read() |> ignore
-        let templateId = reader.GetInt32(0)
-        let emailSubject = reader.GetString(1)
-        let emailBody = reader.GetString(2)
-        reader.Dispose()
-        command.Dispose()
-        use command1 = new NpgsqlCommand("select filePath from jobApplicationTemplateFile where jobApplicationTemplateId = :templateId", dbConn)
-        command1.Parameters.Add(new NpgsqlParameter("templateId", templateId)) |> ignore
-        use reader1 = command1.ExecuteReader()
-        let mutable filePaths = list.Empty
-        while reader1.Read() do
-            filePaths <- reader1.GetString(0) :: filePaths
-        ok
-          ( templateId
-          , { emailSubject = emailSubject
-              emailBody = emailBody
-              filePaths = filePaths
-            }
-          )
-
-    let getTemplateNames (dbConn : NpgsqlConnection) (userId : int) =
-        use command = new NpgsqlCommand("select templateName from jobApplicationTemplate where userId = :userId order by templateName desc", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
-        use reader = command.ExecuteReader()
-        let mutable tableNames = []
-        while reader.Read() do
-            tableNames <- reader.GetString(0) :: tableNames 
-        tableNames
-
-
-    let getTemplateIdWithOffset (dbConn : NpgsqlConnection) (userId : int) (offset : int)=
-        use command = new NpgsqlCommand("select id from jobApplicationTemplate where userId = :userId limit 1 offset :offset", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("offset", offset)) |> ignore
-        try
-            ok (command.ExecuteScalar() |> string |> Int32.Parse)
-        with
-        | :? PostgresException
-        | _ ->
-            fail "An error occured while trying to add user."
-
     let getUserValues (dbConn : NpgsqlConnection) (userId : int) =
+        log.Debug(sprintf "%i" userId)
         use command =
             new NpgsqlCommand("""
                 select gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone
@@ -175,6 +97,7 @@ module Database =
         oUserValues
 
     let addUserValues (dbConn : NpgsqlConnection) (userValues : UserValues) (userId : int) =
+        log.Debug(sprintf "%A %i" userValues userId)
         use command = new NpgsqlCommand("""
             insert into userValues
                 (userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone)
@@ -195,6 +118,7 @@ module Database =
         addedUserValuesId
     
     let userEmailExists (dbConn : NpgsqlConnection) (email : string) =
+        log.Debug(sprintf "%s" email)
         use command = new NpgsqlCommand("select count(*) from users where email = :email limit 1", dbConn)
         command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
         let emailExists = (command.ExecuteScalar() |> string |> Int32.Parse) = 1
@@ -202,6 +126,7 @@ module Database =
         emailExists
 
     let getIdPasswordSaltAndGuid (dbConn : NpgsqlConnection) (email : string) =
+        log.Debug(sprintf "%s" email)
         use command = new NpgsqlCommand("select id, password, salt, guid from users where email = :email limit 1", dbConn)
         command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
         use reader = command.ExecuteReader()
@@ -220,6 +145,7 @@ module Database =
 
 
     let insertNewUser (dbConn : NpgsqlConnection) (email : string) (password : string) (salt : string) (guid : string) =
+        log.Debug(sprintf "%s %s %s %s" email password salt guid)
         use command = new NpgsqlCommand("insert into users(email, password, salt, guid) values(:email, :password, :salt, :guid) returning id", dbConn)
         command.Parameters.AddRange(
             [| new NpgsqlParameter("email", email)
@@ -231,6 +157,7 @@ module Database =
         insertedNewUserId
 
     let getGuid (dbConn : NpgsqlConnection) (email : string) =
+        log.Debug(sprintf "%s" email)
         use command = new NpgsqlCommand("select guid from users where email = :email", dbConn)
         command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
         let guid = command.ExecuteScalar()
@@ -244,40 +171,56 @@ module Database =
         oGuid
 
     let setGuidToNull (dbConn : NpgsqlConnection) (email : string) =
+        log.Debug(sprintf "%s" email)
         use command = new NpgsqlCommand("update users set guid = null where email = :email and guid is not null", dbConn)
         command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
         let affectedRowCount = command.ExecuteNonQuery()
         if affectedRowCount <> 1
         then
+            log.Error("Email does not exist or guid was already null: " + email)
             failwith <| "Email does not exist or guid was already null: " + email
         log.Debug(sprintf "%s = ()" email)
+
+    let insertJobApplication (dbConn : NpgsqlConnection) (userId : int) (employerId : int) (htmlJobApplicationId : int) =
+        log.Debug(sprintf "%i %i %i" userId employerId htmlJobApplicationId)
+        use command = new NpgsqlCommand("insert into jobApplication(userId, employerId, htmlJobApplicationId) values(:userId, :employerId, :htmlJobApplicationId) returning id", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("employerId", employerId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("htmlJobApplicationId", htmlJobApplicationId)) |> ignore
+        let jobApplicationId = command.ExecuteScalar() |> string |> Int32.Parse
+        command.Dispose()
+
+        use command = new NpgsqlCommand("""insert into jobApplicationStatus(jobApplicationId, statusCjangedOn, dueOn, statusValueId, statusMessage) values(:jobApplicationId, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 1, '') """, dbConn)
+        command.Parameters.Add(new NpgsqlParameter("jobApplicationId", jobApplicationId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("employerId", employerId)) |> ignore
+        command.ExecuteNonQuery() |> ignore
+        command.Dispose()
+        log.Debug(sprintf "%i %i %i = ()" userId employerId htmlJobApplicationId)
+
+
     
     let saveHtmlJobApplication (dbConn : NpgsqlConnection) (htmlJobApplication : HtmlJobApplication) (userId : int) =
-        use transaction = dbConn.BeginTransaction()
-        try
-            use command = new NpgsqlCommand("insert into htmlJobApplication (userId, name) values (:userId, :name) returning id", dbConn)
+        log.Debug(sprintf "%A %i" htmlJobApplication userId)
+        use command = new NpgsqlCommand("insert into htmlJobApplication (userId, name, emailSubject, emailBody) values (:userId, :name, '', '') returning id", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("name", htmlJobApplication.name)) |> ignore
+        let htmlJobApplicationId = command.ExecuteScalar() |> string |> Int32.Parse
+        command.Dispose()
+        for page in htmlJobApplication.pages do
+            use command = new NpgsqlCommand("insert into htmlJobApplicationPage(htmlJobApplicationId, htmlJobApplicationPageTemplateId, name) values (2, 1, 'Anschreiben') returning id", dbConn)
             command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
-            command.Parameters.Add(new NpgsqlParameter("name", htmlJobApplication.name)) |> ignore
-            let htmlJobApplicationId = command.ExecuteScalar() |> string |> Int32.Parse
+            let htmlJobApplicationPageId = command.ExecuteScalar() |> string |> Int32.Parse
             command.Dispose()
-            for page in htmlJobApplication.pages do
-                use command = new NpgsqlCommand("insert into htmlJobApplicationPage(htmlJobApplicationId, htmlJobApplicationPageTemplateId, name) values (2, 1, 'Anschreiben') returning id", dbConn)
-                command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
-                let htmlJobApplicationPageId = command.ExecuteScalar() |> string |> Int32.Parse
+            for mapItem in page.map do
+                use command = new NpgsqlCommand("insert into htmlJobApplicationPageValue(htmlJobApplicationPageId, key, value) values (:htmlJobApplicationPageId, :key, :value)", dbConn)
+                command.Parameters.Add(new NpgsqlParameter("htmlJobApplicationPageId", htmlJobApplicationPageId)) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("key", mapItem.Key)) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("value", mapItem.Value)) |> ignore
+                command.ExecuteNonQuery() |> ignore
                 command.Dispose()
-                for mapItem in page.map do
-                    use command = new NpgsqlCommand("insert into htmlJobApplicationPageValue(htmlJobApplicationPageId, key, value) values (:htmlJobApplicationPageId, :key, :value)", dbConn)
-                    command.Parameters.Add(new NpgsqlParameter("htmlJobApplicationPageId", htmlJobApplicationPageId)) |> ignore
-                    command.Parameters.Add(new NpgsqlParameter("key", mapItem.Key)) |> ignore
-                    command.Parameters.Add(new NpgsqlParameter("value", mapItem.Value)) |> ignore
-                    command.ExecuteNonQuery() |> ignore
-                    command.Dispose()
-            transaction.Commit()
-            htmlJobApplicationId
-        with
-        | e ->
-            transaction.Rollback()
-            reraise()
+        log.Debug(sprintf "%A %i = %i" htmlJobApplication userId htmlJobApplicationId)
+        htmlJobApplicationId
        
     let getHtmlJobApplication (dbConn : NpgsqlConnection) (htmlJobApplicationId : int) =
         use command = new NpgsqlCommand("select name from htmlJobApplication where id = :htmlJobApplicationId", dbConn)

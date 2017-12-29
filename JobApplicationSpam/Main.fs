@@ -136,6 +136,8 @@ module Site =
         let uploadResult = 
             if (not <| Seq.isEmpty ctx.Request.Files)
             then
+                ok ""
+                (*
                 Server.uploadTemplate
                     (Option.get ctx.Request.Post.["templateName"])
                     (Option.get ctx.Request.Post.["userAppliesAs"])
@@ -144,6 +146,7 @@ module Site =
                     (ctx.Request.Files |> Seq.choose (fun (x : HttpPostedFileBase) -> if x.FileName <> "" then Some x.FileName else None))
                     (ctx.UserSession.GetLoggedInUser () |> Async.RunSynchronously |> Option.map Int32.Parse)
                 |> Async.RunSynchronously
+                *)
             else ok "Nothing to upload"
         Templating.main ctx EndPoint.UploadTemplate "UploadTemplate"
           [ div

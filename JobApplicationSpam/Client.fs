@@ -138,486 +138,17 @@ module Client =
 
 
     [<JavaScript>]
-    let editUserValues () : Elt =
-        let createUserValues gender degree firstName lastName street postcode city phone mobilePhone =
-            { gender = gender
-              degree = degree
-              firstName = firstName
-              lastName = lastName
-              street = street
-              postcode = postcode
-              city = city
-              phone = phone
-              mobilePhone = mobilePhone
-            }
-        let varMessage = Var.Create("nothing")
-        let subm userValues =
-            async {
-                Var.Set varMessage ("Setting user values...")
-                let! result = Server.addUserValues userValues
-                let m =
-                    match result with
-                    | Ok (v, _) ->  v
-                    | Bad v -> sprintf "%A" v
-                do! Async.Sleep(1000)
-                varMessage.Value <- m
-                return ()
-            } |> Async.Start
-        let varGender = Var.Create Gender.Male 
-        let varDegree = Var.Create("")
-        let varFirstName = Var.Create("")
-        let varLastName = Var.Create("")
-        let varStreet = Var.Create("")
-        let varPostcode = Var.Create("")
-        let varCity = Var.Create("")
-        let varPhone = Var.Create("")
-        let varMobilePhone = Var.Create("")
-        async {
-            let! currentUserValues = Server.getCurrentUserValues()
-            varGender.Value <- currentUserValues.gender
-            varDegree.Value <- currentUserValues.degree
-            varFirstName.Value <- currentUserValues.firstName
-            varLastName.Value <- currentUserValues.lastName
-            varStreet.Value <- currentUserValues.street
-            varPostcode.Value <- currentUserValues.postcode
-            varCity.Value <- currentUserValues.city
-            varPhone.Value <- currentUserValues.phone
-            varMobilePhone.Value <- currentUserValues.mobilePhone
-        } |> Async.Start
-        div [  h1 [text (translate currentLanguage StrEditUserValues)]
-               divAttr
-                 [ attr.``class`` "form-group" ]
-                 [ labelAttr [attr.``class`` "control-label" ] [ text <| translate currentLanguage StrUserValuesGender ]
-                   br []
-                   divAttr [ attr.``class`` "" ]
-                     [ Doc.Radio [ attr.id "male"; attr.radiogroup "gender"; ] Gender.Male varGender
-                       labelAttr [ attr.``for`` "male"; ] [text <| translate currentLanguage StrMale]
-                       br []
-                       Doc.Radio [ attr.id "female"; attr.radiogroup "gender"; ] Gender.Female varGender
-                       labelAttr [ attr.``for`` "female"; ] [text <| translate currentLanguage StrFemale]
-                     ]
-                 ]
-               divAttr
-                 [ attr.``class`` "form-group" ]
-                 [ labelAttr
-                     [attr.``for`` "degree"; attr.``class`` "control-label"]
-                     [text <| translate currentLanguage StrUserValuesDegree]
-                   divAttr [ attr.``class`` "" ]
-                     [ Doc.Input
-                         [ attr.``class`` "form-control"
-                           attr.``type`` "input"
-                           attr.placeholder <| translate currentLanguage StrUserValuesDegree
-                           attr.id "degree"; attr.value varDegree.Value ] varDegree
-                     ]
-                 ]
-               divAttr
-                 [ attr.``class`` "form-group" ]
-                 [ labelAttr
-                     [attr.``for`` "firstName"; attr.``class`` "control-label"]
-                     [text <| translate currentLanguage StrUserValuesFirstName]
-                   divAttr [ attr.``class`` "" ]
-                     [ Doc.Input
-                         [ attr.``class`` "form-control"
-                           attr.``type`` "input"
-                           attr.placeholder <| translate currentLanguage StrUserValuesFirstName
-                           attr.id "firstName"; attr.value varFirstName.Value ] varFirstName
-                     ]
-                 ]
-               divAttr
-                 [ attr.``class`` "form-group" ]
-                 [ labelAttr
-                     [attr.``for`` "lastName"; attr.``class`` "control-label"]
-                     [text <| translate currentLanguage StrUserValuesLastName]
-                   divAttr [ attr.``class`` "" ]
-                     [ Doc.Input
-                         [ attr.``class`` "form-control"
-                           attr.``type`` "input"
-                           attr.placeholder <| translate currentLanguage StrUserValuesLastName
-                           attr.id "lastName"; attr.value varLastName.Value ] varLastName
-                     ]
-                 ]
-               divAttr
-                 [ attr.``class`` "form-group" ]
-                 [ labelAttr
-                     [attr.``for`` "street"; attr.``class`` "control-label"]
-                     [text <| translate currentLanguage StrUserValuesStreet]
-                   divAttr [ attr.``class`` "" ]
-                     [ Doc.Input
-                         [ attr.``class`` "form-control"
-                           attr.``type`` "input"
-                           attr.placeholder <| translate currentLanguage StrUserValuesStreet
-                           attr.id "street"; attr.value varStreet.Value ] varStreet
-                     ]
-                 ]
-               divAttr
-                 [ attr.``class`` "form-group" ]
-                 [ labelAttr
-                     [attr.``for`` "postcode"; attr.``class`` "control-label"]
-                     [text <| translate currentLanguage StrUserValuesPostcode]
-                   divAttr [ attr.``class`` "" ]
-                     [ Doc.Input
-                         [ attr.``class`` "form-control"
-                           attr.``type`` "input"
-                           attr.placeholder <| translate currentLanguage StrUserValuesPostcode
-                           attr.id "postcode"; attr.value varPostcode.Value ] varPostcode
-                     ]
-                 ]
-               divAttr
-                 [ attr.``class`` "form-group" ]
-                 [ labelAttr
-                     [attr.``for`` "city"; attr.``class`` "control-label"]
-                     [text <| translate currentLanguage StrUserValuesCity]
-                   divAttr [ attr.``class`` "" ]
-                     [ Doc.Input
-                         [ attr.``class`` "form-control"
-                           attr.``type`` "input"
-                           attr.placeholder <| translate currentLanguage StrUserValuesCity
-                           attr.id "city"; attr.value varCity.Value ] varCity
-                     ]
-                 ]
-               divAttr
-                 [ attr.``class`` "form-group" ]
-                 [ labelAttr
-                     [attr.``for`` "phone"; attr.``class`` "control-label"]
-                     [text <| translate currentLanguage StrUserValuesPhone]
-                   divAttr [ attr.``class`` "" ]
-                     [ Doc.Input
-                         [ attr.``class`` "form-control"
-                           attr.``type`` "input"
-                           attr.placeholder <| translate currentLanguage StrUserValuesPhone
-                           attr.id "phone"; attr.value varPhone.Value ] varPhone
-                     ]
-                 ]
-               divAttr
-                 [ attr.``class`` "form-group" ]
-                 [ labelAttr
-                     [attr.``for`` "mobilePhone"; attr.``class`` "control-label"]
-                     [text <| translate currentLanguage StrUserValuesMobilePhone]
-                   divAttr [ attr.``class`` "" ]
-                     [ Doc.Input
-                         [ attr.``class`` "form-control"
-                           attr.``type`` "input"
-                           attr.placeholder <| translate currentLanguage StrUserValuesMobilePhone
-                           attr.id "mobilePhone"; attr.value varMobilePhone.Value ] varMobilePhone
-                     ]
-                 ]
-
-               Doc.Button (translate currentLanguage StrSubmitEditUserValues) [attr.``type`` "submit"; ] (fun () -> subm (createUserValues varGender.Value varDegree.Value varFirstName.Value varLastName.Value varStreet.Value varPostcode.Value varCity.Value varPhone.Value varMobilePhone.Value) |> ignore)
-               textView varMessage.View
-               //subm <| createUserValues varGender.Value varDegree.Value varFirstName.Value varLastName.Value varStreet.Value varPostcode.Value varCity.Value varPhone.Value varMobilePhone.Value
-            ]
-
+    let editUserValues () : Elt = div []
 
     [<JavaScript>]
-    let addEmployer () : Elt =
-        div []
-        (*
-        let createEmployer company street postcode city gender degree firstName lastName email phone mobilePhone =
-            { company = company
-              street = street
-              postcode = postcode
-              city = city
-              gender = gender
-              degree = degree
-              firstName = firstName
-              lastName = lastName
-              email = email
-              phone = phone
-              mobilePhone = mobilePhone
-            }
-        let varMessage = Var.Create("")
-        let varCanSubmit = Var.Create(true)
-        let subm employer templateName =
-            let addEmployer123 () =
-                async {
-                    varMessage.Value <- "Adding employer..."
-                    do! Async.Sleep 2000
-                    return! Server.addEmployer employer
-                }
-            let applyNow123 employerId templateName : Async<Result<string, string>> =
-                async {
-                    varMessage.Value <- "Sending job application..."
-                    do! Async.Sleep 2000
-                    return! Server.applyNowByTemplateName employerId templateName
-                }
-            
-            
-            let b =
-                async {
-                    let! employerId = addEmployer123 ()
-                    let! applyNowResult = applyNow123 employerId templateName
-                    match applyNowResult with
-                    | Ok (v, _) ->
-                        varMessage.Value <- "Job application has been sent"
-                        return ()
-                    | Bad xs ->
-                        varMessage.Value <- "Unfortunately, adding employer failed."
-                        return ()
-                }
-            b |> Async.Ignore |> Async.Start
-            varCanSubmit.Value <- true
-        let varCompany = Var.Create ""
-        let varStreet = Var.Create ""
-        let varPostcode = Var.Create ""
-        let varCity = Var.Create ""
-        let varGender = Var.Create Gender.Male 
-        let varDegree = Var.Create ""
-        let varFirstName = Var.Create ""
-        let varLastName = Var.Create ""
-        let varEmail = Var.Create ""
-        let varPhone = Var.Create ""
-        let varMobilePhone = Var.Create ""
-
-        let varTemplate = Var.Create("")
-        let varTemplateList = Var.Create([])
-        async {
-            let! templateList = Server.getTemplateNames ()
-            varTemplateList.Value <- templateList
-            varTemplate.Value <- Seq.tryItem 0 templateList |> Option.defaultValue ""
-        } |> Async.Start
-        let varAddEmployerAction = Var.Create JustAddEmployer
-        formAttr
-          [ attr.``class`` "form-horizontal"; ]
-          [ h1 [text <| translate currentLanguage StrAddEmployer]
-            divAttr
-              [ attr.``class`` "form-group" ]
-              [ labelAttr
-                  [attr.``for`` "company"; attr.``class`` "control-label"]
-                  [text <| translate currentLanguage StrCompanyName]
-                divAttr [ attr.``class`` "" ]
-                  [ Doc.Input
-                      [ attr.``class`` "form-control"
-                        attr.``type`` "input"
-                        attr.placeholder <| translate currentLanguage StrCompanyName
-                        attr.id "company"; attr.value varStreet.Value ] varCompany
-                  ]
-              ]
-            divAttr
-              [ attr.``class`` "form-group" ]
-              [ labelAttr
-                  [attr.``for`` "company"; attr.``class`` "control-label"]
-                  [text <| translate currentLanguage StrCompanyStreet]
-                divAttr [ attr.``class`` "" ]
-                  [ Doc.Input
-                      [ attr.``class`` "form-control"
-                        attr.``type`` "input"
-                        attr.placeholder <| translate currentLanguage StrCompanyStreet
-                        attr.id "street"; attr.value varStreet.Value ] varStreet
-                  ]
-              ]
-            divAttr
-              [ attr.``class`` "form-group" ]
-              [ labelAttr
-                  [attr.``for`` "company"; attr.``class`` "control-label"]
-                  [text <| translate currentLanguage StrCompanyPostcode]
-                divAttr [ attr.``class`` "" ]
-                  [ Doc.Input
-                      [ attr.``class`` "form-control"
-                        attr.``type`` "input"
-                        attr.placeholder <| translate currentLanguage StrCompanyPostcode
-                        attr.id "postcode"; attr.value varPostcode.Value ] varPostcode
-                  ]
-              ]
-            divAttr
-              [ attr.``class`` "form-group" ]
-              [ labelAttr
-                  [attr.``for`` "city"; attr.``class`` "control-label"]
-                  [text <| translate currentLanguage StrCompanyCity]
-                divAttr [ attr.``class`` "" ]
-                  [ Doc.Input
-                      [ attr.``class`` "form-control"
-                        attr.``type`` "input"
-                        attr.placeholder <| translate currentLanguage StrCompanyCity
-                        attr.id "city"; attr.value varCity.Value ] varCity
-                  ]
-              ]
-            divAttr
-              [ attr.``class`` "form-group" ]
-              [ labelAttr [attr.``class`` "control-label" ] [ text <| translate currentLanguage StrBossGender ]
-                br []
-                divAttr [ attr.``class`` "" ]
-                  [ Doc.Radio [ attr.id "male"; attr.radiogroup "gender"; ] Gender.Male varGender
-                    labelAttr [ attr.``for`` "male"; ] [text <| translate currentLanguage StrMale]
-                    br []
-                    Doc.Radio [ attr.id "female"; attr.radiogroup "gender"; ] Gender.Female varGender
-                    labelAttr [ attr.``for`` "female"; ] [text <| translate currentLanguage StrFemale]
-                  ]
-              ]
-            divAttr
-              [ attr.``class`` "form-group" ]
-              [ labelAttr [attr.``for`` "degree"; attr.``class`` "control-label"] [text <| translate currentLanguage StrBossDegree]
-                divAttr [ attr.``class`` "" ]
-                  [ Doc.Input
-                      [ attr.``class`` "form-control"
-                        attr.``type`` "input"
-                        attr.placeholder <| translate currentLanguage StrBossDegree
-                        attr.id "degree"
-                        attr.value varDegree.Value ] varDegree
-                  ]
-              ]
-            divAttr
-              [ attr.``class`` "form-group" ]
-              [ labelAttr [attr.``for`` "firstName"; attr.``class`` "control-label"] [text <| translate currentLanguage StrBossFirstName]
-                divAttr [ attr.``class`` "" ]
-                  [ Doc.Input
-                      [ attr.``class`` "form-control"
-                        attr.``type`` "input"
-                        attr.placeholder <| translate currentLanguage StrBossFirstName
-                        attr.id "firstName"
-                        attr.value varFirstName.Value ] varFirstName
-                  ]
-              ]
-            divAttr
-              [ attr.``class`` "form-group" ]
-              [ labelAttr [attr.``for`` "lastName"; attr.``class`` "control-label"] [text <| translate currentLanguage StrBossLastName]
-                divAttr [ attr.``class`` "" ]
-                  [ Doc.Input
-                      [ attr.``class`` "form-control"
-                        attr.``type`` "input"
-                        attr.placeholder <| translate currentLanguage StrBossLastName
-                        attr.value varLastName.Value ] varLastName
-                  ]
-              ]
-            divAttr
-              [ attr.``class`` "form-group" ]
-              [ labelAttr [attr.``for`` "email"; attr.``class`` "control-label"] [text <| translate currentLanguage StrBossEmail]
-                divAttr [ attr.``class`` "" ]
-                  [ Doc.Input
-                      [ attr.``class`` "form-control"
-                        attr.``type`` "input"
-                        attr.placeholder <| translate currentLanguage StrBossEmail
-                        attr.id "email"
-                        attr.value varEmail.Value ] varEmail
-                  ]
-              ]
-            divAttr
-              [ attr.``class`` "form-group" ]
-              [ labelAttr [attr.``for`` "phone"; attr.``class`` "control-label"] [text <| translate currentLanguage StrBossPhone]
-                divAttr [ attr.``class`` "" ]
-                  [ Doc.Input
-                      [ attr.``class`` "form-control"
-                        attr.``type`` "input"
-                        attr.placeholder <| translate currentLanguage StrBossPhone
-                        attr.id "phone"
-                        attr.value varPhone.Value ] varPhone
-                  ]
-              ]
-            divAttr
-              [ attr.``class`` "form-group" ]
-              [ labelAttr [attr.``for`` "mobilePhone"; attr.``class`` "control-label"] [text <| translate currentLanguage StrBossMobilePhone]
-                divAttr [ attr.``class`` "" ]
-                  [ Doc.Input
-                      [ attr.``class`` "form-control"
-                        attr.``type`` "input"
-                        attr.placeholder <| translate currentLanguage StrBossMobilePhone
-                        attr.id "mobilePhone"
-                        attr.value varMobilePhone.Value ] varMobilePhone
-                  ]
-              ]
-            divAttr
-              [ attr.``class`` "form-group" ]
-              [ labelAttr [attr.``class`` "control-label"] [text <| translate currentLanguage StrBossMobilePhone]
-                divAttr [ attr.``class`` "" ]
-                  [ Doc.Radio
-                      [ attr.``class`` "form-control"
-                        attr.radiogroup "addEmployerAction"
-                        attr.placeholder <| translate currentLanguage StrBossMobilePhone
-                        attr.id "mobilePhone"
-                        attr.value "hallo"
-                      ]
-                      ApplyImmediately
-                      varAddEmployerAction
-                    Doc.Radio
-                      [ attr.``class`` "form-control"
-                        attr.radiogroup "addEmployerAction"
-                        attr.placeholder <| translate currentLanguage StrBossMobilePhone
-                        attr.id "mobilePhone"
-                        attr.value varMobilePhone.Value
-                      ]
-                      SendJobApplicationToUserOnly
-                      varAddEmployerAction
-                    Doc.Radio
-                      [ attr.``class`` "form-control"
-                        attr.radiogroup "addEmployerAction"
-                        attr.placeholder <| translate currentLanguage StrBossMobilePhone
-                        attr.id "mobilePhone"
-                        attr.value varMobilePhone.Value
-                      ]
-                      AddEmployerAction.JustAddEmployer
-                      varAddEmployerAction
-                  ]
-              ]
-            (if true then
-                divAttr
-                  [ attr.``class`` "form-group" ]
-                  [ labelAttr [attr.``class`` "control-label"] [text <| translate currentLanguage StrBossMobilePhone]
-                    divAttr [ attr.``class`` "" ]
-                      [ Doc.Select
-                          [ attr.``class`` "form-control"
-                            attr.``type`` "input"
-                            attr.placeholder <| translate currentLanguage StrBossMobilePhone
-                            attr.id "mobilePhone"
-                            attr.value varMobilePhone.Value
-                          ]
-                          id
-                          varTemplateList.Value
-                          varTemplate
-                      ]
-                  ]
-                else div [])
-            divAttr
-              [ attr.``class`` "form-group" ]
-              [ Doc.Button (translate currentLanguage StrAddEmployer) [attr.``type`` "submit"; attr.``class`` "form-control" ] (fun () -> if varCanSubmit.Value then varCanSubmit.Value <- false; subm (createEmployer varCompany.Value varStreet.Value varPostcode.Value varCity.Value varGender.Value varDegree.Value varFirstName.Value varLastName.Value varEmail.Value varPhone.Value varMobilePhone.Value) varTemplate.Value |> ignore)
-                            
-              ]
-            textView varMessage.View
-         ]
-         *)
-    open System
-    open System.ComponentModel
+    let addEmployer () : Elt = div []
 
     [<JavaScript>]
-    let applyNow () =
-        let varEmployerId = Var.Create("")
-        let varTemplateId = Var.Create("")
-        let message = Var.Create("abc")
-
-        let submitIt () =
-            try
-                let employerId = varEmployerId.Value |> Int32.Parse
-                let templateId = varTemplateId.Value |> Int32.Parse
-                //JS.Document.Body.SetAttribute("style", "cursor:wait")
-                async {
-                    try
-                        let! applyNowResult = Server.applyNow employerId templateId
-                        match applyNowResult with
-                        | Ok (v, _) -> message.Value <- "Bewerbung wurde versandt."
-                        | Bad vs -> message.Value <- "Bewerbung konnte nicht bearbeitet werden."
-                        return ()
-                    with
-                    | e ->
-                        message.Value <- "Bewerbung konnte nicht bearbeitet werden." + e.Message
-                } |> Async.Start
-            with
-            | e ->
-                message.Value <- "Es trat ein Fehler auf: " + e.Message
-        div
-          [ formAttr
-              [ attr.action ""; attr.method "post"; on.submit (fun _ ev -> submitIt (); ev.PreventDefault(); ev.StopImmediatePropagation();) ]
-              [ labelAttr [] [text "employerId"]
-                Doc.Input [attr.``type`` "text"; attr.value varEmployerId.Value] varEmployerId
-                br []
-                labelAttr [] [text "templateId"]
-                Doc.Input [attr.``type`` "text"; attr.value varTemplateId.Value] varTemplateId
-                br []
-                inputAttr [attr.``type`` "submit"; ] []
-              ]
-            textView message.View
-          ]
-
+    let applyNow () = div []
 
     [<JavaScript>]
-    let uploadTemplate () =
+    let uploadTemplate () = div []
+    (*
         let rec createFileDiv n =
                     divAttr
                      [ attr.``class`` "form-group"; ]
@@ -731,6 +262,7 @@ module Client =
                  ]
               (text <| sprintf "logged in as: %A" (Server.getCurrentUserId ()))
             ]
+            *)
      
      
     [<JavaScript>]
@@ -806,31 +338,15 @@ module Client =
 
     [<JavaScript>]
     let createTemplate () = 
-        let varUserValuesFromDb =
-            Var.Create(
-                { gender = Gender.Male
-                  degree = ""
-                  firstName = ""
-                  lastName = ""
-                  street = ""
-                  postcode = ""
-                  city = ""
-                  phone = ""
-                  mobilePhone = ""
-                })
-        async {
-            let! userValues = Server.getCurrentUserValues()
-            varUserValuesFromDb.Value <- userValues
-        } |> Async.Start
-        let varUserGender = Var.Create varUserValuesFromDb.Value.gender
-        let varUserDegree = Var.Create varUserValuesFromDb.Value.degree
-        let varUserFirstName = Var.Create varUserValuesFromDb.Value.firstName
-        let varUserLastName = Var.Create varUserValuesFromDb.Value.lastName
-        let varUserStreet = Var.Create varUserValuesFromDb.Value.street
-        let varUserPostcode = Var.Create varUserValuesFromDb.Value.postcode
-        let varUserCity = Var.Create varUserValuesFromDb.Value.city
-        let varUserPhone = Var.Create varUserValuesFromDb.Value.phone
-        let varUserMobilePhone = Var.Create varUserValuesFromDb.Value.mobilePhone
+        let varUserGender = Var.Create Gender.Female
+        let varUserDegree = Var.Create ""
+        let varUserFirstName = Var.Create ""
+        let varUserLastName = Var.Create ""
+        let varUserStreet = Var.Create ""
+        let varUserPostcode = Var.Create ""
+        let varUserCity = Var.Create ""
+        let varUserPhone = Var.Create ""
+        let varUserMobilePhone = Var.Create ""
         let varCompanyName = Var.Create ""
         let varCompanyStreet = Var.Create ""
         let varCompanyPostcode = Var.Create ""
@@ -852,7 +368,6 @@ module Client =
         let varHtmlJobApplicationPageTemplateName = Var.Create ""
         let varTxtSaveAs = Var.Create ""
         let varHtmlJobApplicationId = Var.Create 0
-        let varOAddEmployerId = Var.Create None
         let fillHtmlJobApplication htmlJobApplicationOffset =
             async {
                 let! htmlJobApplication = Server.getHtmlJobApplicationOffset htmlJobApplicationOffset
@@ -977,13 +492,11 @@ module Client =
                         ]
                     }
                 let! htmlJobApplicationId = Server.saveHtmlJobApplication htmlJobApplication
-                varHtmlJobApplicationId.Value <- htmlJobApplicationId
-            } |> Async.Start
+                return htmlJobApplicationId
+            }
 
-        let varMessage = Var.Create("nothing")
         let setUserValues () =
             async {
-                Var.Set varMessage ("Setting user values...")
                 let userValues =
                     { gender = varUserGender.Value
                     ; degree = varUserDegree.Value
@@ -995,43 +508,40 @@ module Client =
                     ; phone = varUserPhone.Value
                     ; mobilePhone = varUserMobilePhone.Value
                     }
-                    
                 let! result = Server.addUserValues userValues
-                let m =
-                    match result with
-                    | Ok (v, _) ->  v
-                    | Bad v -> sprintf "%A" v
-                do! Async.Sleep(1000)
-                varMessage.Value <- m
                 return ()
-            } |> Async.Start
+            }
 
         let addEmployer () =
-            let employer =
-                { company = varCompanyName.Value
-                  street = varCompanyStreet.Value
-                  postcode = varCompanyPostcode.Value
-                  city = varCompanyCity.Value
-                  gender = varBossGender.Value
-                  degree = varBossDegree.Value
-                  firstName = varBossFirstName.Value
-                  lastName = varBossLastName.Value
-                  email = varBossEmail.Value
-                  phone = varBossPhone.Value
-                  mobilePhone = varBossMobilePhone.Value
-                }
             async {
+                let employer =
+                    { company = varCompanyName.Value
+                      street = varCompanyStreet.Value
+                      postcode = varCompanyPostcode.Value
+                      city = varCompanyCity.Value
+                      gender = varBossGender.Value
+                      degree = varBossDegree.Value
+                      firstName = varBossFirstName.Value
+                      lastName = varBossLastName.Value
+                      email = varBossEmail.Value
+                      phone = varBossPhone.Value
+                      mobilePhone = varBossMobilePhone.Value
+                    }
                 let! addEmployerResult =  Server.addEmployer employer
-                let oAddEmployerId =
+                let oAddedEmployerId =
                     match addEmployerResult with
                     | Ok (v, _) -> Some v
                     | Bad _ -> None
-                varOAddEmployerId.Value <- oAddEmployerId
-            } |> Async.Start
+                return oAddedEmployerId
+            }
 
         let applyNowWithHtmlTemplate () =
             async {
-                match varOAddEmployerId.Value with
+                let! oAddedEmployerId = addEmployer()
+                do! setUserValues ()
+                let! htmlJobApplicationId = saveHtmlJobApplication varHtmlJobApplicationName.Value
+
+                match oAddedEmployerId with
                 | Some employerId ->
                     let htmlJobApplication =
                         { name = varHtmlJobApplication.Value.name
@@ -1066,7 +576,7 @@ module Client =
                           phone = varBossPhone.Value
                           mobilePhone = varBossMobilePhone.Value
                         }
-                    do Server.applyNowWithHtmlTemplate employer htmlJobApplication userValues
+                    do Server.applyNowWithHtmlTemplate employer employerId htmlJobApplication userValues
                 | None -> ()
             } |> Async.Start
 
@@ -1136,24 +646,11 @@ module Client =
                     textView varUserLastName.View
                   ]
               ]
-            inputAttr [attr.``type`` "button"; attr.value "Speichern als"; on.click (fun _ _ -> saveHtmlJobApplication varTxtSaveAs.Value (*setUserValues (); addEmployer ()*))] [text "Speichern als"]
+            //inputAttr [attr.``type`` "button"; attr.value "Speichern als"; on.click (fun _ _ -> saveHtmlJobApplication varTxtSaveAs.Value (*setUserValues (); addEmployer ()*))] [text "Speichern als"]
             Doc.Input [] varTxtSaveAs
             br []
-            inputAttr [attr.``type`` "button"; attr.value "Abschicken"; on.click (fun _ _ -> setUserValues (); addEmployer (); saveHtmlJobApplication varHtmlJobApplicationName.Value; applyNowWithHtmlTemplate())] []
+            inputAttr [attr.``type`` "button"; attr.value "Abschicken"; on.click (fun _ _ -> applyNowWithHtmlTemplate())] []
           ]
-(*        <textarea style="min-width: 100%; height:100%; font-family: inherit; font-size: inherit">
-It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English. Many desktop publishing packages and web page editors now use Lorem Ipsum as their default model text, and a search for 'lorem ipsum' will uncover many web sites still in their infancy. Various versions have evolved over the years, sometimes by accident, sometimes on purpose (injected humour and the like).
-
-Where does it come from?
-
-Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source. Lorem Ipsum comes from sections 1.10.32 and 1.10.33 of "de Finibus Bonorum et Malorum" (The Extremes of Good and Evil) by Cicero, written in 45 BC. This book is a treatise on the theory of ethics, very popular during the Renaissance. The first line of Lorem Ipsum, "Lorem ipsum dolor sit amet..", comes from a line in section 1.10.32.
-        </textarea>
--->
-*)
-
-   
-
-
 
 
 

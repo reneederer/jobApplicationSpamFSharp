@@ -58,7 +58,9 @@ module Templating =
         ]
     
     let loggedInUserEmail (ctx: Context<EndPoint>) =
-        Server.oLoggedInUserId
+        ctx.UserSession.GetLoggedInUser()
+        |> Async.RunSynchronously
+        |> Option.map System.Int32.Parse
         |> Option.bind (Server.getEmailByUserId >> Async.RunSynchronously)
         |> Option.defaultValue ""
 
@@ -194,7 +196,7 @@ module Site =
 
     let main =
         Application.MultiPage (fun (ctx : Context<EndPoint>) endpoint ->
-            match (Server.oLoggedInUserId, endpoint) with
+            match (ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously, endpoint) with
             | Some _, EndPoint.Home -> homePage ctx
             | Some _, EndPoint.Login -> loginPage ctx
             | Some _, EndPoint.EditUserValues -> editUserValuesPage ctx

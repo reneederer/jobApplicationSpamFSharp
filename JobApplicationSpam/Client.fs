@@ -19,6 +19,10 @@ module Client =
     open HtmlAgilityPack
     open WebSharper.JQuery
     open System
+    open Database
+    open WebSharper.JavaScript
+    open WebSharper.UI.Next.CSharp.Html.SvgAttributes
+    open System.Data.SqlTypes
 
     [<JavaScript>]
     type Language =
@@ -271,13 +275,12 @@ module Client =
         let varTxtLoginPassword = Var.Create ""
         formAttr
           [ on.submit (fun _ _ ->
-                async {
-                  let! loginResult = Server.login (varTxtLoginEmail.Value) (varTxtLoginPassword.Value)
-                  match loginResult with
-                  | Ok (v, _) -> ()
-                  | Bad xs -> JS.Alert(String.concat ", " xs)
-                } |> Async.Start
-              )
+              let loginResult = Server.login (varTxtLoginEmail.Value) (varTxtLoginPassword.Value)
+              match loginResult with
+              | Ok (v, _) ->
+                ()
+              | Bad xs -> JS.Alert(String.concat ", " xs)
+          )
           ]
           [ divAttr
               [ attr.``class`` "form-group" ]
@@ -337,6 +340,9 @@ module Client =
     let showSentJobApplications () =
         h1 [text "hallo"]
 
+    [<JavaScript>]
+    let public a () =
+        JS.Alert("halsdf")
 
     [<JavaScript>]
     let createTemplate () = 
@@ -370,40 +376,28 @@ module Client =
         let varHtmlJobApplicationPageTemplateName = Var.Create ""
         let varTxtSaveAs = Var.Create ""
         let varHtmlJobApplicationId = Var.Create 0
+        let varPageTemplate = Var.Create(Doc.Verbatim("<div>nothing here yet</div>"))
+        let varPageTemplateMap = Var.Create(Map.empty)
         let fillHtmlJobApplication htmlJobApplicationOffset =
             async {
                 let! htmlJobApplication = Server.getHtmlJobApplicationOffset htmlJobApplicationOffset
                 varHtmlJobApplication.Value <- htmlJobApplication
                 JQuery("#mainText").Val((htmlJobApplication.pages |> Seq.item 0).map.["mainText"].Replace("\\n", "\n")) |> ignore
-            } |> Async.Start
-        let fillHtmlJobApplicationNames () =
+                return ()
+            }
+        let setUserValues () =
             async {
-                let! htmlJobApplicationNames = Server.getHtmlJobApplicationNames()
-                if not <| List.isEmpty htmlJobApplicationNames
-                then
-                    varHtmlJobApplicationName.Value <- htmlJobApplicationNames.[0]
-                    varHtmlJobApplicationNames.Value <- htmlJobApplicationNames
-
-                let! htmlJobApplicationPageTemplateNames = Server.getHtmlJobApplicationPageTemplateNames ()
-                if not <| List.isEmpty htmlJobApplicationPageTemplateNames then
-                    varHtmlJobApplicationPageTemplateName.Value <- htmlJobApplicationPageTemplateNames.[0]
-                    varHtmlJobApplicationPageTemplateNames.Value <- htmlJobApplicationPageTemplateNames
-
-                fillHtmlJobApplication (Seq.length htmlJobApplicationNames - 1)
-            } |> Async.Start
-        fillHtmlJobApplicationNames ()
-        async {
-                let! userValues = Server.getCurrentUserValues ()
-                varUserGender.Value <- userValues.gender
-                varUserDegree.Value <- userValues.degree
-                varUserFirstName.Value <- userValues.firstName
-                varUserLastName.Value <- userValues.lastName
-                varUserStreet.Value <- userValues.street
-                varUserPostcode.Value <- userValues.postcode
-                varUserCity.Value <- userValues.city
-                varUserPhone.Value <- userValues.phone
-                varUserMobilePhone.Value <- userValues.mobilePhone
-        } |> Async.Start
+                    let! userValues = Server.getCurrentUserValues ()
+                    varUserGender.Value <- userValues.gender
+                    varUserDegree.Value <- userValues.degree
+                    varUserFirstName.Value <- userValues.firstName
+                    varUserLastName.Value <- userValues.lastName
+                    varUserStreet.Value <- userValues.street
+                    varUserPostcode.Value <- userValues.postcode
+                    varUserCity.Value <- userValues.city
+                    varUserPhone.Value <- userValues.phone
+                    varUserMobilePhone.Value <- userValues.mobilePhone
+            }
     
         let updateMainText () =
             match varBossGender.Value with
@@ -412,7 +406,19 @@ module Client =
             | Gender.Male ->
                 varMainText.Value <- "Sehr geehrter Herr " + varBossDegree.Value + " " + varBossLastName.Value + "\n" + varMainText.Value
 
-        let resize (el : JQuery) font fontSize fontWeight (defaultWidth: int) =
+        let resize (el : Dom.Element) (defaultWidth: int) =
+            let jEl = JQuery el
+            let str = jEl.Val().ToString().Replace(" ", "&nbsp;")
+            if str = ""
+            then jEl.Width(defaultWidth) |> ignore
+            else
+                let (span : JQuery) = JQuery("<span />").Attr("style", sprintf "font-family:%s; font-size: %s; font-weight: %s; visibility: hidden" (el?style?fontFamily) (el?style?fontSize) (el?style?fontWeight)).Html(str)
+                span.AppendTo("body") |> ignore
+                jEl.Width(span.Width()) |> ignore
+                JQuery("body span").Last().Remove() |> ignore
+            ()
+        let resize1 (el1:JS) font fontSize fontWeight (defaultWidth: int) =
+            let el = JQuery(el1)
             let str = el.Val().ToString().Replace(" ", "&nbsp;")
             if str = ""
             then el.Width(defaultWidth) |> ignore
@@ -441,7 +447,7 @@ module Client =
                     then
                         if endIndex = currentIndex
                         then
-                            JS.Alert(currentIndex - 1 |> string)
+                            //JS.Alert(currentIndex - 1 |> string)
                             currentIndex - 1
                         else
                             let nextEndIndex = currentIndex
@@ -465,7 +471,7 @@ module Client =
                                 | None, _ -> splitIndex
                                 | _, true -> splitIndex
                                 | Some v, false -> v + 1
-                            JS.Alert(splitIndexSpace |> string)
+                            //JS.Alert(splitIndexSpace |> string)
                             let front = x.Substring(0, splitIndexSpace)
                             let back = x.Substring(splitIndexSpace)
                             match back, xs with
@@ -581,75 +587,90 @@ module Client =
                     do Server.applyNowWithHtmlTemplate employer employerId htmlJobApplication userValues
                 | None -> ()
             } |> Async.Start
+        
+
+
+        async {
+            //do! fillHtmlJobApplication 1
+            let! htmlJobApplicationNames = Server.getHtmlJobApplicationNames ()
+            if not <| List.isEmpty htmlJobApplicationNames
+            then
+                varHtmlJobApplicationName.Value <- htmlJobApplicationNames.[0]
+                varHtmlJobApplicationNames.Value <- htmlJobApplicationNames
+
+            let! htmlJobApplicationPageTemplates = Server.getHtmlJobApplicationPageTemplates ()
+            if not <| List.isEmpty htmlJobApplicationPageTemplates then
+                varHtmlJobApplicationPageTemplateName.Value <- htmlJobApplicationPageTemplates |> List.head |> (fun t -> t.name)
+                varHtmlJobApplicationPageTemplateNames.Value <- htmlJobApplicationPageTemplates |> List.map (fun t -> t.name)
+                varPageTemplateMap.Value <- htmlJobApplicationPageTemplates |> List.map (fun t -> t.name, t.html) |> Map.ofList
+                varPageTemplate.Value <- varPageTemplateMap.Value.[varHtmlJobApplicationPageTemplateName.Value] |> Doc.Verbatim
+                let el = JS.Document.GetElementById("selectHtmlJobApplicationPageTemplate")
+                while el = JS.Undefined || el?length <> htmlJobApplicationPageTemplates.Length do
+                    do! Async.Sleep 50
+                JS.Document.GetElementById("selectHtmlJobApplicationPageTemplate")?selectedIndex <- 0
+                let inputGrowers = JQuery(".resizing")
+                inputGrowers.Each(fun (n, el) -> el.AddEventListener("input", (fun () -> resize el 150), true)) |> ignore
+                let fieldUpdaters = JQuery(".field-updating")
+                fieldUpdaters.Each
+                    (fun (n, (el : Dom.Element)) ->
+                        el.AddEventListener
+                            ( "input"
+                            , (fun () ->
+                                let updateElements = JQuery(sprintf "[data-update-field='%s']" ((JQuery(el)).Data("update-field").ToString()))
+                                updateElements.Each
+                                    (fun (n, updateElement) ->
+                                        if updateElement <> el then
+                                            JQuery(updateElement).Val(JQuery(el).Val() |> string) |> ignore
+                                            resize updateElement 150
+                                        ()
+                                    ) |> ignore
+                                ()
+                              ), true
+                            )
+                    ) |> ignore
+                JQuery("[data-variable-value]")
+                    .Each(fun (n, el) ->
+                        let jEl = JQuery el
+                        match jEl.Data("variable-value") |> string with
+                        | "today" -> jEl.Val(sprintf "%i.%i.%i" DateTime.Now.Day DateTime.Now.Month DateTime.Now.Year) |> ignore
+                        | _ -> ()
+                    ) |> ignore
+
+
+            //do! setUserValues ()
+        } |> Async.Start
 
         div
           [ h1 [ text "Create a template" ]
-            Doc.SelectDyn [attr.style "min-width: 300px"; attr.id "selectHtmlJobApplicationName"; on.change (fun el _ -> fillHtmlJobApplication el?selectedIndex)] id varHtmlJobApplicationNames.View varHtmlJobApplicationName
-            Doc.SelectDyn [attr.style "min-width: 300px"; attr.id "selectHtmlJobApplicationPageTemplate"; ] id varHtmlJobApplicationPageTemplateNames.View varHtmlJobApplicationPageTemplateName
+            Doc.SelectDyn [attr.style "min-width: 300px"; attr.id "selectHtmlJobApplicationName"; on.change (fun el _ -> ()(*fillHtmlJobApplication el?selectedIndex |> Async.Start*))] id varHtmlJobApplicationNames.View varHtmlJobApplicationName
+            br []
+            text "Pages: "
+            br []
+            ul
+              [ li [ button [text "+"] ]
+                li [ text "Anschreiben" ]
+                li [button [text "+"] ]
+              ]
+            br []
+            hr []
+            br []
             div
-              [ Doc.Radio [attr.id "uploadCover"; on.click (fun _ _ -> JS.Alert(varCover.Value.ToString())); attr.radiogroup "cover" ] Upload varCover
-                labelAttr [ attr.``for`` "uploadCover" ] [text "Hochladen"]
+              [ Doc.Radio [attr.id "upload"; on.click (fun _ _ -> JS.Alert(varCover.Value.ToString())); attr.radiogroup "cover" ] Upload varCover
+                labelAttr [ attr.``for`` "upload" ] [text "Hochladen"]
                 br []
-                Doc.Radio [attr.id "createCover"; on.click (fun _ _ -> JS.Alert(varCover.Value.ToString())); attr.radiogroup "cover" ] Create varCover
-                labelAttr [ attr.``for`` "createCover" ] [text "Online erstellen"]
+                Doc.Radio [attr.id "create"; on.click (fun _ _ -> JS.Alert(varCover.Value.ToString())); attr.radiogroup "cover" ] Create varCover
+                labelAttr [ attr.``for`` "create" ] [text "Online erstellen"]
+                br []
+                Doc.Radio [attr.id "useCreated"; on.click (fun _ _ -> JS.Alert(varCover.Value.ToString())); attr.radiogroup "cover" ] UseCreated varCover
+                labelAttr [ attr.``for`` "useCreated" ] [text "Online erstellte Seite verwenden"]
                 br []
                 Doc.Radio [attr.id "ignoreCover"; on.click (fun _ _ -> JS.Alert(varCover.Value.ToString())); attr.radiogroup "cover" ] Ignore varCover
                 labelAttr [ attr.``for`` "ignoreCover" ] [text "Nicht verwenden"]
                 br []
               ]
-            divAttr [attr.``class`` "page"]
-              [ divAttr [attr.style "height: 225pt; width: 100%; background-color: lightblue"]
-                  [ Doc.Input [ attr.``class`` "grow-input"; attr.autofocus "autofocus"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150; fillHtmlJobApplicationNames ()); attr.placeholder "Dein Titel" ] varUserDegree
-                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Dein Vorname" ] varUserFirstName
-                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Dein Nachname" ] varUserLastName
-                    br []
-                    Doc.Input [ attr.``class`` "grow-input"; attr.style "width:150px"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Deine Straße" ] varUserStreet
-                    br []
-                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Deine Postleitzahl" ] varUserPostcode
-                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Deine Stadt" ] varUserCity
-                    br []
-                    br []
-                    br []
-                    Doc.Select [on.change (fun _ _ -> updateMainText ())] (fun x -> match x with Gender.Male -> "Herrn" | Gender.Female -> "Frau") [Gender.Male; Gender.Female] varBossGender
-                    br []
-                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Chef-Titel" ] varBossDegree
-                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Chef-Vorname" ] varBossFirstName
-                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Chef-Nachname" ] varBossLastName
-                    br []
-                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Firma-Strasse" ] varCompanyStreet
-                    br []
-                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Firma-Postleitzahl" ] varCompanyPostcode
-                    Doc.Input [ attr.``class`` "grow-input"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "normal" 150); attr.placeholder "Firma-Stadt" ] varCompanyCity
-                    br []
-                    spanAttr [ attr.style "float:right" ]
-                      [ textView <| View.FromVar varUserCity
-                        text <|  ", " + DateTime.Now.ToShortDateString()
-                      ]
-                    br []
-                    br []
-                    Doc.Input [ attr.``class`` "grow-input"; attr.style "font-weight: bold;"; on.input (fun el _ -> resize (JQuery el) "Arial" "12pt" "bold" 150); attr.placeholder "Betreff" ] varSubject
-                    br []
-                    br []
-                  ]
-                divAttr [attr.style "width:100%; min-height: 322.4645709pt; background-color:red;"]
-                  [ Doc.InputArea [ attr.id "mainText"; attr.style "wrap: soft; border: none; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; background-color: lighblue; overflow: hidden; min-height: 322.4645709pt; min-width:100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block" ] varMainText
-                  ]
-                divAttr [ attr.style "height:96pt; width: 100%;" ]
-                  [
-                    br []
-                    text "Mit freundlichen Grüßen"
-                    br []
-                    br []
-                    br []
-                    textView varUserDegree.View
-                    text " "
-                    textView varUserFirstName.View
-                    text " "
-                    textView varUserLastName.View
-                  ]
-              ]
-            //inputAttr [attr.``type`` "button"; attr.value "Speichern als"; on.click (fun _ _ -> saveHtmlJobApplication varTxtSaveAs.Value (*setUserValues (); addEmployer ()*))] [text "Speichern als"]
-            Doc.Input [] varTxtSaveAs
+            Doc.SelectDyn [attr.style "min-width: 300px"; attr.id "selectHtmlJobApplicationPageTemplate"; on.change (fun _ _ -> if varPageTemplateMap.Value.ContainsKey varHtmlJobApplicationPageTemplateName.Value then varPageTemplate.Value <- Doc.Verbatim <| varPageTemplateMap.Value.[varHtmlJobApplicationPageTemplateName.Value])] id varHtmlJobApplicationPageTemplateNames.View varHtmlJobApplicationPageTemplateName
+            br []
+            Doc.EmbedView varPageTemplate.View
             br []
             inputAttr [attr.``type`` "button"; attr.value "Abschicken"; on.click (fun _ _ -> applyNowWithHtmlTemplate())] []
           ]

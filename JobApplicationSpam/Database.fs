@@ -274,20 +274,25 @@ module Database =
         getHtmlJobApplication dbConn htmlJobApplicationId
 
     let getHtmlJobApplicationNames (dbConn : NpgsqlConnection) (userId : int) =
+        log.Debug(sprintf "%i" userId)
         use command = new NpgsqlCommand("select name from htmlJobApplication where userId = :userId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         use reader = command.ExecuteReader()
-        [ while reader.Read() do
-            yield reader.GetString(0)
-        ]
+        let ret =
+            [ while reader.Read() do
+                yield reader.GetString(0)
+            ]
+        log.Debug(sprintf "%i = %A" userId ret)
+        ret
 
     let getHtmlJobApplicationPageTemplatePath (dbConn : NpgsqlConnection) (htmlJobApplicationPageTemplateId : int) =
         use command = new NpgsqlCommand("select odtPath from htmlJobApplicationPageTemplate where id = :htmlJobApplicationPageTemplateId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("htmlJobApplicationPageTemplateId", htmlJobApplicationPageTemplateId)) |> ignore
         command.ExecuteScalar() |> string
 
-    let getHtmlJobApplicationPageTemplateNames (dbConn : NpgsqlConnection) =
-        use command = new NpgsqlCommand("select name from htmlJobApplicationPageTemplate", dbConn)
+
+    let getHtmlJobApplicationPageTemplates (dbConn : NpgsqlConnection) =
+        use command = new NpgsqlCommand("select html, name from htmlJobApplicationPageTemplate", dbConn)
         use reader = command.ExecuteReader()
         [ while reader.Read() do
-            yield reader.GetString(0) ]
+            yield { html = reader.GetString(0); name = reader.GetString(1) } ]

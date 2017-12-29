@@ -408,7 +408,7 @@
         email:varBossEmail.c,
         phone:varBossPhone.c,
         mobilePhone:varBossMobilePhone.c
-       },((new AjaxRemotingProvider.New()).Send("JobApplicationSpam:JobApplicationSpam.Server.applyNowWithHtmlTemplate:-77811991",[employer,a.$0,htmlJobApplication,userValues]),Concurrency.Zero()))));
+       },((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.applyNowWithHtmlTemplate:902581775",[employer,a.$0,htmlJobApplication,userValues]),Concurrency.Zero()))));
       });
      });
     });
@@ -624,9 +624,14 @@
   {
    return function()
    {
-    var loginResult;
-    loginResult=(new AjaxRemotingProvider.New()).Sync("JobApplicationSpam:JobApplicationSpam.Server.login:1280212622",[varTxtLoginEmail.c,varTxtLoginPassword.c]);
-    return loginResult.$==1?Global.alert(Strings.concat(", ",loginResult.$0)):null;
+    var b;
+    return Concurrency.Start((b=null,Concurrency.Delay(function()
+    {
+     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.login:2110856612",[varTxtLoginEmail.c,varTxtLoginPassword.c]),function(a)
+     {
+      return a.$==1?(Global.alert(Strings.concat(", ",a.$0)),Concurrency.Zero()):Concurrency.Zero();
+     });
+    })),null);
    };
   })],[Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","txtLoginEmail")],[Doc.TextNode("Email")]),Doc.Input([AttrProxy.Create("class","form-control"),AttrProxy.Create("id","txtLoginEmail"),AttrProxy.Create("placeholder","Email")],varTxtLoginEmail)]),Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","txtLoginPassword")],[Doc.TextNode("Password")]),Doc.PasswordBox([AttrProxy.Create("class","form-control"),AttrProxy.Create("id","txtLoginPassword"),AttrProxy.Create("placeholder","Password")],varTxtLoginPassword)]),Doc.Element("input",[AttrProxy.Create("type","submit"),AttrProxy.Create("value","Login")],[])]);
  };

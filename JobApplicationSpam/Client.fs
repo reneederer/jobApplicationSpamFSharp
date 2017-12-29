@@ -271,10 +271,12 @@ module Client =
         let varTxtLoginPassword = Var.Create ""
         formAttr
           [ on.submit (fun _ _ ->
-              let loginResult = Server.login (varTxtLoginEmail.Value) (varTxtLoginPassword.Value)
-              match loginResult with
-              | Ok (v, _) -> ()
-              | Bad xs -> JS.Alert(String.concat ", " xs)
+                async {
+                  let! loginResult = Server.login (varTxtLoginEmail.Value) (varTxtLoginPassword.Value)
+                  match loginResult with
+                  | Ok (v, _) -> ()
+                  | Bad xs -> JS.Alert(String.concat ", " xs)
+                } |> Async.Start
               )
           ]
           [ divAttr

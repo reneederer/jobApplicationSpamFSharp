@@ -58,8 +58,7 @@ module Templating =
         ]
     
     let loggedInUserEmail (ctx: Context<EndPoint>) =
-        ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously
-        |> Option.map (System.Int32.Parse)
+        Server.oLoggedInUserId
         |> Option.bind (Server.getEmailByUserId >> Async.RunSynchronously)
         |> Option.defaultValue ""
 
@@ -99,7 +98,6 @@ module Site =
         ]
     
     let loginPage (ctx : Context<EndPoint>) =
-        let user = ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously
         Templating.main ctx EndPoint.Login "Login" [
             h1 [text "Login"]
             client <@ Client.login () @>
@@ -144,7 +142,7 @@ module Site =
                     (Option.get ctx.Request.Post.["emailSubject"])
                     (Option.get ctx.Request.Post.["emailBody"])
                     (ctx.Request.Files |> Seq.choose (fun (x : HttpPostedFileBase) -> if x.FileName <> "" then Some x.FileName else None))
-                    (ctx.UserSession.GetLoggedInUser () |> Async.RunSynchronously |> Option.map Int32.Parse)
+                    Server.oLoggedInUserId
                 |> Async.RunSynchronously
                 *)
             else ok "Nothing to upload"
@@ -196,7 +194,7 @@ module Site =
 
     let main =
         Application.MultiPage (fun (ctx : Context<EndPoint>) endpoint ->
-            match (ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously, endpoint) with
+            match (Server.oLoggedInUserId, endpoint) with
             | Some _, EndPoint.Home -> homePage ctx
             | Some _, EndPoint.Login -> loginPage ctx
             | Some _, EndPoint.EditUserValues -> editUserValuesPage ctx

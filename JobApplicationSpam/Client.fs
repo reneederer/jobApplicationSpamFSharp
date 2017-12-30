@@ -23,6 +23,9 @@ module Client =
     open WebSharper.JavaScript
     open WebSharper.UI.Next.CSharp.Html.SvgAttributes
     open System.Data.SqlTypes
+    open WebSharper.Html.Client.Operators
+    open WebSharper.UI.Next.Client.HtmlExtensions
+    open WebSharper.JavaScript
 
     [<JavaScript>]
     type Language =
@@ -340,9 +343,6 @@ module Client =
     let showSentJobApplications () =
         h1 [text "hallo"]
 
-    [<JavaScript>]
-    let public a () =
-        JS.Alert("halsdf")
 
     [<JavaScript>]
     let createTemplate () = 
@@ -368,16 +368,15 @@ module Client =
         let varBossMobilePhone = Var.Create ""
         let varSubject = Var.Create "Bewerbung als ..."
         let varMainText = Var.Create ""
-        let varCover = Var.Create Upload
         let varHtmlJobApplication = Var.Create {name = ""; pages = [] }
         let varHtmlJobApplicationNames = Var.Create [""]
         let varHtmlJobApplicationName = Var.Create ""
         let varHtmlJobApplicationPageTemplateNames = Var.Create [""]
         let varHtmlJobApplicationPageTemplateName = Var.Create ""
         let varTxtSaveAs = Var.Create ""
-        let varHtmlJobApplicationId = Var.Create 0
         let varPageTemplate = Var.Create(Doc.Verbatim("<div>nothing here yet</div>"))
-        let varPageTemplateMap = Var.Create(Map.empty)
+        let varPageTemplateMap = Var.Create Map.empty
+        let varPages = Var.Create(Doc.Verbatim("<div>nothin to see here</div>"))
         let fillHtmlJobApplication htmlJobApplicationOffset =
             async {
                 let! htmlJobApplication = Server.getHtmlJobApplicationOffset htmlJobApplicationOffset
@@ -587,92 +586,124 @@ module Client =
                     do Server.applyNowWithHtmlTemplate employer employerId htmlJobApplication userValues
                 | None -> ()
             } |> Async.Start
+
+        let uploadDiv =
+            div
+              [ text "Uploading" ]
         
+        let createDiv =
+            div
+              [ Doc.SelectDyn [attr.style "min-width: 300px"; attr.id "selectHtmlJobApplicationPageTemplate"; on.change (fun _ _ -> if varPageTemplateMap.Value.ContainsKey varHtmlJobApplicationPageTemplateName.Value then varPageTemplate.Value <- Doc.Verbatim <| varPageTemplateMap.Value.[varHtmlJobApplicationPageTemplateName.Value])] id varHtmlJobApplicationPageTemplateNames.View varHtmlJobApplicationPageTemplateName
+                br []
+                Doc.EmbedView varPageTemplate.View
+                br []
+                inputAttr [attr.``type`` "button"; attr.value "Abschicken"; on.click (fun _ _ -> applyNowWithHtmlTemplate(); ())] []
+              ]
+
+        let useCreatedDiv =
+            div 
+              [ text "UseCreated!"
+              ]
+        
+        let varPageActionDiv = Var.Create uploadDiv
+        //do! fillHtmlJobApplication 1
 
 
-        async {
-            //do! fillHtmlJobApplication 1
-            let! htmlJobApplicationNames = Server.getHtmlJobApplicationNames ()
-            if not <| List.isEmpty htmlJobApplicationNames
-            then
-                varHtmlJobApplicationName.Value <- htmlJobApplicationNames.[0]
-                varHtmlJobApplicationNames.Value <- htmlJobApplicationNames
+        let prepare () =
+            async {
+                if varHtmlJobApplicationNames.Value = [""]
+                then
+                    let! htmlJobApplicationNames = Server.getHtmlJobApplicationNames ()
+                    if not <| List.isEmpty htmlJobApplicationNames
+                    then
+                        varHtmlJobApplicationName.Value <- htmlJobApplicationNames.[0]
+                        varHtmlJobApplicationNames.Value <- htmlJobApplicationNames
 
-            let! htmlJobApplicationPageTemplates = Server.getHtmlJobApplicationPageTemplates ()
-            if not <| List.isEmpty htmlJobApplicationPageTemplates then
+                let! htmlJobApplicationPageTemplates = Server.getHtmlJobApplicationPageTemplates ()
                 varHtmlJobApplicationPageTemplateName.Value <- htmlJobApplicationPageTemplates |> List.head |> (fun t -> t.name)
                 varHtmlJobApplicationPageTemplateNames.Value <- htmlJobApplicationPageTemplates |> List.map (fun t -> t.name)
                 varPageTemplateMap.Value <- htmlJobApplicationPageTemplates |> List.map (fun t -> t.name, t.html) |> Map.ofList
                 varPageTemplate.Value <- varPageTemplateMap.Value.[varHtmlJobApplicationPageTemplateName.Value] |> Doc.Verbatim
+                let! htmlJobApplicationPagesDB = Server.getHtmlJobApplicationPages (JS.Document.GetElementById("selectHtmlJobApplicationName")?selectedIndex + 1)
+                varPages.Value <-
+                  ul
+                    [ for htmlJobApplicationPageDB in htmlJobApplicationPagesDB do
+                         yield li [ buttonAttr [on.click (fun _ _ -> JS.Alert(htmlJobApplicationPageDB.name + ", " + htmlJobApplicationPageDB.htmlJobApplicationPageTemplateId.ToString())) ] [text htmlJobApplicationPageDB.name] ] :> Doc
+                    ]
+                
+
                 let el = JS.Document.GetElementById("selectHtmlJobApplicationPageTemplate")
-                while el = JS.Undefined || el?length <> htmlJobApplicationPageTemplates.Length do
-                    do! Async.Sleep 50
-                JS.Document.GetElementById("selectHtmlJobApplicationPageTemplate")?selectedIndex <- 0
-                let inputGrowers = JQuery(".resizing")
-                inputGrowers.Each(fun (n, el) -> el.AddEventListener("input", (fun () -> resize el 150), true)) |> ignore
-                let fieldUpdaters = JQuery(".field-updating")
-                fieldUpdaters.Each
-                    (fun (n, (el : Dom.Element)) ->
-                        el.AddEventListener
-                            ( "input"
-                            , (fun () ->
-                                let updateElements = JQuery(sprintf "[data-update-field='%s']" ((JQuery(el)).Data("update-field").ToString()))
-                                updateElements.Each
-                                    (fun (n, updateElement) ->
-                                        if updateElement <> el then
-                                            JQuery(updateElement).Val(JQuery(el).Val() |> string) |> ignore
-                                            resize updateElement 150
-                                        ()
-                                    ) |> ignore
-                                ()
-                              ), true
-                            )
-                    ) |> ignore
-                JQuery("[data-variable-value]")
-                    .Each(fun (n, el) ->
-                        let jEl = JQuery el
-                        match jEl.Data("variable-value") |> string with
-                        | "today" -> jEl.Val(sprintf "%i.%i.%i" DateTime.Now.Day DateTime.Now.Month DateTime.Now.Year) |> ignore
-                        | _ -> ()
-                    ) |> ignore
+                if el <> null
+                then
+                    el?selectedIndex <- 0
 
+                    let inputGrowers = JQuery(".resizing")
+                    inputGrowers.Each(fun (n, el) -> el.AddEventListener("input", (fun () -> resize el 150), true)) |> ignore
+                    let fieldUpdaters = JQuery(".field-updating")
+                    fieldUpdaters.Each
+                        (fun (n, (el : Dom.Element)) ->
+                            el.AddEventListener
+                                ( "input"
+                                , (fun () ->
+                                    let updateField = JQuery(el).Data("update-field").ToString()
+                                    match updateField with
+                                    | "userDegree" -> JS.Alert("userDegree")
+                                    | "userFirstName" -> JS.Alert("FirstName!")
+                                    | "userLastName" -> JS.Alert("LastName!")
+                                    | _ -> ()
+                                    let updateElements = JQuery(sprintf "[data-update-field='%s']" ((JQuery(el)).Data("update-field").ToString()))
+                                    updateElements.Each
+                                        (fun (n, updateElement) ->
+                                            if updateElement <> el
+                                            then
+                                                JQuery(updateElement).Val(JQuery(el).Val() |> string) |> ignore
+                                                resize updateElement 150
+                                                ()
+                                        ) |> ignore
+                                    ()
+                                  ), true
+                                )
+                        ) |> ignore
+                    JQuery("[data-variable-value]")
+                        .Each(fun (n, el) ->
+                            let jEl = JQuery el
+                            match jEl.Data("variable-value") |> string with
+                            | "today" -> jEl.Val(sprintf "%i.%i.%i" DateTime.Now.Day DateTime.Now.Month DateTime.Now.Year) |> ignore
+                            | _ -> ()
+                        ) |> ignore
 
-            //do! setUserValues ()
-        } |> Async.Start
+                //do! setUserValues ()
+            } |> Async.Start
+
+        JQuery().Ready(fun () -> prepare()) |> ignore
 
         div
           [ h1 [ text "Create a template" ]
-            Doc.SelectDyn [attr.style "min-width: 300px"; attr.id "selectHtmlJobApplicationName"; on.change (fun el _ -> ()(*fillHtmlJobApplication el?selectedIndex |> Async.Start*))] id varHtmlJobApplicationNames.View varHtmlJobApplicationName
+            Doc.SelectDyn [attr.style "min-width: 300px"; attr.id "selectHtmlJobApplicationName"; on.change (fun el _ -> prepare())] id varHtmlJobApplicationNames.View varHtmlJobApplicationName
             br []
             text "Pages: "
             br []
-            ul
-              [ li [ button [text "+"] ]
-                li [ text "Anschreiben" ]
-                li [button [text "+"] ]
-              ]
+            Doc.EmbedView varPages.View
             br []
             hr []
             br []
             div
-              [ Doc.Radio [attr.id "upload"; on.click (fun _ _ -> JS.Alert(varCover.Value.ToString())); attr.radiogroup "cover" ] Upload varCover
+              [ Doc.Radio [attr.id "upload"; attr.radiogroup "pageAction"; on.change (fun _ _ -> prepare()) ] uploadDiv varPageActionDiv
                 labelAttr [ attr.``for`` "upload" ] [text "Hochladen"]
                 br []
-                Doc.Radio [attr.id "create"; on.click (fun _ _ -> JS.Alert(varCover.Value.ToString())); attr.radiogroup "cover" ] Create varCover
+                Doc.Radio [attr.id "create"; attr.radiogroup "pageAction"; on.change (fun _ _ -> prepare()) ] createDiv varPageActionDiv
                 labelAttr [ attr.``for`` "create" ] [text "Online erstellen"]
                 br []
-                Doc.Radio [attr.id "useCreated"; on.click (fun _ _ -> JS.Alert(varCover.Value.ToString())); attr.radiogroup "cover" ] UseCreated varCover
+                (*
+                Doc.Radio [attr.id "useCreated"; attr.radiogroup "pageAction" ] useCreatedDiv varPageActionDiv
                 labelAttr [ attr.``for`` "useCreated" ] [text "Online erstellte Seite verwenden"]
                 br []
-                Doc.Radio [attr.id "ignoreCover"; on.click (fun _ _ -> JS.Alert(varCover.Value.ToString())); attr.radiogroup "cover" ] Ignore varCover
-                labelAttr [ attr.``for`` "ignoreCover" ] [text "Nicht verwenden"]
-                br []
+                *)
               ]
-            Doc.SelectDyn [attr.style "min-width: 300px"; attr.id "selectHtmlJobApplicationPageTemplate"; on.change (fun _ _ -> if varPageTemplateMap.Value.ContainsKey varHtmlJobApplicationPageTemplateName.Value then varPageTemplate.Value <- Doc.Verbatim <| varPageTemplateMap.Value.[varHtmlJobApplicationPageTemplateName.Value])] id varHtmlJobApplicationPageTemplateNames.View varHtmlJobApplicationPageTemplateName
             br []
-            Doc.EmbedView varPageTemplate.View
+            hr []
             br []
-            inputAttr [attr.``type`` "button"; attr.value "Abschicken"; on.click (fun _ _ -> applyNowWithHtmlTemplate())] []
+            Doc.EmbedView varPageActionDiv.View
           ]
 
 

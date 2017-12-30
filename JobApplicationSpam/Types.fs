@@ -59,17 +59,15 @@ module Types =
         }
 
     [<WebSharper.JavaScript>]
-    type JobApplicationContent =
+    type JobApplicationPageAction =
     | Upload
     | Create
     | UseCreated
-    | Ignore
     with
         override this.ToString() =
             match this with 
             | Upload -> "Upload"
             | Create -> "Create"
-            | Ignore -> "Ignore"
             | UseCreated -> "UseCreated"
      
 
@@ -91,3 +89,7 @@ module Types =
           name : string
         }
 
+    type HtmlJobApplicationPageDB =
+        { name : string
+        ; htmlJobApplicationPageTemplateId : int
+        }

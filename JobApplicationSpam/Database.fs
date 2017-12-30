@@ -296,3 +296,11 @@ module Database =
         use reader = command.ExecuteReader()
         [ while reader.Read() do
             yield { html = reader.GetString(0); name = reader.GetString(1) } ]
+
+    let getHtmlJobApplicationPages (dbConn : NpgsqlConnection) (htmlJobApplicationId : int) =
+        use command = new NpgsqlCommand("select name, htmlJobApplicationPageTemplateId from htmlJobApplicationPage where htmlJobApplicationId = :htmlJobApplicationId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("htmlJobApplicationId", htmlJobApplicationId)) |> ignore
+        use reader = command.ExecuteReader()
+        [ while reader.Read() do
+            yield { name = reader.GetString(0); htmlJobApplicationPageTemplateId = reader.GetInt32(1) } ]
+

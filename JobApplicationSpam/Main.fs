@@ -33,7 +33,7 @@ module Templating =
                 aAttr [attr.href (ctx.Link act)] [text txt]
              ]
         [
-            li ["Home" => EndPoint.Home]
+            (*li ["Home" => EndPoint.Home]
             li ["Upload" => EndPoint.UploadTemplate]
             li ["Add employer" => EndPoint.AddEmployer]
             li ["Apply now" => EndPoint.ApplyNow]
@@ -43,6 +43,7 @@ module Templating =
             li ["ShowSentJobApplications" => EndPoint.ShowSentJobApplications]
             li ["Edit user values" => EndPoint.EditUserValues]
             li ["Create template" => EndPoint.CreateTemplate]
+            *)
         ]
     let SideBar (ctx: Context<EndPoint>) endpoint : Doc list =
         let ( => ) txt act =

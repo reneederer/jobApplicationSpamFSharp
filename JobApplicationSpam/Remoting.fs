@@ -316,3 +316,12 @@ module Server =
             dbConn.Open()
             return Database.getHtmlJobApplicationPageTemplates dbConn
         }
+    
+    [<Remote>]
+    let getHtmlJobApplicationPages htmlJobApplicationId =
+        async {
+            use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+            dbConn.Open()
+            return Database.getHtmlJobApplicationPages dbConn htmlJobApplicationId
+        }
+

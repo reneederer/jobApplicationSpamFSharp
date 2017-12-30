@@ -35,44 +35,44 @@ insert into employer(userId, company, street, postcode, city, gender, degree, fi
 insert into employer(userId, company, gender, street, postcode, city, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'BFI Informationssysteme GmbH', 'Ötterichweg 7', '90411', 'Nürnberg', 'm', '', 'Michael', 'Schlund', 'Michael.Schlund@bfi-info.de', '0911 9457668', '');
 
 insert into htmlJobApplicationPageTemplate(name, odtPath, html) values('Anschreiben nach DIN 5008', 'c:/users/rene/desktop/bewerbung_neu.odt',
-'<div class="page">
-    <div style="height: 225pt; width: 100%; background-color: white">
+'<div id="divTemplate" class="page1">
+    <div style="width: 100%; background-color: white">
         <input class="resizing field-updating" autofocus "autofocus" style="font-family: Arial; font-size: 12pt; font-weight: normal" data-update-field="userDegree" placeholder="Dein Titel" />
-        <input class="resizing field-updating" style="font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userFirstName" placeholder="Dein Vorname" />
-        <input class="resizing field-updating" style="letter-spacing: 0px; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userLastName" placeholder="Dein Nachname" />
+        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userFirstName" placeholder="Dein Vorname" />
+        <input class="resizing field-updating" style="border:none; outline: none; letter-spacing: 0px; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userLastName" placeholder="Dein Nachname" />
         <br />
-        <input class="resizing field-updating" style="font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userStreet" style= "width:150px" placeholder="Deine Straße" />
+        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userStreet" style= "width:150px" placeholder="Deine Straße" />
         <br />
-        <input class="resizing field-updating" style="font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userPostcode" placeholder="Deine Postleitzahl" />
-        <input class="resizing field-updating" style="font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userCity" placeholder="Deine Stadt" />
+        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userPostcode" placeholder="Deine Postleitzahl" />
+        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userCity" placeholder="Deine Stadt" />
         <br />
         <br />
         <br />
         <!--Doc.Select [on.change (fun _ _ -> updateMainText ())] (fun x -> match x with Gender.Male -> "Herrn" | Gender.Female -> "Frau") [Gender.Male Gender.Female] varBossGender-->
         <br />
-        <input class="resizing field-updating" style="font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="bossDegree" placeholder="Chef-Titel" />
-        <input class="resizing field-updating" style="font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="bossFirstName" placeholder="Chef-Vorname" />
-        <input class="resizing field-updating" style="font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="bossLastName" placeholder="Chef-Nachname" />
+        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="bossDegree" placeholder="Chef-Titel" />
+        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="bossFirstName" placeholder="Chef-Vorname" />
+        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="bossLastName" placeholder="Chef-Nachname" />
         <br />
-        <input class="resizing field-updating" style="font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="companyStreet" placeholder="Firma-Strasse" />
+        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="companyStreet" placeholder="Firma-Strasse" />
         <br />
-        <input class="resizing field-updating" style="font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="companyPostcode" placeholder="Firma-Postleitzahl" />
-        <input class="resizing field-updating" style="font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="companyCity" placeholder="Firma-Stadt" />
+        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="companyPostcode" placeholder="Firma-Postleitzahl" />
+        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="companyCity" placeholder="Firma-Stadt" />
         <br />
 <span style= "float:right">
 <input type="text" readonly="readonly" class="resizing field-updating" style="font-family: Arial; font-size: 12pt; font-weight: normal; border: none; outline: none;padding:0px; margin:0px" data-update-field="userCity" />,&nbsp
-<input type="text" readonly="readonly" class="resizing" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-variable-value="today" />
+<input type="text" readonly="readonly" class="resizing" style="font-family: Arial; font-size: 12pt; font-weight: normal" data-variable-value="today" />
 </span>
         <br />
         <br />
-        <input class="resizing field-updating" data-update-field="subject" style="font-family: Arial; font-size: 12pt; font-weight: bold" placeholder="Betreff" />
+        <input class="resizing field-updating" data-update-field="subject" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: bold" placeholder="Betreff" />
         <br />
         <br />
     </div>
-    <div style="width:100% min-height: 322.4645709pt background-color:red">
-      <textArea id="mainText" style="wrap: soft; border: none; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; overflow: hidden; min-height: 322.4645709pt; min-width:100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block"></textArea>
+    <div style="width: 100%;">
+        <textarea rows="7" id="mainText" style="wrap: soft; border: solid 2px red; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; overflow: hidden; min-height: 100%; min-width: 100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block"></textarea>
     </div>
-    <div style="height:96pt; width: 100%">
+    <div style="width: 100%">
         <br />
         Mit freundlichen Grüßen
         <br />
@@ -83,10 +83,21 @@ insert into htmlJobApplicationPageTemplate(name, odtPath, html) values('Anschrei
 <input type="text" readonly="readonly" class="resizing field-updating" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-update-field="userLastName" />
 </div>
 </div>');
-insert into htmlJobApplicationPageTemplate(name, odtPath, html) values('Deckblatt', 'c:/users/rene/desktop/bewerbung_deckblatt.odt', '<b>Deckblatt...</b>');
+insert into htmlJobApplicationPageTemplate(name, odtPath, html) values('Deckblatt', 'c:/users/rene/desktop/bewerbung_deckblatt.odt',
+'<div>
+<h1>Deckblatt</h1>
+<image src="null" width="400" height="100" />
+<br />
+<input type="text" class="resizing field-updating" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-update-field="userFirstName" placeholder="Dein Name" />
+hallo div!</div>
+');
 insert into htmlJobApplicationPageTemplate(name, odtPath, html) values('Lebenslauf', 'c:/users/rene/desktop/bewerbung_lebenslauf.odt', '<b>Lebenslauf...</b>');
 insert into htmlJobApplication(userId, name, emailSubject, emailBody) values(1, 'mein htmlTemplate', 'emailTitel', 'emailKoerper');
+insert into htmlJobApplication(userId, name, emailSubject, emailBody) values(1, 'mein zweites htmlTemplate', 'emailTitel', 'emailKoerper');
+insert into htmlJobApplicationPage (htmlJobApplicationId, htmlJobApplicationPageTemplateId, name) values(2, 1, 'mein zweites Anschreiben');
+insert into htmlJobApplicationPage (htmlJobApplicationId, htmlJobApplicationPageTemplateId, name) values(2, 2, 'mein zweites Deckblatt');
 insert into htmlJobApplicationPage (htmlJobApplicationId, htmlJobApplicationPageTemplateId, name) values(1, 1, 'mein Anschreiben');
+insert into htmlJobApplicationPage (htmlJobApplicationId, htmlJobApplicationPageTemplateId, name) values(1, 2, 'mein Deckblatt');
 insert into htmlJobApplicationPageValue(htmlJobApplicationPageId, key, value) values (1, 'mainText', 'Sehr geehrte Damen und Herren\n\nhiermit bewerbe ich mich auf Ihre Stellenzeige\nauf LinkedIn\n\nMit freundlichen Grüßen\n\n\n\nRené Ederer');
 
 insert into jobApplicationStatusValue(id, status) values(1, 'Waiting for reply after sending job application');

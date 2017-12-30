@@ -589,7 +589,13 @@ module Client =
 
         let uploadDiv =
             div
-              [ text "Uploading" ]
+              [ text "Choose file (*.pdf or *.odt)"
+                br []
+                inputAttr [attr.``type`` "file";] []
+                br []
+                br []
+                inputAttr [attr.``type`` "button"; attr.value "Hochladen"; on.click (fun _ _ -> JS.Alert("not implemented!")) ] []
+              ]
         
         let createDiv =
             div
@@ -597,19 +603,15 @@ module Client =
                 br []
                 Doc.EmbedView varPageTemplate.View
                 br []
+                br []
                 inputAttr [attr.``type`` "button"; attr.value "Abschicken"; on.click (fun _ _ -> applyNowWithHtmlTemplate(); ())] []
               ]
 
-        let useCreatedDiv =
-            div 
-              [ text "UseCreated!"
-              ]
-        
         let varPageActionDiv = Var.Create uploadDiv
         //do! fillHtmlJobApplication 1
 
 
-        let prepare () =
+        let rec prepare () =
             async {
                 if varHtmlJobApplicationNames.Value = [""]
                 then
@@ -618,17 +620,29 @@ module Client =
                     then
                         varHtmlJobApplicationName.Value <- htmlJobApplicationNames.[0]
                         varHtmlJobApplicationNames.Value <- htmlJobApplicationNames
+                if varHtmlJobApplicationPageTemplateName.Value = "" || varHtmlJobApplicationPageTemplateNames.Value = [""]
+                then
+                    let! htmlJobApplicationPageTemplates = Server.getHtmlJobApplicationPageTemplates ()
+                    varHtmlJobApplicationPageTemplateNames.Value <- htmlJobApplicationPageTemplates |> List.map (fun t -> t.name)
+                    varPageTemplateMap.Value <- htmlJobApplicationPageTemplates |> List.map (fun t -> t.name, t.html) |> Map.ofList
+                    varHtmlJobApplicationPageTemplateName.Value <- htmlJobApplicationPageTemplates |> List.item 0 |> (fun t -> t.name)
+                    varPageTemplate.Value <- varPageTemplateMap.Value.[varHtmlJobApplicationPageTemplateName.Value] |> Doc.Verbatim
 
-                let! htmlJobApplicationPageTemplates = Server.getHtmlJobApplicationPageTemplates ()
-                varHtmlJobApplicationPageTemplateName.Value <- htmlJobApplicationPageTemplates |> List.head |> (fun t -> t.name)
-                varHtmlJobApplicationPageTemplateNames.Value <- htmlJobApplicationPageTemplates |> List.map (fun t -> t.name)
-                varPageTemplateMap.Value <- htmlJobApplicationPageTemplates |> List.map (fun t -> t.name, t.html) |> Map.ofList
-                varPageTemplate.Value <- varPageTemplateMap.Value.[varHtmlJobApplicationPageTemplateName.Value] |> Doc.Verbatim
                 let! htmlJobApplicationPagesDB = Server.getHtmlJobApplicationPages (JS.Document.GetElementById("selectHtmlJobApplicationName")?selectedIndex + 1)
                 varPages.Value <-
+                  let pageTemplateEl = JS.Document.GetElementById("selectHtmlJobApplicationPageTemplate")
                   ul
                     [ for htmlJobApplicationPageDB in htmlJobApplicationPagesDB do
-                         yield li [ buttonAttr [on.click (fun _ _ -> JS.Alert(htmlJobApplicationPageDB.name + ", " + htmlJobApplicationPageDB.htmlJobApplicationPageTemplateId.ToString())) ] [text htmlJobApplicationPageDB.name] ] :> Doc
+                         yield li [ buttonAttr [on.click (fun _ _ ->
+                            varPageActionDiv.Value <- createDiv
+                            varHtmlJobApplicationPageTemplateName.Value <- varHtmlJobApplicationPageTemplateNames.Value.[htmlJobApplicationPageDB.htmlJobApplicationPageTemplateId - 1]
+                            varPageTemplate.Value <- varPageTemplateMap.Value.[varHtmlJobApplicationPageTemplateName.Value] |> Doc.Verbatim
+                            if pageTemplateEl <> null && pageTemplateEl <> JS.Undefined
+                            then
+                                pageTemplateEl?selectedIndex <- htmlJobApplicationPageDB.htmlJobApplicationPageTemplateId - 1
+                                JS.Alert(pageTemplateEl?selectedIndex)
+                            //prepare()
+                         ) ] [text htmlJobApplicationPageDB.name] ] :> Doc
                     ]
                 
 
@@ -679,7 +693,7 @@ module Client =
 
         div
           [ h1 [ text "Create a template" ]
-            Doc.SelectDyn [attr.style "min-width: 300px"; attr.id "selectHtmlJobApplicationName"; on.change (fun el _ -> prepare())] id varHtmlJobApplicationNames.View varHtmlJobApplicationName
+            Doc.SelectDyn [attr.style "min-width: 300px"; attr.id "selectHtmlJobApplicationName"; on.click (fun el _ -> prepare())] id varHtmlJobApplicationNames.View varHtmlJobApplicationName
             br []
             text "Pages: "
             br []
@@ -694,11 +708,6 @@ module Client =
                 Doc.Radio [attr.id "create"; attr.radiogroup "pageAction"; on.change (fun _ _ -> prepare()) ] createDiv varPageActionDiv
                 labelAttr [ attr.``for`` "create" ] [text "Online erstellen"]
                 br []
-                (*
-                Doc.Radio [attr.id "useCreated"; attr.radiogroup "pageAction" ] useCreatedDiv varPageActionDiv
-                labelAttr [ attr.``for`` "useCreated" ] [text "Online erstellte Seite verwenden"]
-                br []
-                *)
               ]
             br []
             hr []

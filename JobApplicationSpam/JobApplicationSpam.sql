@@ -4,6 +4,7 @@ drop table if exists jobApplicationStatusValue;
 drop table if exists jobApplication;
 drop table if exists htmlJobApplicationPageValue;
 drop table if exists htmlJobApplicationPage;
+drop table if exists htmlJobApplicationFile;
 drop table if exists htmlJobApplication;
 drop table if exists htmlJobApplicationPageTemplate;
 drop table if exists employer;
@@ -15,7 +16,8 @@ create table userValues(id serial primary key, userId int, gender varchar(1) not
 create table employer(id serial primary key, userId int not null, company varchar(100) not null, street varchar(30) not null, postcode varchar(10) not null, city varchar(30) not null, gender varchar(20) not null, degree varchar(20) not null, firstName varchar(50) not null, lastName varchar(50) not null, email varchar(200) not null, phone varchar(30) not null, mobilePhone varchar(30) not null, foreign key(userId) references users(id));
 create table htmlJobApplicationPageTemplate(id serial primary key, name varchar(50) not null, odtPath varchar(100) not null, html text not null);
 create table htmlJobApplication(id serial primary key, userId int not null, name varchar(100) not null, emailSubject varchar(100) not null, emailBody text not null, foreign key(userId) references users(id));
-create table htmlJobApplicationPage(id serial primary key, htmlJobApplicationId int not null, htmlJobApplicationPageTemplateId int not null, name varchar(50) not null, foreign key(htmlJobApplicationId) references htmlJobApplication(id), foreign key(htmlJobApplicationPageTemplateId) references htmlJobApplicationPageTemplate(id));
+create table htmlJobApplicationFile(id serial primary key, htmlJobApplicationId int not null, path varchar(60) not null, pageIndex int not null, name varchar(50) not null, foreign key(htmlJobApplicationId) references htmlJobApplication(id));
+create table htmlJobApplicationPage(id serial primary key, htmlJobApplicationId int not null, htmlJobApplicationPageTemplateId int not null, pageIndex int not null, name varchar(50) not null, foreign key(htmlJobApplicationId) references htmlJobApplication(id), foreign key(htmlJobApplicationPageTemplateId) references htmlJobApplicationPageTemplate(id));
 create table htmlJobApplicationPageValue(id serial primary key, htmlJobApplicationPageId int not null, key varchar(100) not null, value text not null, foreign key(htmlJobApplicationPageId) references htmlJobApplicationPage(id));
 create table jobApplication(id serial primary key, userId int not null, employerId int not null, htmlJobApplicationId int not null, foreign key(htmlJobApplicationId) references htmlJobApplication(id), foreign key(employerId) references employer(id), foreign key(userId) references users(id));
 create table jobApplicationStatusValue(id int primary key, status varchar(50));
@@ -94,10 +96,13 @@ hallo div!</div>
 insert into htmlJobApplicationPageTemplate(name, odtPath, html) values('Lebenslauf', 'c:/users/rene/desktop/bewerbung_lebenslauf.odt', '<b>Lebenslauf...</b>');
 insert into htmlJobApplication(userId, name, emailSubject, emailBody) values(1, 'mein htmlTemplate', 'emailTitel', 'emailKoerper');
 insert into htmlJobApplication(userId, name, emailSubject, emailBody) values(1, 'mein zweites htmlTemplate', 'emailTitel', 'emailKoerper');
-insert into htmlJobApplicationPage (htmlJobApplicationId, htmlJobApplicationPageTemplateId, name) values(2, 1, 'mein zweites Anschreiben');
-insert into htmlJobApplicationPage (htmlJobApplicationId, htmlJobApplicationPageTemplateId, name) values(2, 2, 'mein zweites Deckblatt');
-insert into htmlJobApplicationPage (htmlJobApplicationId, htmlJobApplicationPageTemplateId, name) values(1, 1, 'mein Anschreiben');
-insert into htmlJobApplicationPage (htmlJobApplicationId, htmlJobApplicationPageTemplateId, name) values(1, 2, 'mein Deckblatt');
+insert into htmlJobApplicationFile(htmlJobApplicationId, path, pageIndex, name) values(1, 'C:/Users/rene/Downloads/labenwolf_zeugnis_small.pdf', 3, 'Labenwolf Zeugnis');
+insert into htmlJobApplicationPage(htmlJobApplicationId, htmlJobApplicationPageTemplateId, pageIndex, name) values(2, 1, 1, 'mein zweites Anschreiben');
+insert into htmlJobApplicationPage(htmlJobApplicationId, htmlJobApplicationPageTemplateId, pageIndex, name) values(2, 2, 2, 'mein zweites Deckblatt');
+insert into htmlJobApplicationPage(htmlJobApplicationId, htmlJobApplicationPageTemplateId, pageIndex, name) values(2, 2, 3, 'mein drittes Deckblatt');
+insert into htmlJobApplicationPage(htmlJobApplicationId, htmlJobApplicationPageTemplateId, pageIndex, name) values(2, 3, 4, 'mein dritter Lebenslauf');
+insert into htmlJobApplicationPage(htmlJobApplicationId, htmlJobApplicationPageTemplateId, pageIndex, name) values(1, 1, 5, 'mein Anschreiben');
+insert into htmlJobApplicationPage(htmlJobApplicationId, htmlJobApplicationPageTemplateId, pageIndex, name) values(1, 2, 6, 'mein Deckblatt');
 insert into htmlJobApplicationPageValue(htmlJobApplicationPageId, key, value) values (1, 'mainText', 'Sehr geehrte Damen und Herren\n\nhiermit bewerbe ich mich auf Ihre Stellenzeige\nauf LinkedIn\n\nMit freundlichen Grüßen\n\n\n\nRené Ederer');
 
 insert into jobApplicationStatusValue(id, status) values(1, 'Waiting for reply after sending job application');

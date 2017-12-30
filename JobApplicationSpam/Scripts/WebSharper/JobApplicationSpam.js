@@ -1,7 +1,7 @@
 (function()
 {
  "use strict";
- var Global,JobApplicationSpam,Types,JobApplicationPageAction,Client,Language,Str,AddEmployerAction,SC$1,IntelliFactory,Runtime,WebSharper,Strings,Utils,List,Arrays,Concurrency,Collections,Map,Remoting,AjaxRemotingProvider,Unchecked,UI,Next,Var,Doc,Seq,AttrModule,Date,FSharpMap,AttrProxy;
+ var Global,JobApplicationSpam,Types,JobApplicationPageAction,Client,Language,Str,AddEmployerAction,SC$1,IntelliFactory,Runtime,WebSharper,Strings,Utils,List,Arrays,Concurrency,Collections,Map,Remoting,AjaxRemotingProvider,Unchecked,UI,Next,Var,Seq,Doc,AttrModule,Date,FSharpMap,AttrProxy;
  Global=window;
  JobApplicationSpam=Global.JobApplicationSpam=Global.JobApplicationSpam||{};
  Types=JobApplicationSpam.Types=JobApplicationSpam.Types||{};
@@ -27,8 +27,8 @@
  UI=WebSharper&&WebSharper.UI;
  Next=UI&&UI.Next;
  Var=Next&&Next.Var;
- Doc=Next&&Next.Doc;
  Seq=WebSharper&&WebSharper.Seq;
+ Doc=Next&&Next.Doc;
  AttrModule=Next&&Next.AttrModule;
  Date=Global.Date;
  FSharpMap=Collections&&Collections.FSharpMap;
@@ -383,9 +383,8 @@
      return!(a.$==0)?(Var.Set(varHtmlJobApplicationName,a.get_Item(0)),Var.Set(varHtmlJobApplicationNames,a),Concurrency.Zero()):Concurrency.Zero();
     }):Concurrency.Zero(),Concurrency.Delay(function()
     {
-     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getHtmlJobApplicationPageTemplates:-611341156",[]),function(a)
+     return Concurrency.Combine(varHtmlJobApplicationPageTemplateName.c===""||Unchecked.Equals(varHtmlJobApplicationPageTemplateNames.c,List.ofArray([""]))?Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getHtmlJobApplicationPageTemplates:-611341156",[]),function(a)
      {
-      Var.Set(varHtmlJobApplicationPageTemplateName,List.head(a).name);
       Var.Set(varHtmlJobApplicationPageTemplateNames,List.map(function(t)
       {
        return t.name;
@@ -394,11 +393,15 @@
       {
        return[t.name,t.html];
       },a))));
+      Var.Set(varHtmlJobApplicationPageTemplateName,Seq.nth(0,a).name);
       Var.Set(varPageTemplate,Doc.Verbatim(varPageTemplateMap.c.get_Item(varHtmlJobApplicationPageTemplateName.c)));
-      return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getHtmlJobApplicationPages:1412016016",[Global.document.getElementById("selectHtmlJobApplicationName").selectedIndex+1]),function(a$1)
+      return Concurrency.Zero();
+     }):Concurrency.Zero(),Concurrency.Delay(function()
+     {
+      return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getHtmlJobApplicationPages:1412016016",[Global.document.getElementById("selectHtmlJobApplicationName").selectedIndex+1]),function(a)
       {
-       var el;
-       Var.Set(varPages,Doc.Element("ul",[],List.ofSeq(Seq.delay(function()
+       var pageTemplateEl,el;
+       Var.Set(varPages,(pageTemplateEl=Global.document.getElementById("selectHtmlJobApplicationPageTemplate"),Doc.Element("ul",[],List.ofSeq(Seq.delay(function()
        {
         return Seq.map(function(htmlJobApplicationPageDB)
         {
@@ -406,11 +409,14 @@
          {
           return function()
           {
-           return Global.alert(htmlJobApplicationPageDB.name+", "+Global.String(htmlJobApplicationPageDB.htmlJobApplicationPageTemplateId));
+           Var.Set(varPageActionDiv,createDiv);
+           Var.Set(varHtmlJobApplicationPageTemplateName,varHtmlJobApplicationPageTemplateNames.c.get_Item(htmlJobApplicationPageDB.htmlJobApplicationPageTemplateId-1));
+           Var.Set(varPageTemplate,Doc.Verbatim(varPageTemplateMap.c.get_Item(varHtmlJobApplicationPageTemplateName.c)));
+           return!Unchecked.Equals(pageTemplateEl,null)&&!Unchecked.Equals(pageTemplateEl,void 0)?(pageTemplateEl.selectedIndex=htmlJobApplicationPageDB.htmlJobApplicationPageTemplateId-1,Global.alert(pageTemplateEl.selectedIndex)):null;
           };
          })],[Doc.TextNode(htmlJobApplicationPageDB.name)])]);
-        },a$1);
-       }))));
+        },a);
+       })))));
        el=Global.document.getElementById("selectHtmlJobApplicationPageTemplate");
        return!Unchecked.Equals(el,null)?(el.selectedIndex=0,Global.jQuery(".resizing").each(function($1,el$1)
        {
@@ -451,7 +457,7 @@
         },4))(Global.id))((c=Date.now(),(new Date(c)).getDate())))((c$1=Date.now(),(new Date(c$1)).getMonth()+1)))((c$2=Date.now(),(new Date(c$2)).getFullYear()))):void 0;
        }),Concurrency.Zero()):Concurrency.Zero();
       });
-     });
+     }));
     }));
    })),null);
   }
@@ -493,14 +499,20 @@
   varPageTemplate=Var.Create$1(Doc.Verbatim("<div>nothing here yet</div>"));
   varPageTemplateMap=Var.Create$1(new FSharpMap.New([]));
   varPages=Var.Create$1(Doc.Verbatim("<div>nothin to see here</div>"));
-  uploadDiv=Doc.Element("div",[],[Doc.TextNode("Uploading")]);
+  uploadDiv=Doc.Element("div",[],[Doc.TextNode("Choose file (*.pdf or *.odt)"),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("type","file")],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("value","Hochladen"),AttrModule.Handler("click",function()
+  {
+   return function()
+   {
+    return Global.alert("not implemented!");
+   };
+  })],[])]);
   createDiv=Doc.Element("div",[],[Doc.SelectDyn([AttrProxy.Create("style","min-width: 300px"),AttrProxy.Create("id","selectHtmlJobApplicationPageTemplate"),AttrModule.Handler("change",function()
   {
    return function()
    {
     return varPageTemplateMap.c.ContainsKey(varHtmlJobApplicationPageTemplateName.c)?Var.Set(varPageTemplate,Doc.Verbatim(varPageTemplateMap.c.get_Item(varHtmlJobApplicationPageTemplateName.c))):null;
    };
-  })],Global.id,varHtmlJobApplicationPageTemplateNames.v,varHtmlJobApplicationPageTemplateName),Doc.Element("br",[],[]),Doc.EmbedView(varPageTemplate.v),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("value","Abschicken"),AttrModule.Handler("click",function()
+  })],Global.id,varHtmlJobApplicationPageTemplateNames.v,varHtmlJobApplicationPageTemplateName),Doc.Element("br",[],[]),Doc.EmbedView(varPageTemplate.v),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("value","Abschicken"),AttrModule.Handler("click",function()
   {
    return function()
    {
@@ -508,13 +520,12 @@
     return null;
    };
   })],[])]);
-  Doc.Element("div",[],[Doc.TextNode("UseCreated!")]);
   varPageActionDiv=Var.Create$1(uploadDiv);
   Global.jQuery().ready(function()
   {
    return prepare();
   });
-  return Doc.Element("div",[],[Doc.Element("h1",[],[Doc.TextNode("Create a template")]),Doc.SelectDyn([AttrProxy.Create("style","min-width: 300px"),AttrProxy.Create("id","selectHtmlJobApplicationName"),AttrModule.Handler("change",function()
+  return Doc.Element("div",[],[Doc.Element("h1",[],[Doc.TextNode("Create a template")]),Doc.SelectDyn([AttrProxy.Create("style","min-width: 300px"),AttrProxy.Create("id","selectHtmlJobApplicationName"),AttrModule.Handler("click",function()
   {
    return function()
    {

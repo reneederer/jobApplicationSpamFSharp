@@ -20,7 +20,7 @@ module MyTests =
 
     [<SetUp>]
     let setup () =
-        dbConn <- new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspamtest")
+        dbConn <- new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
         dbConn.Open()
         transaction <- dbConn.BeginTransaction()
     

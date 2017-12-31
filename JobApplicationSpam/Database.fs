@@ -181,12 +181,12 @@ module Database =
             failwith <| "Email does not exist or guid was already null: " + email
         log.Debug(sprintf "%s = ()" email)
 
-    let insertJobApplication (dbConn : NpgsqlConnection) (userId : int) (employerId : int) (htmlJobApplicationId : int) =
-        log.Debug(sprintf "%i %i %i" userId employerId htmlJobApplicationId)
-        use command = new NpgsqlCommand("insert into jobApplication(userId, employerId, htmlJobApplicationId) values(:userId, :employerId, :htmlJobApplicationId) returning id", dbConn)
+    let insertJobApplication (dbConn : NpgsqlConnection) (userId : int) (employerId : int) (documentId : int) =
+        log.Debug(sprintf "%i %i %i" userId employerId documentId)
+        use command = new NpgsqlCommand("insert into jobApplication(userId, employerId, documentId) values(:userId, :employerId, :documentId) returning id", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("employerId", employerId)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("htmlJobApplicationId", htmlJobApplicationId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
         let jobApplicationId = command.ExecuteScalar() |> string |> Int32.Parse
         command.Dispose()
 
@@ -196,48 +196,65 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("employerId", employerId)) |> ignore
         command.ExecuteNonQuery() |> ignore
         command.Dispose()
-        log.Debug(sprintf "%i %i %i = ()" userId employerId htmlJobApplicationId)
+        log.Debug(sprintf "%i %i %i = ()" userId employerId documentId)
 
 
     
-    let saveHtmlJobApplication (dbConn : NpgsqlConnection) (htmlJobApplication : HtmlJobApplication) (userId : int) =
-        log.Debug(sprintf "%A %i" htmlJobApplication userId)
-        use command = new NpgsqlCommand("insert into htmlJobApplication (userId, name, emailSubject, emailBody) values (:userId, :name, '', '') returning id", dbConn)
+    let saveDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) =
+        log.Debug(sprintf "%A %i" document userId)
+        use command = new NpgsqlCommand("insert into document (userId, name, emailSubject, emailBody) values (:userId, :name, '', '') returning id", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("name", htmlJobApplication.name)) |> ignore
-        let htmlJobApplicationId = command.ExecuteScalar() |> string |> Int32.Parse
+        command.Parameters.Add(new NpgsqlParameter("name", document.name)) |> ignore
+        let documentId = command.ExecuteScalar() |> string |> Int32.Parse
         command.Dispose()
-        for page in htmlJobApplication.pages do
-            use command = new NpgsqlCommand("insert into htmlJobApplicationPage(htmlJobApplicationId, htmlJobApplicationPageTemplateId, name) values (2, 1, 'Anschreiben') returning id", dbConn)
-            command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
-            let htmlJobApplicationPageId = command.ExecuteScalar() |> string |> Int32.Parse
-            command.Dispose()
-            for mapItem in page.map do
-                use command = new NpgsqlCommand("insert into htmlJobApplicationPageValue(htmlJobApplicationPageId, key, value) values (:htmlJobApplicationPageId, :key, :value)", dbConn)
-                command.Parameters.Add(new NpgsqlParameter("htmlJobApplicationPageId", htmlJobApplicationPageId)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("key", mapItem.Key)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("value", mapItem.Value)) |> ignore
-                command.ExecuteNonQuery() |> ignore
+        for page in document.items do
+            match page with
+            | DocumentPage page ->
+                use command = new NpgsqlCommand("insert into page(documentId, pageTemplateId, name) values (2, 1, 'Anschreiben') returning id", dbConn)
+                command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+                let pageId = command.ExecuteScalar() |> string |> Int32.Parse
                 command.Dispose()
-        log.Debug(sprintf "%A %i = %i" htmlJobApplication userId htmlJobApplicationId)
-        htmlJobApplicationId
+                for mapItem in page.map do
+                    use command = new NpgsqlCommand("insert into pageValue(pageId, key, value) values (:pageId, :key, :value)", dbConn)
+                    command.Parameters.Add(new NpgsqlParameter("pageId", pageId)) |> ignore
+                    command.Parameters.Add(new NpgsqlParameter("key", mapItem.Key)) |> ignore
+                    command.Parameters.Add(new NpgsqlParameter("value", mapItem.Value)) |> ignore
+                    command.ExecuteNonQuery() |> ignore
+                    command.Dispose()
+            | DocumentFile _ -> ()
+        log.Debug(sprintf "%A %i = %i" document userId documentId)
+        documentId
        
-    let getHtmlJobApplication (dbConn : NpgsqlConnection) (htmlJobApplicationId : int) =
-        use command = new NpgsqlCommand("select name from htmlJobApplication where id = :htmlJobApplicationId", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("htmlJobApplicationId", htmlJobApplicationId)) |> ignore
+    let getDocument (dbConn : NpgsqlConnection) (documentId : int) =
+        use command = new NpgsqlCommand("select name from document where id = :documentId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
         use reader = command.ExecuteReader()
         reader.Read() |> ignore
-        let htmlJobApplicationName =
-            reader.GetString(0)
+        let documentName = reader.GetString(0)
         reader.Dispose()
         command.Dispose()
 
-        use command = new NpgsqlCommand("select id, htmlJobApplicationPageTemplateId, name from htmlJobApplicationPage where htmlJobApplicationId = :htmlJobApplicationId", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("htmlJobApplicationId", htmlJobApplicationId)) |> ignore
+        use command = new NpgsqlCommand("select id, pageTemplateId, pageIndex, name from page where documentId = :documentId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
         use reader = command.ExecuteReader()
         let pageData =
             [ while reader.Read() do
-                yield reader.GetInt32(0), reader.GetInt32(1), reader.GetString(2) 
+                yield reader.GetInt32(0), reader.GetInt32(1), reader.GetInt32(2), reader.GetString(3) 
+            ]
+        reader.Dispose()
+        command.Dispose()
+
+        use command = new NpgsqlCommand("select path, pageIndex, name from files where documentId = :documentId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        use reader = command.ExecuteReader()
+        let files =
+            [ while reader.Read() do
+                yield
+                  DocumentFile
+                    { path = reader.GetString(0)
+                      pageIndex = reader.GetInt32(1)
+                      name = reader.GetString(2)
+                    }
             ]
         reader.Dispose()
         command.Dispose()
@@ -246,9 +263,9 @@ module Database =
         let pages =
             pageData
             |> List.map
-                (fun (htmlJobApplicationPageId, htmlJobApplicationPageTemplateId, htmlJobApplicationPageName) ->
-                    use command = new NpgsqlCommand("select key, value from htmlJobApplicationPageValue where htmlJobApplicationPageId = :htmlJobApplicationPageId", dbConn)
-                    command.Parameters.Add(new NpgsqlParameter("htmlJobApplicationPageId", htmlJobApplicationPageId)) |> ignore
+                (fun (pageId, pageTemplateId, pageIndex, pageName) ->
+                    use command = new NpgsqlCommand("select key, value from pageValue where pageId = :pageId", dbConn)
+                    command.Parameters.Add(new NpgsqlParameter("pageId", pageId)) |> ignore
                     use reader = command.ExecuteReader()
                     let map =
                         [ while reader.Read() do
@@ -256,26 +273,28 @@ module Database =
                         ]
                         |> Map.ofList
 
-                    { name = htmlJobApplicationPageName
-                      jobApplicationPageTemplateId = htmlJobApplicationPageTemplateId
-                      map = map
-                    }
+                    DocumentPage
+                      { name = pageName
+                        templateId = pageTemplateId
+                        pageIndex = pageIndex
+                        map = map
+                      }
                 )
-        { name = htmlJobApplicationName
-          pages = pages
+        { name = documentName
+          items = pages @ files
         }
     
-    let getHtmlJobApplicationOffset (dbConn : NpgsqlConnection) (userId : int) (htmlJobApplicationOffset : int) =
-        use command = new NpgsqlCommand("select id from htmlJobApplication where userId = :userId offset :htmlJobApplicationOffset limit 1", dbConn)
+    let getDocumentOffset (dbConn : NpgsqlConnection) (userId : int) (documentOffset : int) =
+        use command = new NpgsqlCommand("select id from document where userId = :userId offset :documentOffset limit 1", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("htmlJobApplicationOffset", htmlJobApplicationOffset)) |> ignore
-        let htmlJobApplicationId = command.ExecuteScalar() |> string |> Int32.Parse
+        command.Parameters.Add(new NpgsqlParameter("documentOffset", documentOffset)) |> ignore
+        let documentId = command.ExecuteScalar() |> string |> Int32.Parse
         command.Dispose()
-        getHtmlJobApplication dbConn htmlJobApplicationId
+        getDocument dbConn documentId
 
-    let getHtmlJobApplicationNames (dbConn : NpgsqlConnection) (userId : int) =
+    let getDocumentNames (dbConn : NpgsqlConnection) (userId : int) =
         log.Debug(sprintf "%i" userId)
-        use command = new NpgsqlCommand("select name from htmlJobApplication where userId = :userId", dbConn)
+        use command = new NpgsqlCommand("select name from document where userId = :userId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         use reader = command.ExecuteReader()
         let ret =
@@ -285,22 +304,29 @@ module Database =
         log.Debug(sprintf "%i = %A" userId ret)
         ret
 
-    let getHtmlJobApplicationPageTemplatePath (dbConn : NpgsqlConnection) (htmlJobApplicationPageTemplateId : int) =
-        use command = new NpgsqlCommand("select odtPath from htmlJobApplicationPageTemplate where id = :htmlJobApplicationPageTemplateId", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("htmlJobApplicationPageTemplateId", htmlJobApplicationPageTemplateId)) |> ignore
+    let getPageTemplatePath (dbConn : NpgsqlConnection) (pageTemplateId : int) =
+        use command = new NpgsqlCommand("select odtPath from pageTemplate where id = :pageTemplateId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("pageTemplateId", pageTemplateId)) |> ignore
         command.ExecuteScalar() |> string
 
 
-    let getHtmlJobApplicationPageTemplates (dbConn : NpgsqlConnection) =
-        use command = new NpgsqlCommand("select html, name from htmlJobApplicationPageTemplate", dbConn)
+    let getPageTemplates (dbConn : NpgsqlConnection) =
+        use command = new NpgsqlCommand("select id, html, name from pageTemplate", dbConn)
         use reader = command.ExecuteReader()
         [ while reader.Read() do
-            yield { html = reader.GetString(0); name = reader.GetString(1) } ]
+            yield { id = reader.GetInt32(0); html = reader.GetString(1); name = reader.GetString(2) } ]
 
-    let getHtmlJobApplicationPages (dbConn : NpgsqlConnection) (htmlJobApplicationId : int) =
-        use command = new NpgsqlCommand("select name, htmlJobApplicationPageTemplateId from htmlJobApplicationPage where htmlJobApplicationId = :htmlJobApplicationId", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("htmlJobApplicationId", htmlJobApplicationId)) |> ignore
+    let getPageTemplate (dbConn : NpgsqlConnection) (templateIndex : int) =
+        use command = new NpgsqlCommand("select html from pageTemplate where id = :templateIndex limit 1", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("templateIndex", templateIndex)) |> ignore
+        use reader = command.ExecuteReader()
+        reader.Read() |> ignore
+        reader.GetString(0)
+
+    let getPages (dbConn : NpgsqlConnection) (documentId : int) =
+        use command = new NpgsqlCommand("select name, pageTemplateId from page where documentId = :documentId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
         use reader = command.ExecuteReader()
         [ while reader.Read() do
-            yield { name = reader.GetString(0); htmlJobApplicationPageTemplateId = reader.GetInt32(1) } ]
+            yield { name = reader.GetString(0); pageTemplateId = reader.GetInt32(1) } ]
 

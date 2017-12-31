@@ -4,6 +4,7 @@ module Types =
     open WebSharper.Sitelets
     open log4net
     open log4net.Core
+    open WebSharper.Core.ContentTypes.Text
 
     type Gender =
     | Male
@@ -72,24 +73,46 @@ module Types =
      
 
     //[<WebSharper.JavaScript>]
-    type HtmlJobApplicationPage =
+    type Page =
         { name : string
-          jobApplicationPageTemplateId : int
+          templateId : int
+          pageIndex : int
           map : Map<string, string>
         }
+    
+    type File =
+        { name : string
+          path : string
+          pageIndex : int
+        }
+
+    [<WebSharper.JavaScript>] 
+    type DocumentItem =
+    | DocumentPage of Page
+    | DocumentFile of File
+    with
+        member this.Name() =
+            match this with
+            | DocumentPage page -> page.name
+            | DocumentFile file -> file.name
+        member this.PageIndex() =
+            match this with
+            | DocumentPage page -> page.pageIndex
+            | DocumentFile file -> file.pageIndex
 
     //[<WebSharper.JavaScript>]
-    type HtmlJobApplication =
+    type Document =
         { name : string
-          pages : list<HtmlJobApplicationPage>
+          items : list<DocumentItem>
         }
 
-    type HtmlJobApplicationPageTemplate =
+    type PageTemplate =
         { html : string
           name : string
+          id : int
         }
 
-    type HtmlJobApplicationPageDB =
+    type PageDB =
         { name : string
-        ; htmlJobApplicationPageTemplateId : int
+        ; pageTemplateId : int
         }

@@ -184,7 +184,7 @@ module Server =
         }
 
     [<Remote>]
-    let getHtmlJobApplicationNames () =
+    let getDocumentNames () =
         log.Debug "()"
         let oUserId = getCurrentUserId() |> Async.RunSynchronously
         async {
@@ -192,7 +192,7 @@ module Server =
             | Some userId ->
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
-                let result =  Database.getHtmlJobApplicationNames dbConn userId
+                let result =  Database.getDocumentNames dbConn userId
                 log.Debug "() = ()"
                 return result
             | None ->
@@ -202,7 +202,7 @@ module Server =
 
 
     [<Remote>]
-    let saveHtmlJobApplication (htmlJobApplication : HtmlJobApplication) =
+    let saveDocument (htmlJobApplication : Document) =
         let oUserId = getCurrentUserId() |> Async.RunSynchronously
         async {
             match oUserId with
@@ -211,34 +211,34 @@ module Server =
                 dbConn.Open()
                 use transaction = dbConn.BeginTransaction()
                 try
-                    let htmlJobApplicationId = Database.saveHtmlJobApplication dbConn htmlJobApplication userId
+                    let documentId = Database.saveDocument dbConn htmlJobApplication userId
                     transaction.Commit()
-                    return htmlJobApplicationId
+                    return documentId
                 with
                 | e ->
                     transaction.Rollback()
-                    log.Error("Saving HtmlJobApplication failed", e)
-                    return failwith "Saving HtmlJobApplication failed"
+                    log.Error("Saving Document failed", e)
+                    return failwith "Saving Document failed"
             | None -> return failwith "User is not logged in"
         }
 
 
     [<Remote>]
-    let getHtmlJobApplicationOffset (htmlJobApplicationOffset : int) =
+    let getDocumentOffset (htmlJobApplicationOffset : int) =
         let oUserId = getCurrentUserId() |> Async.RunSynchronously
         async {
             match oUserId with
             | Some userId ->
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
-                return Database.getHtmlJobApplicationOffset dbConn userId htmlJobApplicationOffset
+                return Database.getDocumentOffset dbConn userId htmlJobApplicationOffset
             | None -> return failwith "No user logged in"
         }
 
 
 
     [<Remote>]
-    let applyNowWithHtmlTemplate (employer : Employer) (employerId : int) (htmlJobApplication : HtmlJobApplication) (userValues : UserValues) =
+    let applyNowWithHtmlTemplate (employer : Employer) (employerId : int) (document : Document) (userValues : UserValues) =
         let oUserId = getCurrentUserId() |> Async.RunSynchronously
         //async {
         match oUserId with 
@@ -248,51 +248,54 @@ module Server =
             dbConn.Open()
             use transaction = dbConn.BeginTransaction()
             try
-                let htmlJobApplicationId = Database.saveHtmlJobApplication dbConn htmlJobApplication userId
-                Database.insertJobApplication dbConn userId employerId htmlJobApplicationId
+                let documentId = Database.saveDocument dbConn document userId
+                Database.insertJobApplication dbConn userId employerId documentId
+                let userEmail = Database.getEmailByUserId dbConn userId |> Option.defaultValue ""
+                let myList =
+                    [ ("$firmaName", employer.company)
+                      ("$firmaStrasse", employer.street)
+                      ("$firmaPlz", employer.postcode)
+                      ("$firmaStadt", employer.city)
+                      ("$chefAnredeBriefkopf", match employer.gender with Gender.Male -> "Herrn" | Gender.Female -> "Frau")
+                      ("$chefAnrede", employer.gender.ToString())
+                      ("$geehrter", match employer.gender with Gender.Male -> "geehrter" | Gender.Female -> "geehrte")
+                      ("$chefTitel", employer.degree)
+                      ("$chefVorname", employer.firstName)
+                      ("$chefNachname", employer.lastName)
+                      ("$chefEmail", employer.email)
+                      ("$chefTelefon", employer.phone)
+                      ("$chefMobil", employer.mobilePhone)
+                      ("$meinGeschlecht", userValues.gender.ToString())
+                      ("$meinTitel", userValues.degree)
+                      ("$meinVorname", userValues.firstName)
+                      ("$meinNachname", userValues.lastName)
+                      ("$meineStrasse", userValues.street)
+                      ("$meinePlz", userValues.postcode)
+                      ("$meineStadt", userValues.city)
+                      ("$meineEmail", userEmail)
+                      ("$meinMobilTelefon", userValues.mobilePhone)
+                      ("$meineTelefonnr", userValues.phone)
+                      ("$datumHeute", DateTime.Today.ToString("dd.MM.yyyy"))
+                    ]
                 let odtPaths =
-                    [ for currentPage in htmlJobApplication.pages do
-                        let htmlJobApplicationPageTemplatePath = Database.getHtmlJobApplicationPageTemplatePath dbConn currentPage.jobApplicationPageTemplateId
-                        let userEmail = Database.getEmailByUserId dbConn userId |> Option.defaultValue ""
-                        let lines =
-                            let emptyLines = List.init 50 (fun i -> sprintf "$line%i" (i + 1), "")
-                            let currentPageLines = currentPage.map.["mainText"].Split([|'\n'|])
-                            let len = currentPageLines.Length
-                            (currentPageLines
-                            |> Array.mapi (fun i x -> sprintf "$line%i" (i + 1), x)
-                            |> List.ofArray)
-                            @ List.skip len emptyLines
-
-                        let myList =
-                            (
-                            [ ("$firmaName", employer.company)
-                              ("$firmaStrasse", employer.street)
-                              ("$firmaPlz", employer.postcode)
-                              ("$firmaStadt", employer.city)
-                              ("$chefAnredeBriefkopf", match employer.gender with Gender.Male -> "Herrn" | Gender.Female -> "Frau")
-                              ("$chefAnrede", employer.gender.ToString())
-                              ("$geehrter", match employer.gender with Gender.Male -> "geehrter" | Gender.Female -> "geehrte")
-                              ("$chefTitel", employer.degree)
-                              ("$chefVorname", employer.firstName)
-                              ("$chefNachname", employer.lastName)
-                              ("$chefEmail", employer.email)
-                              ("$chefTelefon", employer.phone)
-                              ("$chefMobil", employer.mobilePhone)
-                              ("$meinGeschlecht", userValues.gender.ToString())
-                              ("$meinTitel", userValues.degree)
-                              ("$meinVorname", userValues.firstName)
-                              ("$meinNachname", userValues.lastName)
-                              ("$meineStrasse", userValues.street)
-                              ("$meinePlz", userValues.postcode)
-                              ("$meineStadt", userValues.city)
-                              ("$meineEmail", userEmail)
-                              ("$meinMobilTelefon", userValues.mobilePhone)
-                              ("$meineTelefonnr", userValues.phone)
-                              ("$datumHeute", DateTime.Today.ToString("dd.MM.yyyy"))
-                            ] @ lines)
-                            |> List.sortByDescending (fun (key, _) -> key.Length)
-                        let tmpPath = "c:/users/rene/myodt1/" + Guid.NewGuid().ToString()
-                        yield Odt.replaceInOdt htmlJobApplicationPageTemplatePath "c:/users/rene/myodt/" tmpPath myList
+                    [ for item in document.items do
+                        match item with
+                        | DocumentPage page ->
+                            let pageTemplatePath = Database.getPageTemplatePath dbConn page.templateId
+                            let lines =
+                                let emptyLines = List.init 50 (fun i -> sprintf "$line%i" (i + 1), "")
+                                let pageLines = page.map.["mainText"].Split([|'\n'|])
+                                let len = pageLines.Length
+                                (pageLines
+                                |> Array.mapi (fun i x -> sprintf "$line%i" (i + 1), x)
+                                |> List.ofArray)
+                                @ List.skip len emptyLines
+                                |> List.sortByDescending (fun (key, _) -> key.Length)
+                            let tmpPath = "c:/users/rene/myodt1/" + Guid.NewGuid().ToString()
+                            yield Odt.replaceInOdt pageTemplatePath "c:/users/rene/myodt/" tmpPath (myList @ lines)
+                        | DocumentFile file ->
+                            let tmpPath = "c:/users/rene/myodt1/" + Guid.NewGuid().ToString()
+                            yield Odt.replaceInOdt file.path "c:/users/rene/myodt/" tmpPath myList
                     ]
                 let pdfPaths =
                     [ for odtPath in odtPaths do
@@ -310,18 +313,26 @@ module Server =
         //}
     
     [<Remote>]
-    let getHtmlJobApplicationPageTemplates () =
+    let getPageTemplates () =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.getHtmlJobApplicationPageTemplates dbConn
+            return Database.getPageTemplates dbConn
+        }
+
+    [<Remote>]
+    let getPageTemplate (templateId : int) =
+        async {
+            use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+            dbConn.Open()
+            return Database.getPageTemplate dbConn templateId
         }
     
     [<Remote>]
-    let getHtmlJobApplicationPages htmlJobApplicationId =
+    let getPages documentId =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.getHtmlJobApplicationPages dbConn htmlJobApplicationId
+            return Database.getPages dbConn documentId
         }
 

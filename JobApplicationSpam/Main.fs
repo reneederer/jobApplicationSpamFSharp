@@ -19,6 +19,7 @@ type EndPoint =
     | [<EndPoint "/about">] About
     | [<EndPoint "/confirmemail">] ConfirmEmail
     | [<EndPoint "/createtemplate">] CreateTemplate
+    | [<EndPoint "/templates">] Templates
 
 module Templating =
     open WebSharper.UI.Next.Html
@@ -194,6 +195,10 @@ module Site =
             h1 [text message]
         ]
 
+    let templatesPage (ctx : Context<EndPoint>) =
+        Templating.main ctx EndPoint.About "Templates" [
+            client <@ Client.templates() @>
+        ]
 
     let main =
         Application.MultiPage (fun (ctx : Context<EndPoint>) endpoint ->
@@ -210,6 +215,7 @@ module Site =
             | Some _, EndPoint.About -> aboutPage ctx
             | Some _, EndPoint.ConfirmEmail -> confirmEmailPage ctx
             | Some _ , EndPoint.CreateTemplate -> createTemplatePage ctx
+            | Some _ , EndPoint.Templates -> templatesPage ctx
             | None, _ -> loginPage ctx
         )
 

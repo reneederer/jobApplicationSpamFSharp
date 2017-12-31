@@ -26,6 +26,7 @@ module Client =
     open WebSharper.Html.Client.Operators
     open WebSharper.UI.Next.Client.HtmlExtensions
     open WebSharper.JavaScript
+    open WebSharper.UI.Next.Html.Tags
 
     [<JavaScript>]
     type Language =
@@ -343,9 +344,10 @@ module Client =
     let showSentJobApplications () =
         h1 [text "hallo"]
 
-
     [<JavaScript>]
     let createTemplate () = 
+        text "abc"
+(*
         let varUserGender = Var.Create Gender.Female
         let varUserDegree = Var.Create ""
         let varUserFirstName = Var.Create ""
@@ -368,19 +370,19 @@ module Client =
         let varBossMobilePhone = Var.Create ""
         let varSubject = Var.Create "Bewerbung als ..."
         let varMainText = Var.Create ""
-        let varHtmlJobApplication = Var.Create {name = ""; pages = [] }
-        let varHtmlJobApplicationNames = Var.Create [""]
-        let varHtmlJobApplicationName = Var.Create ""
-        let varHtmlJobApplicationPageTemplateNames = Var.Create [""]
-        let varHtmlJobApplicationPageTemplateName = Var.Create ""
+        let varDocument = Var.Create {name = ""; pages = [] }
+        let varDocumentNames = Var.Create [""]
+        let varDocumentName = Var.Create ""
+        let varPageTemplateNames = Var.Create [""]
+        let varPageTemplateName = Var.Create ""
         let varTxtSaveAs = Var.Create ""
         let varPageTemplate = Var.Create(Doc.Verbatim("<div>nothing here yet</div>"))
         let varPageTemplateMap = Var.Create Map.empty
         let varPages = Var.Create(Doc.Verbatim("<div>nothin to see here</div>"))
-        let fillHtmlJobApplication htmlJobApplicationOffset =
+        let fillDocument htmlJobApplicationOffset =
             async {
-                let! htmlJobApplication = Server.getHtmlJobApplicationOffset htmlJobApplicationOffset
-                varHtmlJobApplication.Value <- htmlJobApplication
+                let! htmlJobApplication = Server.getDocumentOffset htmlJobApplicationOffset
+                varDocument.Value <- htmlJobApplication
                 JQuery("#mainText").Val((htmlJobApplication.pages |> Seq.item 0).map.["mainText"].Replace("\\n", "\n")) |> ignore
                 return ()
             }
@@ -484,7 +486,7 @@ module Client =
                     lines
             splitLines
 
-        let saveHtmlJobApplication htmlJobApplicationName =
+        let saveDocument htmlJobApplicationName =
             async {
                 let mainText =
                     getTextAreaLines (varMainText.Value) (JQuery("#mainText").Width()) "Arial" "12pt" "normal"
@@ -498,8 +500,8 @@ module Client =
                           }
                         ]
                     }
-                let! htmlJobApplicationId = Server.saveHtmlJobApplication htmlJobApplication
-                return htmlJobApplicationId
+                let! documentId = Server.saveDocument htmlJobApplication
+                return documentId
             }
 
         let setUserValues () =
@@ -546,12 +548,12 @@ module Client =
             async {
                 let! oAddedEmployerId = addEmployer()
                 do! setUserValues ()
-                let! htmlJobApplicationId = saveHtmlJobApplication varHtmlJobApplicationName.Value
+                let! documentId = saveDocument varDocumentName.Value
 
                 match oAddedEmployerId with
                 | Some employerId ->
                     let htmlJobApplication =
-                        { name = varHtmlJobApplication.Value.name
+                        { name = varDocument.Value.name
                           pages =
                             [ { name = "Anschreiben"
                                 jobApplicationPageTemplateId = 1
@@ -599,7 +601,7 @@ module Client =
         
         let createDiv =
             div
-              [ Doc.SelectDyn [attr.style "min-width: 300px"; attr.id "selectHtmlJobApplicationPageTemplate"; on.change (fun _ _ -> if varPageTemplateMap.Value.ContainsKey varHtmlJobApplicationPageTemplateName.Value then varPageTemplate.Value <- Doc.Verbatim <| varPageTemplateMap.Value.[varHtmlJobApplicationPageTemplateName.Value])] id varHtmlJobApplicationPageTemplateNames.View varHtmlJobApplicationPageTemplateName
+              [ Doc.SelectDyn [attr.style "min-width: 300px"; attr.id "selectPageTemplate"; on.change (fun _ _ -> if varPageTemplateMap.Value.ContainsKey varPageTemplateName.Value then varPageTemplate.Value <- Doc.Verbatim <| varPageTemplateMap.Value.[varPageTemplateName.Value])] id varPageTemplateNames.View varPageTemplateName
                 br []
                 Doc.EmbedView varPageTemplate.View
                 br []
@@ -608,45 +610,44 @@ module Client =
               ]
 
         let varPageActionDiv = Var.Create uploadDiv
-        //do! fillHtmlJobApplication 1
+        //do! fillDocument 1
 
 
         let rec prepare () =
             async {
-                if varHtmlJobApplicationNames.Value = [""]
+                if varDocumentNames.Value = [""]
                 then
-                    let! htmlJobApplicationNames = Server.getHtmlJobApplicationNames ()
+                    let! htmlJobApplicationNames = Server.getDocumentNames ()
                     if not <| List.isEmpty htmlJobApplicationNames
                     then
-                        varHtmlJobApplicationName.Value <- htmlJobApplicationNames.[0]
-                        varHtmlJobApplicationNames.Value <- htmlJobApplicationNames
-                if varHtmlJobApplicationPageTemplateName.Value = "" || varHtmlJobApplicationPageTemplateNames.Value = [""]
+                        varDocumentName.Value <- htmlJobApplicationNames.[0]
+                        varDocumentNames.Value <- htmlJobApplicationNames
+                if varPageTemplateName.Value = "" || varPageTemplateNames.Value = [""]
                 then
-                    let! htmlJobApplicationPageTemplates = Server.getHtmlJobApplicationPageTemplates ()
-                    varHtmlJobApplicationPageTemplateNames.Value <- htmlJobApplicationPageTemplates |> List.map (fun t -> t.name)
-                    varPageTemplateMap.Value <- htmlJobApplicationPageTemplates |> List.map (fun t -> t.name, t.html) |> Map.ofList
-                    varHtmlJobApplicationPageTemplateName.Value <- htmlJobApplicationPageTemplates |> List.item 0 |> (fun t -> t.name)
-                    varPageTemplate.Value <- varPageTemplateMap.Value.[varHtmlJobApplicationPageTemplateName.Value] |> Doc.Verbatim
+                    let! pageTemplates = Server.getPageTemplates ()
+                    varPageTemplateNames.Value <- pageTemplates |> List.map (fun t -> t.name)
+                    varPageTemplateMap.Value <- pageTemplates |> List.map (fun t -> t.name, t.html) |> Map.ofList
+                    varPageTemplateName.Value <- pageTemplates |> List.item 0 |> (fun t -> t.name)
+                    varPageTemplate.Value <- varPageTemplateMap.Value.[varPageTemplateName.Value] |> Doc.Verbatim
 
-                let! htmlJobApplicationPagesDB = Server.getHtmlJobApplicationPages (JS.Document.GetElementById("selectHtmlJobApplicationName")?selectedIndex + 1)
+                let! pagesDB = Server.getPages (JS.Document.GetElementById("selectDocumentName")?selectedIndex + 1)
                 varPages.Value <-
-                  let pageTemplateEl = JS.Document.GetElementById("selectHtmlJobApplicationPageTemplate")
+                  let pageTemplateEl = JS.Document.GetElementById("selectPageTemplate")
                   ul
-                    [ for htmlJobApplicationPageDB in htmlJobApplicationPagesDB do
+                    [ for pageDB in pagesDB do
                          yield li [ buttonAttr [on.click (fun _ _ ->
                             varPageActionDiv.Value <- createDiv
-                            varHtmlJobApplicationPageTemplateName.Value <- varHtmlJobApplicationPageTemplateNames.Value.[htmlJobApplicationPageDB.htmlJobApplicationPageTemplateId - 1]
-                            varPageTemplate.Value <- varPageTemplateMap.Value.[varHtmlJobApplicationPageTemplateName.Value] |> Doc.Verbatim
+                            varPageTemplateName.Value <- varPageTemplateNames.Value.[pageDB.pageTemplateId - 1]
+                            varPageTemplate.Value <- varPageTemplateMap.Value.[varPageTemplateName.Value] |> Doc.Verbatim
                             if pageTemplateEl <> null && pageTemplateEl <> JS.Undefined
                             then
-                                pageTemplateEl?selectedIndex <- htmlJobApplicationPageDB.htmlJobApplicationPageTemplateId - 1
+                                pageTemplateEl?selectedIndex <- pageDB.pageTemplateId - 1
                                 JS.Alert(pageTemplateEl?selectedIndex)
-                            //prepare()
-                         ) ] [text htmlJobApplicationPageDB.name] ] :> Doc
+                         ) ] [text pageDB.name] ] :> Doc
                     ]
                 
 
-                let el = JS.Document.GetElementById("selectHtmlJobApplicationPageTemplate")
+                let el = JS.Document.GetElementById("selectPageTemplate")
                 if el <> null
                 then
                     el?selectedIndex <- 0
@@ -693,7 +694,7 @@ module Client =
 
         div
           [ h1 [ text "Create a template" ]
-            Doc.SelectDyn [attr.style "min-width: 300px"; attr.id "selectHtmlJobApplicationName"; on.click (fun el _ -> prepare())] id varHtmlJobApplicationNames.View varHtmlJobApplicationName
+            Doc.SelectDyn [attr.style "min-width: 300px"; attr.id "selectDocumentName"; on.click (fun el _ -> prepare())] id varDocumentNames.View varDocumentName
             br []
             text "Pages: "
             br []
@@ -721,4 +722,113 @@ module Client =
 
 
 
+*)
+
+
+    [<JavaScript>]
+    let templates () = 
+        let varDocument = Var.CreateWaiting()
+        let varSelectDocumentName = Var.CreateWaiting()
+        let varSelectPageTemplate = Var.CreateWaiting()
+        let varPageButtons = Var.CreateWaiting()
+        let varCurrentPageIndex = Var.Create(0)
+        let varDisplayedDocument = Var.Create(div [] :> Doc)
+
+        let rec setSelectDocumentName() =
+            async {
+                let! documentNames = Server.getDocumentNames()
+                varSelectDocumentName.Value <-
+                    selectAttr
+                      [attr.id "selectDocumentName"; on.change (fun _ _ -> indexChanged_selectDocumentName())]
+                      [ for documentName in documentNames do
+                          yield optionAttr [] [text documentName] :> Doc
+                      ]
+            }
+
+        and setSelectPageTemplate() =
+            async {
+                let! pageTemplates = Server.getPageTemplates()
+                varSelectPageTemplate.Value <-
+                    selectAttr
+                      [ attr.id "selectPageTemplate" ]
+                      [ for pageTemplate in pageTemplates do
+                          yield optionAttr [] [text pageTemplate.name] :> Doc
+                      ]
+            }
+        
+        and setPageButtons () =
+            varPageButtons.Value <-
+                ul
+                  [ for documentItem in varDocument.Value.items |> List.sortBy (fun x -> x.PageIndex()) do
+                      match documentItem with
+                      | DocumentPage page ->
+                          yield
+                            li
+                              [ buttonAttr [on.click (fun _ _ -> JS.Document.GetElementById("selectPageTemplate")?selectedIndex <- page.templateId - 1; varCurrentPageIndex.Value <- page.pageIndex; loadPageTemplate())] [text (documentItem.Name())] :> Doc
+                              ]
+                            :> Doc
+                      | DocumentFile file ->
+                          yield
+                            li
+                              [ buttonAttr [on.click (fun _ _ -> varCurrentPageIndex.Value <- file.pageIndex; loadFileTemplate();)] [text (documentItem.Name())]
+                              ]
+                            :> Doc
+                  ]
+        
+        and setDocument () =
+            async {
+                let documentIndex = 
+                    match JS.Document.GetElementById("selectDocumentName") with
+                    | null -> 0
+                    | el -> el?selectedIndex
+                let! document = Server.getDocumentOffset documentIndex
+                varDocument.Value <- document
+            }
+
+
+        and indexChanged_selectDocumentName() =
+            async {
+                do! setDocument()
+                setPageButtons()
+            } |> Async.Start
+
+        and loadPageTemplate() =
+            async {
+                let! template = Server.getPageTemplate varCurrentPageIndex.Value
+                varDisplayedDocument.Value <- template |> Doc.Verbatim
+            } |> Async.Start
+
+        and loadFileTemplate() =
+            varDisplayedDocument.Value <-
+                div
+                  [ text "file"
+                  ]
+        
+        let itemToDoc (documentItem : DocumentItem) = 
+            match documentItem with
+            | DocumentPage page -> 
+                  div [text "page " ] :> Doc
+            | DocumentFile file ->
+                  div [text "file " ] :> Doc
+            
+        
+
+
+        async {
+            do! setSelectDocumentName()
+            do! setDocument()
+            setPageButtons()
+            do! setSelectPageTemplate()
+            while JS.Document.GetElementById("selectDocumentName") = null do
+                do! Async.Sleep 50
+            JS.Document.GetElementById("selectDocumentName")?selectedIndex <- 0
+        } |> Async.Start
+
+        div
+          [ text "Your application documents: "
+            Doc.EmbedView varSelectDocumentName.View
+            Doc.EmbedView varPageButtons.View
+            Doc.EmbedView varSelectPageTemplate.View
+            Doc.EmbedView varDisplayedDocument.View
+          ]
 

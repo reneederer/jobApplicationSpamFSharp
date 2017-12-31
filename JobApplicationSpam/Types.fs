@@ -77,7 +77,6 @@ module Types =
         { name : string
           templateId : int
           pageIndex : int
-          map : Map<string, string>
         }
     
     type File =
@@ -115,4 +114,13 @@ module Types =
     type PageDB =
         { name : string
         ; pageTemplateId : int
+        }
+    
+    type Language =
+    | English
+    | Deutsch
+
+    type DocumentMap =
+        { pageIndex : int
+          map : Map<string, string>
         }

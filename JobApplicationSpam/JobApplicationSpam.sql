@@ -1,15 +1,15 @@
 ﻿;set client_encoding to 'UTF8';
-drop table if exists sentStatus;
-drop table if exists sentStatusValue;
-drop table if exists sentDocument;
-drop table if exists pageValue;
-drop table if exists page;
-drop table if exists files;
-drop table if exists document;
-drop table if exists pageTemplate;
-drop table if exists employer;
-drop table if exists userValues;
-drop table if exists users;
+drop table if exists sentStatus cascade;
+drop table if exists sentStatusValue cascade;
+drop table if exists sentDocument cascade;
+drop table if exists documentMap cascade;
+drop table if exists page cascade;
+drop table if exists files cascade;
+drop table if exists document cascade;
+drop table if exists pageTemplate cascade;
+drop table if exists employer cascade;
+drop table if exists userValues cascade;
+drop table if exists users cascade;
 
 create table users (id serial primary key, email varchar(200) unique not null, password varchar(200) not null, salt varchar(200) not null, guid varchar(128) null);
 create table userValues(id serial primary key, userId int, gender varchar(1) not null, degree varchar(20) not null, firstName varchar(50) not null, lastName varchar(50) not null, street varchar(50) not null, postcode varchar(20) not null, city varchar(50) not null, phone varchar(30) not null, mobilePhone varchar(30) not null, foreign key(userId) references users(id));
@@ -18,7 +18,7 @@ create table pageTemplate(id serial primary key, name varchar(50) not null, odtP
 create table document(id serial primary key, userId int not null, name varchar(100) not null, emailSubject varchar(100) not null, emailBody text not null, foreign key(userId) references users(id));
 create table files(id serial primary key, documentId int not null, path varchar(60) not null, pageIndex int not null, name varchar(50) not null, foreign key(documentId) references document(id));
 create table page(id serial primary key, documentId int not null, pageTemplateId int not null, pageIndex int not null, name varchar(50) not null, foreign key(documentId) references document(id), foreign key(pageTemplateId) references pageTemplate(id));
-create table pageValue(id serial primary key, pageId int not null, key varchar(100) not null, value text not null, foreign key(pageId) references page(id));
+create table documentMap(id serial primary key, documentId int not null, pageIndex int not null, key varchar(100) not null, value text not null, foreign key(documentId) references document(id));
 create table sentDocument(id serial primary key, userId int not null, employerId int not null, documentId int not null, foreign key(documentId) references document(id), foreign key(employerId) references employer(id), foreign key(userId) references users(id));
 create table sentStatusValue(id int primary key, status varchar(50));
 create table sentStatus(id serial primary key, sentDocumentId int, statusChangedOn date, dueOn timestamp, sentStatusValueId int, statusMessage varchar(200), foreign key(sentDocumentId) references sentDocument(id), foreign key(sentStatusValueId) references sentStatusValue(id));
@@ -37,7 +37,8 @@ insert into employer(userId, company, street, postcode, city, gender, degree, fi
 insert into employer(userId, company, gender, street, postcode, city, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'BFI Informationssysteme GmbH', 'Ötterichweg 7', '90411', 'Nürnberg', 'm', '', 'Michael', 'Schlund', 'Michael.Schlund@bfi-info.de', '0911 9457668', '');
 
 insert into pageTemplate(name, odtPath, html) values('Anschreiben nach DIN 5008', 'c:/users/rene/desktop/bewerbung_neu.odt',
-'<div id="divTemplate" class="page1">
+'<div id="insertDiv">
+<div id="divTemplate" class="page1">
     <div style="width: 100%; background-color: white">
         <input class="resizing field-updating" autofocus "autofocus" style="font-family: Arial; font-size: 12pt; font-weight: normal" data-update-field="userDegree" placeholder="Dein Titel" />
         <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userFirstName" placeholder="Dein Vorname" />
@@ -50,7 +51,6 @@ insert into pageTemplate(name, odtPath, html) values('Anschreiben nach DIN 5008'
         <br />
         <br />
         <br />
-        <!--Doc.Select [on.change (fun _ _ -> updateMainText ())] (fun x -> match x with Gender.Male -> "Herrn" | Gender.Female -> "Frau") [Gender.Male Gender.Female] varBossGender-->
         <br />
         <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="bossDegree" placeholder="Chef-Titel" />
         <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="bossFirstName" placeholder="Chef-Vorname" />
@@ -84,16 +84,18 @@ insert into pageTemplate(name, odtPath, html) values('Anschreiben nach DIN 5008'
 <input type="text" readonly="readonly" class="resizing field-updating" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-update-field="userFirstName" />&nbsp;
 <input type="text" readonly="readonly" class="resizing field-updating" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-update-field="userLastName" />
 </div>
+</div>
 </div>');
 insert into pageTemplate(name, odtPath, html) values('Deckblatt', 'c:/users/rene/desktop/bewerbung_deckblatt.odt',
-'<div>
+'<div id="insertDiv">
 <h1>Deckblatt</h1>
 <image src="null" width="400" height="100" />
+<input type="text" id="mainText"></input>
 <br />
 <input type="text" class="resizing field-updating" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-update-field="userFirstName" placeholder="Dein Name" />
 hallo div!</div>
 ');
-insert into pageTemplate(name, odtPath, html) values('Lebenslauf', 'c:/users/rene/desktop/bewerbung_lebenslauf.odt', '<b>Lebenslauf...</b>');
+insert into pageTemplate(name, odtPath, html) values('Lebenslauf', 'c:/users/rene/desktop/bewerbung_lebenslauf.odt', '<div id="insertDiv"><b>Lebenslauf...</b></div>');
 insert into document(userId, name, emailSubject, emailBody) values(1, 'mein htmlTemplate', 'emailTitel', 'emailKoerper');
 insert into document(userId, name, emailSubject, emailBody) values(1, 'mein zweites htmlTemplate', 'emailTitel', 'emailKoerper');
 insert into files(documentId, path, pageIndex, name) values(1, 'C:/Users/rene/Downloads/labenwolf_zeugnis_small.pdf', 3, 'Labenwolf Zeugnis');
@@ -103,7 +105,8 @@ insert into page(documentId, pageTemplateId, pageIndex, name) values(2, 2, 3, 'm
 insert into page(documentId, pageTemplateId, pageIndex, name) values(2, 3, 4, 'mein dritter Lebenslauf');
 insert into page(documentId, pageTemplateId, pageIndex, name) values(1, 1, 1, 'mein Anschreiben');
 insert into page(documentId, pageTemplateId, pageIndex, name) values(1, 2, 2, 'mein Deckblatt');
-insert into pageValue(pageId, key, value) values (1, 'mainText', 'Sehr geehrte Damen und Herren\n\nhiermit bewerbe ich mich auf Ihre Stellenzeige\nauf LinkedIn\n\nMit freundlichen Grüßen\n\n\n\nRené Ederer');
+insert into documentMap(documentId, pageIndex, key, value) values (1, 1, 'mainText', 'Sehr geehrte Damen und Herren\n\nhiermit bewerbe ich mich auf Ihre Stellenzeige\nauf LinkedIn\n\nMit freundlichen Grüßen\n\n\n\nRené Ederer');
+insert into documentMap(documentId, pageIndex, key, value) values (1, 2, 'mainText', 'nur ein gruß');
 
 insert into sentStatusValue(id, status) values(1, 'Waiting for reply after sending job application');
 insert into sentStatusValue(id, status) values(2, 'Appointment for job interview');

@@ -27,6 +27,7 @@ module Client =
     open WebSharper.UI.Next.Client.HtmlExtensions
     open WebSharper.JavaScript
     open WebSharper.UI.Next.Html.Tags
+    open System.Collections
 
     [<JavaScript>]
     type Language =
@@ -757,39 +758,80 @@ module Client =
             }
         
         and setPageButtons () =
-            varPageButtons.Value <-
-                ul
-                  [ for documentItem in varDocument.Value.items |> List.sortBy (fun x -> x.PageIndex()) do
-                      match documentItem with
-                      | DocumentPage page ->
-                          yield
-                            li
-                              [ buttonAttr [on.click (fun _ _ -> JS.Document.GetElementById("selectPageTemplate")?selectedIndex <- page.templateId - 1; varCurrentPageIndex.Value <- page.pageIndex; loadPageTemplate())] [text (documentItem.Name())] :> Doc
-                              ]
-                            :> Doc
-                      | DocumentFile file ->
-                          yield
-                            li
-                              [ buttonAttr [on.click (fun _ _ -> varCurrentPageIndex.Value <- file.pageIndex; loadFileTemplate();)] [text (documentItem.Name())]
-                              ]
-                            :> Doc
-                  ]
-        
+            async {
+                varPageButtons.Value <-
+                    ul
+                      [ for documentItem in varDocument.Value.items |> List.sortBy (fun x -> x.PageIndex()) do
+                          match documentItem with
+                          | DocumentPage page ->
+                              yield
+                                li
+                                  [ buttonAttr [on.click (fun _ _ -> JS.Document.GetElementById("selectPageTemplate")?selectedIndex <- page.templateId; varCurrentPageIndex.Value <- page.pageIndex; loadPageTemplate(); fillDocumentValues() |> Async.Start)] [text (documentItem.Name())] :> Doc
+                                  ]
+                                :> Doc
+                          | DocumentFile file ->
+                              yield
+                                li
+                                  [ buttonAttr [on.click (fun _ _ -> varCurrentPageIndex.Value <- file.pageIndex; loadFileTemplate();)] [text (documentItem.Name())]
+                                  ]
+                                :> Doc
+                      ]
+            }
+            
         and setDocument () =
             async {
-                let documentIndex = 
-                    match JS.Document.GetElementById("selectDocumentName") with
-                    | null -> 0
-                    | el -> el?selectedIndex
+                let selectDocumentNameEl = JS.Document.GetElementById("selectDocumentName")
+                let documentIndex =
+                    if selectDocumentNameEl <> null
+                    then JS.Document.GetElementById("selectDocumentName")?documentIndex
+                    else 0
                 let! document = Server.getDocumentOffset documentIndex
                 varDocument.Value <- document
+            }
+        
+        and fillDocumentValues() =
+            async {
+                let! userValues = Server.getCurrentUserValues()
+                let documentIndex = JS.Document.GetElementById("selectDocumentName")?selectedIndex
+                let! documentMap = Server.getDocumentMapOffset varCurrentPageIndex.Value documentIndex
+                for i = 0 to 1000 do
+                    if JS.Document.GetElementById("insertDiv") = null
+                    then do! Async.Sleep 10
+                if documentMap.ContainsKey "mainText"
+                then
+                    JQuery("#mainText").Val(documentMap.["mainText"].Replace("\\n", "\n")) |> ignore
+                let fieldUpdaters = JQuery(".field-updating")
+                fieldUpdaters.Each
+                    (fun (n, (el : Dom.Element)) ->
+                        el.AddEventListener
+                            ( "input"
+                            , (fun () ->
+                                let updateField = JQuery(el).Data("update-field").ToString()
+                                match updateField with
+                                | "userDegree" -> JS.Alert("userDegree")
+                                | "userFirstName" -> JS.Alert("FirstName!")
+                                | "userLastName" -> JS.Alert("LastName!")
+                                | _ -> ()
+                                let updateElements = JQuery(sprintf "[data-update-field='%s']" ((JQuery(el)).Data("update-field").ToString()))
+                                updateElements.Each
+                                    (fun (n, updateElement) ->
+                                        if updateElement <> el
+                                        then
+                                            JQuery(updateElement).Val(JQuery(el).Val() |> string) |> ignore
+                          //                  resize updateElement 150
+                                            ()
+                                    ) |> ignore
+                                ()
+                              ), true
+                            )
+                    ) |> ignore
             }
 
 
         and indexChanged_selectDocumentName() =
             async {
                 do! setDocument()
-                setPageButtons()
+                do! setPageButtons()
             } |> Async.Start
 
         and loadPageTemplate() =
@@ -817,11 +859,13 @@ module Client =
         async {
             do! setSelectDocumentName()
             do! setDocument()
-            setPageButtons()
+            do! setPageButtons()
             do! setSelectPageTemplate()
-            while JS.Document.GetElementById("selectDocumentName") = null do
-                do! Async.Sleep 50
+            for i = 0 to 1000 do
+                if JS.Document.GetElementById("selectDocumentName") = null
+                then do! Async.Sleep 10
             JS.Document.GetElementById("selectDocumentName")?selectedIndex <- 0
+            do! fillDocumentValues()
         } |> Async.Start
 
         div

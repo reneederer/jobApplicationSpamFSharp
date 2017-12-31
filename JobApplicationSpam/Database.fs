@@ -214,13 +214,6 @@ module Database =
                 command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
                 let pageId = command.ExecuteScalar() |> string |> Int32.Parse
                 command.Dispose()
-                for mapItem in page.map do
-                    use command = new NpgsqlCommand("insert into pageValue(pageId, key, value) values (:pageId, :key, :value)", dbConn)
-                    command.Parameters.Add(new NpgsqlParameter("pageId", pageId)) |> ignore
-                    command.Parameters.Add(new NpgsqlParameter("key", mapItem.Key)) |> ignore
-                    command.Parameters.Add(new NpgsqlParameter("value", mapItem.Value)) |> ignore
-                    command.ExecuteNonQuery() |> ignore
-                    command.Dispose()
             | DocumentFile _ -> ()
         log.Debug(sprintf "%A %i = %i" document userId documentId)
         documentId
@@ -264,20 +257,10 @@ module Database =
             pageData
             |> List.map
                 (fun (pageId, pageTemplateId, pageIndex, pageName) ->
-                    use command = new NpgsqlCommand("select key, value from pageValue where pageId = :pageId", dbConn)
-                    command.Parameters.Add(new NpgsqlParameter("pageId", pageId)) |> ignore
-                    use reader = command.ExecuteReader()
-                    let map =
-                        [ while reader.Read() do
-                            yield (reader.GetString(0), reader.GetString(1))
-                        ]
-                        |> Map.ofList
-
                     DocumentPage
                       { name = pageName
                         templateId = pageTemplateId
                         pageIndex = pageIndex
-                        map = map
                       }
                 )
         { name = documentName
@@ -317,11 +300,14 @@ module Database =
             yield { id = reader.GetInt32(0); html = reader.GetString(1); name = reader.GetString(2) } ]
 
     let getPageTemplate (dbConn : NpgsqlConnection) (templateIndex : int) =
+        log.Debug(sprintf "%i" templateIndex)
         use command = new NpgsqlCommand("select html from pageTemplate where id = :templateIndex limit 1", dbConn)
         command.Parameters.Add(new NpgsqlParameter("templateIndex", templateIndex)) |> ignore
         use reader = command.ExecuteReader()
         reader.Read() |> ignore
-        reader.GetString(0)
+        let html = reader.GetString(0)
+        log.Debug(sprintf "%i = %s" templateIndex html)
+        html
 
     let getPages (dbConn : NpgsqlConnection) (documentId : int) =
         use command = new NpgsqlCommand("select name, pageTemplateId from page where documentId = :documentId", dbConn)
@@ -329,4 +315,38 @@ module Database =
         use reader = command.ExecuteReader()
         [ while reader.Read() do
             yield { name = reader.GetString(0); pageTemplateId = reader.GetInt32(1) } ]
+
+    (*let getDocumentMapOffset (dbConn : NpgsqlConnection) (userId : int) (documentIndex : int) =
+        use command = new NpgsqlCommand("select pageIndex, key, value from documentMap where userId = :userId and documentId = (select documentId from document where userId = :userId offset :documentIndex limit 1) order by pageIndex", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("documentIndex", documentIndex)) |> ignore
+        use reader = command.ExecuteReader()
+        let mutable lastPageIndex = 1
+        let mutable (l:array<array<string*string>>) = [| [||] |]
+        let mutable currentPageIndex = reader.GetInt32(0)
+        while reader.Read() do
+            if currentPageIndex <> lastPageIndex && currentPageIndex <> lastPageIndex + 1
+            then
+                failwith "Something was wrong with the page indices"
+            elif currentPageIndex = lastPageIndex + 1
+            then
+                l <- Array.append l [||]
+                currentPageIndex <- lastPageIndex
+            let last = Array.append (Array.last l) [| reader.GetString 1, reader.GetString 2 |]
+            let init = Array.take (currentPageIndex - 1) l
+            l <- Array.append init [|last|]
+        l
+        *)
+
+    let getDocumentMapOffset (dbConn : NpgsqlConnection) (userId : int) (pageIndex : int) (documentIndex : int) =
+        use command = new NpgsqlCommand("select key, value from documentMap join document on documentMap.documentId = document.id where userId = :userId and documentId = (select documentId from document where userId = :userId offset :documentIndex limit 1) and pageIndex = :pageIndex", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("pageIndex", pageIndex)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("documentIndex", documentIndex)) |> ignore
+        use reader = command.ExecuteReader()
+        [ while reader.Read() do
+            yield reader.GetString(0), reader.GetString(1)
+        ]
+        |> Map.ofList
+
 

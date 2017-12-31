@@ -17,8 +17,6 @@ module Server =
 
     let log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().GetType())
 
-
-
     [<Remote>]
     let getEmailByUserId userId =
         async {
@@ -34,6 +32,10 @@ module Server =
             Option.map (Int32.TryParse)
             >> Option.bind (fun (parsed, v) -> if parsed then Some v else None)
         )
+
+
+
+
 
     let sendEmail fromAddress fromName toAddress subject body attachmentPaths =
         use smtpClient = new SmtpClient(ConfigurationManager.AppSettings.["email_server"], ConfigurationManager.AppSettings.["email_port"] |> Int32.TryParse |> snd)
@@ -282,8 +284,8 @@ module Server =
                         match item with
                         | DocumentPage page ->
                             let pageTemplatePath = Database.getPageTemplatePath dbConn page.templateId
-                            let lines =
-                                let emptyLines = List.init 50 (fun i -> sprintf "$line%i" (i + 1), "")
+                            let lines = []
+                                (*let emptyLines = List.init 50 (fun i -> sprintf "$line%i" (i + 1), "")
                                 let pageLines = page.map.["mainText"].Split([|'\n'|])
                                 let len = pageLines.Length
                                 (pageLines
@@ -291,6 +293,7 @@ module Server =
                                 |> List.ofArray)
                                 @ List.skip len emptyLines
                                 |> List.sortByDescending (fun (key, _) -> key.Length)
+                                *)
                             let tmpPath = "c:/users/rene/myodt1/" + Guid.NewGuid().ToString()
                             yield Odt.replaceInOdt pageTemplatePath "c:/users/rene/myodt/" tmpPath (myList @ lines)
                         | DocumentFile file ->
@@ -335,4 +338,51 @@ module Server =
             dbConn.Open()
             return Database.getPages dbConn documentId
         }
+
+    [<Remote>]
+    let getDocumentMapOffset pageIndex documentIndex  =
+        match getCurrentUserId () |> Async.RunSynchronously with
+        | None -> failwith "Nobody logged in"
+        | Some userId ->
+            async {
+                use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+                dbConn.Open()
+                return Database.getDocumentMapOffset dbConn userId pageIndex documentIndex
+            }
+
+    [<Remote>]
+    let valuesMap userValues employer =
+        let oUserId = getCurrentUserId() |> Async.RunSynchronously
+        match oUserId with
+        | None -> failwith "No user logged in"
+        | Some userId ->
+            async {
+                let! userEmail = (getEmailByUserId userId)
+                return
+                  [ "$firmaName", employer.company
+                    "$firmaStrasse", employer.street
+                    "$firmaPlz", employer.postcode
+                    "$firmaStadt", employer.city
+                    "$chefAnredeBriefkopf", match employer.gender with Gender.Male -> "Herrn" | Gender.Female -> "Frau"
+                    "$chefAnrede", employer.gender.ToString()
+                    "$geehrter", match employer.gender with Gender.Male -> "geehrter" | Gender.Female -> "geehrte"
+                    "$chefTitel", employer.degree
+                    "$chefVorname", employer.firstName
+                    "$chefNachname", employer.lastName
+                    "$chefEmail", employer.email
+                    "$chefTelefon", employer.phone
+                    "$chefMobil", employer.mobilePhone
+                    "$meinGeschlecht", userValues.gender.ToString()
+                    "$meinTitel", userValues.degree
+                    "$meinVorname", userValues.firstName
+                    "$meinNachname", userValues.lastName
+                    "$meineStrasse", userValues.street
+                    "$meinePlz", userValues.postcode
+                    "$meineStadt", userValues.city
+                    "$meineEmail", userEmail |> Option.get
+                    "$meinMobilTelefon", userValues.mobilePhone
+                    "$meineTelefonnr", userValues.phone
+                    "$datumHeute", DateTime.Today.ToString("dd.MM.yyyy")
+                ]
+            }
 

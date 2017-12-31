@@ -1,7 +1,7 @@
 (function()
 {
  "use strict";
- var Global,JobApplicationSpam,Types,JobApplicationPageAction,DocumentItem,Client,Language,Str,AddEmployerAction,SC$1,IntelliFactory,Runtime,WebSharper,Concurrency,Remoting,AjaxRemotingProvider,UI,Next,Var,Doc,AttrProxy,AttrModule,List,Seq,Unchecked,Operators,Strings,Utils;
+ var Global,JobApplicationSpam,Types,JobApplicationPageAction,DocumentItem,Client,Language,Str,AddEmployerAction,SC$1,IntelliFactory,Runtime,WebSharper,Concurrency,Remoting,AjaxRemotingProvider,UI,Next,Var,Doc,AttrProxy,AttrModule,List,Seq,Unchecked,Collections,Map,Arrays,Date,Utils,Operators,Strings;
  Global=window;
  JobApplicationSpam=Global.JobApplicationSpam=Global.JobApplicationSpam||{};
  Types=JobApplicationSpam.Types=JobApplicationSpam.Types||{};
@@ -27,9 +27,13 @@
  List=WebSharper&&WebSharper.List;
  Seq=WebSharper&&WebSharper.Seq;
  Unchecked=WebSharper&&WebSharper.Unchecked;
+ Collections=WebSharper&&WebSharper.Collections;
+ Map=Collections&&Collections.Map;
+ Arrays=WebSharper&&WebSharper.Arrays;
+ Date=Global.Date;
+ Utils=WebSharper&&WebSharper.Utils;
  Operators=WebSharper&&WebSharper.Operators;
  Strings=WebSharper&&WebSharper.Strings;
- Utils=WebSharper&&WebSharper.Utils;
  JobApplicationPageAction=Types.JobApplicationPageAction=Runtime.Class({
   toString:function()
   {
@@ -199,7 +203,13 @@
    {
     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getPageTemplates:-1239889210",[]),function(a)
     {
-     Var.Set(varSelectPageTemplate,Doc.Element("select",[AttrProxy.Create("id","selectPageTemplate")],List.ofSeq(Seq.delay(function()
+     Var.Set(varSelectPageTemplate,Doc.Element("select",[AttrProxy.Create("id","selectPageTemplate"),AttrModule.Handler("change",function()
+     {
+      return function()
+      {
+       return indexChanged_selectPageTemplate();
+      };
+     })],List.ofSeq(Seq.delay(function()
      {
       return Seq.map(function(pageTemplate)
       {
@@ -232,10 +242,19 @@
       {
        return function()
        {
-        Global.document.getElementById("selectPageTemplate").selectedIndex=page.templateId;
-        Var.Set(varCurrentPageIndex,page.pageIndex);
-        loadPageTemplate();
-        return Concurrency.Start(fillDocumentValues(),null);
+        var b$2;
+        return Concurrency.Start((b$2=null,Concurrency.Delay(function()
+        {
+         Global.document.getElementById("selectPageTemplate").selectedIndex=page.templateId-1;
+         Var.Set(varCurrentPageIndex,page.pageIndex);
+         return Concurrency.Bind(loadPageTemplate(),function()
+         {
+          return Concurrency.Bind(fillDocumentValues(),function()
+          {
+           return Concurrency.Return(null);
+          });
+         });
+        })),null);
        };
       })],[Doc.TextNode(documentItem.Name())])])]);
      },List.sortBy(function(x)
@@ -253,7 +272,7 @@
    return Concurrency.Delay(function()
    {
     var documentIndex;
-    documentIndex=!Unchecked.Equals(Global.document.getElementById("selectDocumentName"),null)?Global.document.getElementById("selectDocumentName").documentIndex:0;
+    documentIndex=!Unchecked.Equals(Global.document.getElementById("selectDocumentName"),null)?Global.document.getElementById("selectDocumentName").selectedIndex:0;
     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getDocumentOffset:-1572854490",[documentIndex]),function(a)
     {
      Var.Set(varDocument,a);
@@ -267,45 +286,65 @@
    b$1=null;
    return Concurrency.Delay(function()
    {
-    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getCurrentUserValues:-337599557",[]),function()
+    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getCurrentUserValues:-337599557",[]),function(a)
     {
-     var documentIndex;
-     documentIndex=Global.document.getElementById("selectDocumentName").selectedIndex;
-     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getDocumentMapOffset:742047247",[varCurrentPageIndex.c,documentIndex]),function(a)
+     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getCurrentUserEmail:-834772631",[]),function(a$1)
      {
-      return Concurrency.Combine(Concurrency.For(Operators.range(0,1000),function()
+      var c,c$1,c$2;
+      return Concurrency.Combine(Concurrency.For(Map.OfArray(Arrays.ofSeq(List.ofArray([["userDegree",a.degree],["userFirstName",a.firstName],["userLastName",a.lastName],["userStreet",a.street],["userPostcode",a.postcode],["userCity",a.city],["userEmail",a$1],["userPhone",a.phone],["userMobilePhone",a.mobilePhone],["today",((((Runtime.Curried(function($1,$2,$3,$4)
       {
-       return Unchecked.Equals(Global.document.getElementById("insertDiv"),null)?Concurrency.Bind(Concurrency.Sleep(10),function()
+       return $1(Global.String($2)+"-"+Global.String($3)+"-"+Global.String($4));
+      },4))(Global.id))((c=Date.now(),(new Date(c)).getFullYear())))((c$1=Date.now(),(new Date(c$1)).getMonth()+1)))((c$2=Date.now(),(new Date(c$2)).getDate()))]]))),function(a$2)
+      {
+       Global.jQuery((function($1)
        {
-        return Concurrency.Return(null);
-       }):Concurrency.Zero();
+        return function($2)
+        {
+         return $1("[data-variable-value='"+Utils.toSafe($2)+"']");
+        };
+       }(Global.id))(a$2.K)).val(a$2.V);
+       return Concurrency.Zero();
       }),Concurrency.Delay(function()
       {
-       return Concurrency.Combine(a.ContainsKey("mainText")?(Global.jQuery("#mainText").val(Strings.Replace(a.get_Item("mainText"),"\\n","\n")),Concurrency.Zero()):Concurrency.Zero(),Concurrency.Delay(function()
+       var documentIndex;
+       documentIndex=Global.document.getElementById("selectDocumentName").selectedIndex;
+       return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getDocumentMapOffset:742047247",[varCurrentPageIndex.c,documentIndex]),function(a$2)
        {
-        Global.jQuery(".field-updating").each(function($1,el)
+        return Concurrency.Combine(Concurrency.For(Operators.range(0,1000),function()
         {
-         el.addEventListener("input",function()
+         return Unchecked.Equals(Global.document.getElementById("insertDiv"),null)?Concurrency.Bind(Concurrency.Sleep(10),function()
          {
-          var updateField;
-          updateField=Global.String(Global.jQuery(el).data("update-field"));
-          updateField==="userDegree"?Global.alert("userDegree"):updateField==="userFirstName"?Global.alert("FirstName!"):updateField==="userLastName"?Global.alert("LastName!"):void 0;
-          Global.jQuery((function($2)
+          return Concurrency.Return(null);
+         }):Concurrency.Zero();
+        }),Concurrency.Delay(function()
+        {
+         return Concurrency.Combine(a$2.ContainsKey("mainText")?(Global.jQuery("#mainText").val(Strings.Replace(a$2.get_Item("mainText"),"\\n","\n")),Concurrency.Zero()):Concurrency.Zero(),Concurrency.Delay(function()
+         {
+          Global.jQuery(".field-updating").each(function($1,el)
           {
-           return function($3)
+           el.addEventListener("input",function()
            {
-            return $2("[data-update-field='"+Utils.toSafe($3)+"']");
-           };
-          }(Global.id))(Global.String(Global.jQuery(el).data("update-field")))).each(function($2,updateElement)
-          {
-           if(!Unchecked.Equals(updateElement,el))
-            Global.jQuery(updateElement).val(Global.String(Global.jQuery(el).val()));
+            var updateField;
+            updateField=Global.String(Global.jQuery(el).data("update-field"));
+            updateField==="userDegree"?Global.alert("userDegree"):updateField==="userFirstName"?Global.alert("FirstName!"):updateField==="userLastName"?Global.alert("LastName!"):void 0;
+            Global.jQuery((function($2)
+            {
+             return function($3)
+             {
+              return $2("[data-update-field='"+Utils.toSafe($3)+"']");
+             };
+            }(Global.id))(Global.String(Global.jQuery(el).data("update-field")))).each(function($2,updateElement)
+            {
+             if(!Unchecked.Equals(updateElement,el))
+              Global.jQuery(updateElement).val(Global.String(Global.jQuery(el).val()));
+            });
+            return null;
+           },true);
           });
-          return null;
-         },true);
-        });
-        return Concurrency.Zero();
-       }));
+          return Concurrency.Zero();
+         }));
+        }));
+       });
       }));
      });
     });
@@ -325,17 +364,56 @@
     });
    })),null);
   }
-  function loadPageTemplate()
+  function indexChanged_selectPageTemplate()
   {
    var b$1;
    Concurrency.Start((b$1=null,Concurrency.Delay(function()
    {
-    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getPageTemplate:-1212795141",[varCurrentPageIndex.c]),function(a)
+    return Concurrency.Bind(loadPageTemplate(),function()
     {
-     Var.Set(varDisplayedDocument,Doc.Verbatim(a));
-     return Concurrency.Zero();
+     return Concurrency.Bind(fillDocumentValues(),function()
+     {
+      return Concurrency.Return(null);
+     });
     });
    })),null);
+  }
+  function loadPageTemplate()
+  {
+   var b$1;
+   b$1=null;
+   return Concurrency.Delay(function()
+   {
+    Global.jQuery("#insertDiv").remove();
+    return Concurrency.Combine(Concurrency.While(function()
+    {
+     return!Unchecked.Equals(Global.document.getElementById("insertDiv"),null);
+    },Concurrency.Delay(function()
+    {
+     return Concurrency.Bind(Concurrency.Sleep(10),function()
+     {
+      return Concurrency.Return(null);
+     });
+    })),Concurrency.Delay(function()
+    {
+     var pageTemplateIndex;
+     pageTemplateIndex=Global.document.getElementById("selectPageTemplate").selectedIndex;
+     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getPageTemplate:-1212795141",[pageTemplateIndex+1]),function(a)
+     {
+      Var.Set(varDisplayedDocument,Doc.Verbatim(a));
+      return Concurrency.While(function()
+      {
+       return Unchecked.Equals(Global.document.getElementById("insertDiv"),null);
+      },Concurrency.Delay(function()
+      {
+       return Concurrency.Bind(Concurrency.Sleep(10),function()
+       {
+        return Concurrency.Return(null);
+       });
+      }));
+     });
+    }));
+   });
   }
   function loadFileTemplate()
   {
@@ -345,7 +423,7 @@
   varSelectDocumentName=Var.CreateWaiting();
   varSelectPageTemplate=Var.CreateWaiting();
   varPageButtons=Var.CreateWaiting();
-  varCurrentPageIndex=Var.Create$1(0);
+  varCurrentPageIndex=Var.Create$1(1);
   varDisplayedDocument=Var.Create$1(Doc.Element("div",[],[]));
   Concurrency.Start((b=null,Concurrency.Delay(function()
   {
@@ -366,10 +444,19 @@
        }),Concurrency.Delay(function()
        {
         Global.document.getElementById("selectDocumentName").selectedIndex=0;
-        return Concurrency.Bind(fillDocumentValues(),function()
+        return Concurrency.Combine(Concurrency.For(Operators.range(0,1000),function()
         {
-         return Concurrency.Return(null);
-        });
+         return Unchecked.Equals(Global.document.getElementById("selectPageTemplate"),null)?Concurrency.Bind(Concurrency.Sleep(10),function()
+         {
+          return Concurrency.Return(null);
+         }):Concurrency.Zero();
+        }),Concurrency.Delay(function()
+        {
+         return Concurrency.Bind(fillDocumentValues(),function()
+         {
+          return Concurrency.Return(null);
+         });
+        }));
        }));
       });
      });

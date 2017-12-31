@@ -25,6 +25,7 @@ module Server =
             return Database.getEmailByUserId dbConn userId
         }
 
+
     [<Remote>]
     let getCurrentUserId () =
         GetContext().UserSession.GetLoggedInUser()
@@ -34,6 +35,16 @@ module Server =
         )
 
 
+    [<Remote>]
+    let getCurrentUserEmail () =
+        let oUserId = getCurrentUserId() |> Async.RunSynchronously
+        async {
+            match oUserId with
+            | Some userId ->
+                let! userEmail = getEmailByUserId userId
+                return userEmail |> Option.get
+            | None -> return failwith "Nobody is logged in"
+        }
 
 
 

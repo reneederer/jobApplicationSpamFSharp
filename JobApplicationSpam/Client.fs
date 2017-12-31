@@ -732,7 +732,7 @@ module Client =
         let varSelectDocumentName = Var.CreateWaiting()
         let varSelectPageTemplate = Var.CreateWaiting()
         let varPageButtons = Var.CreateWaiting()
-        let varCurrentPageIndex = Var.Create(0)
+        let varCurrentPageIndex = Var.Create(1)
         let varDisplayedDocument = Var.Create(div [] :> Doc)
 
         let rec setSelectDocumentName() =
@@ -751,7 +751,7 @@ module Client =
                 let! pageTemplates = Server.getPageTemplates()
                 varSelectPageTemplate.Value <-
                     selectAttr
-                      [ attr.id "selectPageTemplate" ]
+                      [ attr.id "selectPageTemplate"; on.change (fun _ _ -> indexChanged_selectPageTemplate()) ]
                       [ for pageTemplate in pageTemplates do
                           yield optionAttr [] [text pageTemplate.name] :> Doc
                       ]
@@ -766,7 +766,13 @@ module Client =
                           | DocumentPage page ->
                               yield
                                 li
-                                  [ buttonAttr [on.click (fun _ _ -> JS.Document.GetElementById("selectPageTemplate")?selectedIndex <- page.templateId; varCurrentPageIndex.Value <- page.pageIndex; loadPageTemplate(); fillDocumentValues() |> Async.Start)] [text (documentItem.Name())] :> Doc
+                                  [ buttonAttr [on.click (fun _ _ ->
+                                      async {
+                                          JS.Document.GetElementById("selectPageTemplate")?selectedIndex <- page.templateId - 1
+                                          varCurrentPageIndex.Value <- page.pageIndex
+                                          do! loadPageTemplate()
+                                          do! fillDocumentValues()
+                                      } |> Async.Start)] [text (documentItem.Name())] :> Doc
                                   ]
                                 :> Doc
                           | DocumentFile file ->
@@ -783,7 +789,7 @@ module Client =
                 let selectDocumentNameEl = JS.Document.GetElementById("selectDocumentName")
                 let documentIndex =
                     if selectDocumentNameEl <> null
-                    then JS.Document.GetElementById("selectDocumentName")?documentIndex
+                    then JS.Document.GetElementById("selectDocumentName")?selectedIndex
                     else 0
                 let! document = Server.getDocumentOffset documentIndex
                 varDocument.Value <- document
@@ -792,6 +798,24 @@ module Client =
         and fillDocumentValues() =
             async {
                 let! userValues = Server.getCurrentUserValues()
+                let! userEmail = Server.getCurrentUserEmail()
+                let map =
+                    [ "userDegree", userValues.degree
+                      "userFirstName", userValues.firstName
+                      "userLastName", userValues.lastName
+                      "userStreet", userValues.street
+                      "userPostcode", userValues.postcode
+                      "userCity", userValues.city
+                      "userEmail", userEmail
+                      "userPhone", userValues.phone
+                      "userMobilePhone", userValues.mobilePhone
+                      "today", sprintf "%i-%i-%i" DateTime.Now.Year DateTime.Now.Month DateTime.Now.Day
+                    ]
+                    |> Map.ofList
+
+                for item in map do
+                    JQuery(sprintf "[data-variable-value='%s']" item.Key).Val(item.Value) |> ignore
+
                 let documentIndex = JS.Document.GetElementById("selectDocumentName")?selectedIndex
                 let! documentMap = Server.getDocumentMapOffset varCurrentPageIndex.Value documentIndex
                 for i = 0 to 1000 do
@@ -834,11 +858,23 @@ module Client =
                 do! setPageButtons()
             } |> Async.Start
 
-        and loadPageTemplate() =
+        and indexChanged_selectPageTemplate() =
             async {
-                let! template = Server.getPageTemplate varCurrentPageIndex.Value
-                varDisplayedDocument.Value <- template |> Doc.Verbatim
+                do! loadPageTemplate()
+                do! fillDocumentValues()
             } |> Async.Start
+
+        and loadPageTemplate() : Async<unit> =
+            async {
+                JQuery("#insertDiv").Remove() |> ignore
+                while JS.Document.GetElementById("insertDiv") <> null do
+                    do! Async.Sleep 10
+                let pageTemplateIndex = JS.Document.GetElementById("selectPageTemplate")?selectedIndex
+                let! template = Server.getPageTemplate (pageTemplateIndex + 1)
+                varDisplayedDocument.Value <- template |> Doc.Verbatim
+                while JS.Document.GetElementById("insertDiv") = null do
+                    do! Async.Sleep 10
+            }
 
         and loadFileTemplate() =
             varDisplayedDocument.Value <-
@@ -865,6 +901,9 @@ module Client =
                 if JS.Document.GetElementById("selectDocumentName") = null
                 then do! Async.Sleep 10
             JS.Document.GetElementById("selectDocumentName")?selectedIndex <- 0
+            for i = 0 to 1000 do
+                if JS.Document.GetElementById("selectPageTemplate") = null
+                then do! Async.Sleep 10
             do! fillDocumentValues()
         } |> Async.Start
 

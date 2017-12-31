@@ -40,14 +40,14 @@ insert into pageTemplate(name, odtPath, html) values('Anschreiben nach DIN 5008'
 '<div id="insertDiv">
 <div id="divTemplate" class="page1">
     <div style="width: 100%; background-color: white">
-        <input class="resizing field-updating" autofocus "autofocus" style="font-family: Arial; font-size: 12pt; font-weight: normal" data-update-field="userDegree" placeholder="Dein Titel" />
-        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userFirstName" placeholder="Dein Vorname" />
-        <input class="resizing field-updating" style="border:none; outline: none; letter-spacing: 0px; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userLastName" placeholder="Dein Nachname" />
+        <input class="resizing field-updating" autofocus "autofocus" style="font-family: Arial; font-size: 12pt; font-weight: normal" data-update-field="userDegree" data-variable-value="userDegree" placeholder="Dein Titel" />
+        <input class="" value="test" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-variable-value="userFirstName" placeholder="Dein Vorname" />
+        <input class="resizing field-updating" style="border:none; outline: none; letter-spacing: 0px; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userLastName" data-variable-value="userLastName" placeholder="Dein Nachname" />
         <br />
-        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userStreet" style= "width:150px" placeholder="Deine Straße" />
+        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userStreet" style= "width:150px" data-variable-value="userStreet" placeholder="Deine Straße" />
         <br />
-        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userPostcode" placeholder="Deine Postleitzahl" />
-        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userCity" placeholder="Deine Stadt" />
+        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userPostcode" data-variable-value="userPostcode" placeholder="Deine Postleitzahl" />
+        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userCity" data-variable-value="userCity" placeholder="Deine Stadt" />
         <br />
         <br />
         <br />
@@ -91,6 +91,7 @@ insert into pageTemplate(name, odtPath, html) values('Deckblatt', 'c:/users/rene
 <h1>Deckblatt</h1>
 <image src="null" width="400" height="100" />
 <input type="text" id="mainText"></input>
+<input type="text" data-variable-value="userLastName"></input>
 <br />
 <input type="text" class="resizing field-updating" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-update-field="userFirstName" placeholder="Dein Name" />
 hallo div!</div>

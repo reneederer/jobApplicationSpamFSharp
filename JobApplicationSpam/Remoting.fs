@@ -325,6 +325,15 @@ module Server =
                 //sendEmail "rene.ederer.nbg@gmail.com" "René Ederer" employer.email template.emailSubject template.emailBody template.pdfPaths
                 //return ()
         //}
+
+    [<Remote>]
+    let addFile documentId path pageIndex =
+        async {
+            use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+            dbConn.Open()
+            return Database.addFile dbConn documentId path pageIndex
+        }
+
     
     [<Remote>]
     let getPageTemplates () =
@@ -360,6 +369,25 @@ module Server =
                 dbConn.Open()
                 return Database.getDocumentMapOffset dbConn userId pageIndex documentIndex
             }
+     
+    [<Remote>]
+    let getLastEditedDocumentId () =
+        match getCurrentUserId () |> Async.RunSynchronously with
+        | None -> failwith "Nobody logged in"
+        | Some userId ->
+            async {
+                use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+                dbConn.Open()
+                return Database.getLastEditedDocumentId dbConn userId
+            }
+
+    [<Remote>]
+    let setLastEditedDocumentId (userId) (documentId : int) =
+        async {
+            use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+            dbConn.Open()
+            return Database.setLastEditedDocumentId dbConn userId documentId
+        }
 
     [<Remote>]
     let valuesMap userValues employer =

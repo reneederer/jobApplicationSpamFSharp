@@ -77,7 +77,6 @@
   <Import Project="..\packages\WebSharper.UI.Next.4.0.13.126\build\WebSharper.UI.Next.targets" Condition="Exists('..\packages\WebSharper.UI.Next.4.0.13.126\build\WebSharper.UI.Next.targets')" />
   <ItemGroup>
     <Content Include="Main.html" />
-    <None Include="Template.html" />
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Types.fs" />
     <Compile Include="Database.fs" />

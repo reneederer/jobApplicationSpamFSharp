@@ -11,14 +11,9 @@ type EndPoint =
     | [<EndPoint "/">] Home
     | [<EndPoint "/login">] Login
     | [<EndPoint "/register">] Register
-    | [<EndPoint "/edituservalues">] EditUserValues
-    | [<EndPoint "/uploadtemplate">] UploadTemplate
-    | [<EndPoint "/addemployer">] AddEmployer
-    | [<EndPoint "/applynow">] ApplyNow
     | [<EndPoint "/showsentjobapplications">] ShowSentJobApplications
     | [<EndPoint "/about">] About
     | [<EndPoint "/confirmemail">] ConfirmEmail
-    | [<EndPoint "/createtemplate">] CreateTemplate
     | [<EndPoint "/templates">] Templates
 
 module Templating =
@@ -26,7 +21,6 @@ module Templating =
 
 
     type MainTemplate = Templating.Template<"Main.html">
-    type CreateTemplateTemplate = Templating.Template<"C:/Users/rene/Documents/Visual Studio 2017/Projects/jobApplicationSpamFSharp/JobApplicationSpam/Template.html">
 
     let MenuBar (ctx: Context<EndPoint>) endpoint : Doc list =
         let ( => ) txt act =
@@ -53,9 +47,6 @@ module Templating =
              ]
         [
             li ["Home" => EndPoint.Home]
-            li ["Upload" => EndPoint.UploadTemplate]
-            li ["Add employer" => EndPoint.AddEmployer]
-            li ["Apply now" => EndPoint.ApplyNow]
             li ["About" => EndPoint.About]
         ]
     
@@ -76,13 +67,6 @@ module Templating =
                 .Doc()
         )
 
-    let createTemplate (ctx : Context<EndPoint>) (action : EndPoint) (title: string) (body: Doc list) : Async<Content<'a>>=
-        Content.Page(
-            CreateTemplateTemplate()
-                .Title(title)
-                .Body(body)
-                .Doc()
-        )
 
 module Site =
     open WebSharper.UI.Next.Html
@@ -107,66 +91,12 @@ module Site =
             client <@ Client.login () @>
         ]
 
-    let createTemplatePage (ctx : Context<EndPoint>) =
-        Templating.main ctx EndPoint.CreateTemplate "Create a Template" [
-            client <@ Client.createTemplate () @>
-        ]
-
     let registerPage (ctx : Context<EndPoint>) =
         Templating.main ctx EndPoint.Register "Register" [
             h1 [text "Register"]
             client <@ Client.register () @>
         ]
 
-    let editUserValuesPage (ctx : Context<EndPoint>) =
-        Templating.main ctx EndPoint.Register "Edit your values" [
-            client <@ Client.editUserValues () @>
-        ]
-    
-
-    let uploadTemplatePage (ctx : Context<EndPoint>) =
-        let dir = "./reneupload1/"
-        if not <| Directory.Exists dir then Directory.CreateDirectory dir |> ignore
-        ctx.Request.Files
-        |> Seq.iteri
-            (fun i (x : HttpPostedFileBase) ->
-                if i = 0 && x.FileName <> ""
-                then x.SaveAs(dir + x.FileName)
-                elif i >= 1  && x.FileName <> ""
-                then x.SaveAs(dir + x.FileName)
-            )
-        let uploadResult = 
-            if (not <| Seq.isEmpty ctx.Request.Files)
-            then
-                ok ""
-                (*
-                Server.uploadTemplate
-                    (Option.get ctx.Request.Post.["templateName"])
-                    (Option.get ctx.Request.Post.["userAppliesAs"])
-                    (Option.get ctx.Request.Post.["emailSubject"])
-                    (Option.get ctx.Request.Post.["emailBody"])
-                    (ctx.Request.Files |> Seq.choose (fun (x : HttpPostedFileBase) -> if x.FileName <> "" then Some x.FileName else None))
-                    Server.oLoggedInUserId
-                |> Async.RunSynchronously
-                *)
-            else ok "Nothing to upload"
-        Templating.main ctx EndPoint.UploadTemplate "UploadTemplate"
-          [ div
-              [ client <@ Client.uploadTemplate() @>
-                h1 [text (sprintf "%A" uploadResult)]
-              ]
-          ]
-
-    let addEmployerPage ctx =
-        Templating.main ctx EndPoint.AddEmployer "AddEmployer" [
-            div [client <@ Client.addEmployer () @>]
-        ]
-
-    let applyNowPage ctx =
-        Templating.main ctx EndPoint.About "Apply now" [
-            h1 [text "Apply now"]
-            div [client <@ Client.applyNow () @>]
-        ]
 
     let showSentJobApplications ctx =
         Templating.main ctx EndPoint.About "About" [
@@ -196,6 +126,28 @@ module Site =
         ]
 
     let templatesPage (ctx : Context<EndPoint>) =
+        let dir = "./reneupload1/"
+        if not <| Directory.Exists dir then Directory.CreateDirectory dir |> ignore
+        ctx.Request.Files
+        |> Seq.iteri
+            (fun i (x : HttpPostedFileBase) ->
+                if x.FileName <> ""
+                then
+                    let path = Path.Combine(dir, x.FileName)
+                    x.SaveAs path
+                    try
+                        match ctx.Request.Post.["documentId"], ctx.Request.Post.["pageIndex"], ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously |> Option.map Int32.Parse with
+                        | Some documentIdStr, Some pageIndexStr, Some userId ->
+                            let documentId = documentIdStr |> Int32.Parse
+                            Server.addFile documentId path (pageIndexStr |> Int32.Parse) |> Async.RunSynchronously
+                            Server.setLastEditedDocumentId userId documentId |> Async.RunSynchronously
+                        | _, _, _ ->
+                            failwith "Document id or pageIndex unknown or userId was None"
+                    with
+                    | e ->
+                        File.Delete(path)
+                        reraise()
+            )
         Templating.main ctx EndPoint.About "Templates" [
             client <@ Client.templates() @>
         ]
@@ -205,16 +157,11 @@ module Site =
             match (ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously, endpoint) with
             | Some _, EndPoint.Home -> homePage ctx
             | Some _, EndPoint.Login -> loginPage ctx
-            | Some _, EndPoint.EditUserValues -> editUserValuesPage ctx
-            | Some _, EndPoint.UploadTemplate -> uploadTemplatePage ctx
-            | Some _, EndPoint.AddEmployer -> addEmployerPage ctx
-            | Some _, EndPoint.ApplyNow -> applyNowPage ctx
             | Some _, EndPoint.ShowSentJobApplications -> showSentJobApplications ctx
             | Some _, EndPoint.Register -> registerPage ctx
             | None, EndPoint.Register -> registerPage ctx
             | Some _, EndPoint.About -> aboutPage ctx
             | Some _, EndPoint.ConfirmEmail -> confirmEmailPage ctx
-            | Some _ , EndPoint.CreateTemplate -> createTemplatePage ctx
             | Some _ , EndPoint.Templates -> templatesPage ctx
             | None, _ -> loginPage ctx
         )

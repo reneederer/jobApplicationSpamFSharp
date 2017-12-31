@@ -236,7 +236,7 @@
        return function()
        {
         Var.Set(varCurrentPageIndex,file.pageIndex);
-        return loadFileTemplate();
+        return loadFileUploadTemplate();
        };
       })],[Doc.TextNode(documentItem.Name())])])]):(page=documentItem.$0,[Doc.Element("li",[],[Doc.Element("button",[AttrModule.Handler("click",function()
       {
@@ -415,59 +415,64 @@
     }));
    });
   }
-  function loadFileTemplate()
+  function loadFileUploadTemplate()
   {
-   Var.Set(varDisplayedDocument,Doc.Element("div",[],[Doc.TextNode("file")]));
+   var c,c$1;
+   Var.Set(varDisplayedDocument,Doc.Element("form",[AttrProxy.Create("enctype","multipart/form-data"),AttrProxy.Create("method","POST"),AttrProxy.Create("action","")],[Doc.Element("input",[AttrProxy.Create("type","file"),AttrProxy.Create("name","file")],[]),Doc.Element("input",[AttrProxy.Create("type","hidden"),AttrProxy.Create("name","documentId"),AttrProxy.Create("value",(c=Global.document.getElementById("selectDocumentName").selectedIndex+1,Global.String(c)))],[]),Doc.Element("input",[AttrProxy.Create("type","hidden"),AttrProxy.Create("name","pageIndex"),AttrProxy.Create("value",(c$1=varCurrentPageIndex.c,Global.String(c$1)))],[]),Doc.Element("input",[AttrProxy.Create("type","submit")],[])]));
   }
   varDocument=Var.CreateWaiting();
-  varSelectDocumentName=Var.CreateWaiting();
-  varSelectPageTemplate=Var.CreateWaiting();
-  varPageButtons=Var.CreateWaiting();
+  varSelectDocumentName=Var.Create$1(Doc.Element("div",[],[]));
+  varSelectPageTemplate=Var.Create$1(Doc.Element("div",[],[]));
+  varPageButtons=Var.Create$1(Doc.Element("div",[],[]));
   varCurrentPageIndex=Var.Create$1(1);
   varDisplayedDocument=Var.Create$1(Doc.Element("div",[],[]));
   Concurrency.Start((b=null,Concurrency.Delay(function()
   {
    return Concurrency.Bind(setSelectDocumentName(),function()
    {
-    return Concurrency.Bind(setDocument(),function()
+    return Concurrency.Combine(Concurrency.While(function()
     {
-     return Concurrency.Bind(setPageButtons(),function()
+     return Unchecked.Equals(Global.document.getElementById("selectDocumentName"),null);
+    },Concurrency.Delay(function()
+    {
+     return Concurrency.Bind(Concurrency.Sleep(10),function()
      {
-      return Concurrency.Bind(setSelectPageTemplate(),function()
-      {
-       return Concurrency.Combine(Concurrency.For(Operators.range(0,1000),function()
-       {
-        return Unchecked.Equals(Global.document.getElementById("selectDocumentName"),null)?Concurrency.Bind(Concurrency.Sleep(10),function()
-        {
-         return Concurrency.Return(null);
-        }):Concurrency.Zero();
-       }),Concurrency.Delay(function()
-       {
-        Global.document.getElementById("selectDocumentName").selectedIndex=0;
-        return Concurrency.Combine(Concurrency.For(Operators.range(0,1000),function()
-        {
-         return Unchecked.Equals(Global.document.getElementById("selectPageTemplate"),null)?Concurrency.Bind(Concurrency.Sleep(10),function()
-         {
-          return Concurrency.Return(null);
-         }):Concurrency.Zero();
-        }),Concurrency.Delay(function()
-        {
-         return Concurrency.Bind(fillDocumentValues(),function()
-         {
-          return Concurrency.Return(null);
-         });
-        }));
-       }));
-      });
+      return Concurrency.Return(null);
      });
-    });
+    })),Concurrency.Delay(function()
+    {
+     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getLastEditedDocumentId:-646436276",[]),function(a)
+     {
+      return Concurrency.Combine(a!=null&&a.$==1?(Global.document.getElementById("selectDocumentName").selectedIndex=a.$0-1,Concurrency.Zero()):(Global.document.getElementById("selectDocumentName").selectedIndex=0,Concurrency.Zero()),Concurrency.Delay(function()
+      {
+       return Concurrency.Bind(setDocument(),function()
+       {
+        return Concurrency.Bind(setPageButtons(),function()
+        {
+         return Concurrency.Bind(setSelectPageTemplate(),function()
+         {
+          return Concurrency.Combine(Concurrency.For(Operators.range(0,1000),function()
+          {
+           return Unchecked.Equals(Global.document.getElementById("selectPageTemplate"),null)?Concurrency.Bind(Concurrency.Sleep(10),function()
+           {
+            return Concurrency.Return(null);
+           }):Concurrency.Zero();
+          }),Concurrency.Delay(function()
+          {
+           return Concurrency.Bind(fillDocumentValues(),function()
+           {
+            return Concurrency.Return(null);
+           });
+          }));
+         });
+        });
+       });
+      }));
+     });
+    }));
    });
   })),null);
   return Doc.Element("div",[],[Doc.TextNode("Your application documents: "),Doc.EmbedView(varSelectDocumentName.v),Doc.EmbedView(varPageButtons.v),Doc.EmbedView(varSelectPageTemplate.v),Doc.EmbedView(varDisplayedDocument.v)]);
- };
- Client.createTemplate=function()
- {
-  return Doc.TextNode("abc");
  };
  Client.showSentJobApplications=function()
  {
@@ -506,22 +511,6 @@
     return loginResult.$==1?Global.alert(Strings.concat(", ",loginResult.$0)):null;
    };
   })],[Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","txtLoginEmail")],[Doc.TextNode("Email")]),Doc.Input([AttrProxy.Create("class","form-control"),AttrProxy.Create("id","txtLoginEmail"),AttrProxy.Create("placeholder","Email")],varTxtLoginEmail)]),Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","txtLoginPassword")],[Doc.TextNode("Password")]),Doc.PasswordBox([AttrProxy.Create("class","form-control"),AttrProxy.Create("id","txtLoginPassword"),AttrProxy.Create("placeholder","Password")],varTxtLoginPassword)]),Doc.Element("input",[AttrProxy.Create("type","submit"),AttrProxy.Create("value","Login")],[])]);
- };
- Client.uploadTemplate=function()
- {
-  return Doc.Element("div",[],[]);
- };
- Client.applyNow=function()
- {
-  return Doc.Element("div",[],[]);
- };
- Client.addEmployer=function()
- {
-  return Doc.Element("div",[],[]);
- };
- Client.editUserValues=function()
- {
-  return Doc.Element("div",[],[]);
  };
  Client.currentLanguage=function()
  {

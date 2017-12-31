@@ -337,6 +337,25 @@ module Database =
             l <- Array.append init [|last|]
         l
         *)
+    
+    let getLastEditedDocumentId (dbConn : NpgsqlConnection) (userId : int) =
+        use command = new NpgsqlCommand("select documentId from lastEditedDocumentId where userId = :userId limit 1", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        let oDocumentId =
+            match command.ExecuteScalar() with
+            | null -> None
+            | documentIdStr -> Some (documentIdStr |> string |> Int32.Parse)
+        command.Dispose()
+        use command = new NpgsqlCommand("delete from lastEditedDocumentId where userId = :userId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        command.ExecuteNonQuery() |> ignore
+        oDocumentId
+
+    let setLastEditedDocumentId (dbConn : NpgsqlConnection) (userId : int) (documentId : int)=
+        use command = new NpgsqlCommand("insert into lastEditedDocumentId (documentId, userId) values (:documentId, :userId)", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        command.ExecuteNonQuery() |> ignore
 
     let getDocumentMapOffset (dbConn : NpgsqlConnection) (userId : int) (pageIndex : int) (documentIndex : int) =
         use command = new NpgsqlCommand("select key, value from documentMap join document on documentMap.documentId = document.id where userId = :userId and documentId = (select documentId from document where userId = :userId offset :documentIndex limit 1) and pageIndex = :pageIndex", dbConn)
@@ -348,5 +367,23 @@ module Database =
             yield reader.GetString(0), reader.GetString(1)
         ]
         |> Map.ofList
+    
+    let addFile (dbConn : NpgsqlConnection) (documentId : int) (path : string) (pageIndex : int)  =
+        use command = new NpgsqlCommand("update files set pageIndex = pageIndex + 1 where pageIndex >= :pageIndex", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("pageIndex", pageIndex)) |> ignore
+        command.ExecuteNonQuery() |> ignore
+        command.Dispose()
+
+        use command = new NpgsqlCommand("update page set pageIndex = pageIndex + 1 where pageIndex >= :pageIndex", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("pageIndex", pageIndex)) |> ignore
+        command.ExecuteNonQuery() |> ignore
+        command.Dispose()
+
+        use command = new NpgsqlCommand("insert into files (documentId, path, pageIndex, name) values(:documentId, :path, :pageIndex, :name)", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("path", path)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("pageIndex", pageIndex)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("name", Path.GetFileName(path))) |> ignore
+        command.ExecuteNonQuery() |> ignore
 
 

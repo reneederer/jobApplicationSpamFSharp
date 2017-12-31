@@ -3,6 +3,7 @@ drop table if exists sentStatus cascade;
 drop table if exists sentStatusValue cascade;
 drop table if exists sentDocument cascade;
 drop table if exists documentMap cascade;
+drop table if exists lastEditedDocumentId cascade;
 drop table if exists page cascade;
 drop table if exists files cascade;
 drop table if exists document cascade;
@@ -16,6 +17,7 @@ create table userValues(id serial primary key, userId int, gender varchar(1) not
 create table employer(id serial primary key, userId int not null, company varchar(100) not null, street varchar(30) not null, postcode varchar(10) not null, city varchar(30) not null, gender varchar(20) not null, degree varchar(20) not null, firstName varchar(50) not null, lastName varchar(50) not null, email varchar(200) not null, phone varchar(30) not null, mobilePhone varchar(30) not null, foreign key(userId) references users(id));
 create table pageTemplate(id serial primary key, name varchar(50) not null, odtPath varchar(100) not null, html text not null);
 create table document(id serial primary key, userId int not null, name varchar(100) not null, emailSubject varchar(100) not null, emailBody text not null, foreign key(userId) references users(id));
+create table lastEditedDocumentId(userId int primary key not null, documentId int not null);
 create table files(id serial primary key, documentId int not null, path varchar(60) not null, pageIndex int not null, name varchar(50) not null, foreign key(documentId) references document(id));
 create table page(id serial primary key, documentId int not null, pageTemplateId int not null, pageIndex int not null, name varchar(50) not null, foreign key(documentId) references document(id), foreign key(pageTemplateId) references pageTemplate(id));
 create table documentMap(id serial primary key, documentId int not null, pageIndex int not null, key varchar(100) not null, value text not null, foreign key(documentId) references document(id));
@@ -104,6 +106,7 @@ insert into page(documentId, pageTemplateId, pageIndex, name) values(2, 1, 1, 'm
 insert into page(documentId, pageTemplateId, pageIndex, name) values(2, 2, 2, 'mein zweites Deckblatt');
 insert into page(documentId, pageTemplateId, pageIndex, name) values(2, 2, 3, 'mein drittes Deckblatt');
 insert into page(documentId, pageTemplateId, pageIndex, name) values(2, 3, 4, 'mein dritter Lebenslauf');
+insert into files(documentId, path, pageIndex, name) values(2, 'C:/Users/rene/Downloads/labenwolf_zeugnis_small.pdf', 5, 'LabenwolfZeugnis');
 insert into page(documentId, pageTemplateId, pageIndex, name) values(1, 1, 1, 'mein Anschreiben');
 insert into page(documentId, pageTemplateId, pageIndex, name) values(1, 2, 2, 'mein Deckblatt');
 insert into documentMap(documentId, pageIndex, key, value) values (1, 1, 'mainText', 'Sehr geehrte Damen und Herren\n\nhiermit bewerbe ich mich auf Ihre Stellenzeige\nauf LinkedIn\n\nMit freundlichen Grüßen\n\n\n\nRené Ederer');

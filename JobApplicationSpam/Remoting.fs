@@ -215,7 +215,7 @@ module Server =
 
 
     [<Remote>]
-    let saveDocument (htmlJobApplication : Document) =
+    let saveDocument (document : Document) =
         let oUserId = getCurrentUserId() |> Async.RunSynchronously
         async {
             match oUserId with
@@ -224,7 +224,7 @@ module Server =
                 dbConn.Open()
                 use transaction = dbConn.BeginTransaction()
                 try
-                    let documentId = Database.saveDocument dbConn htmlJobApplication userId
+                    let documentId = Database.saveDocument dbConn document userId
                     transaction.Commit()
                     return documentId
                 with
@@ -262,7 +262,7 @@ module Server =
             use transaction = dbConn.BeginTransaction()
             try
                 let documentId = Database.saveDocument dbConn document userId
-                Database.insertJobApplication dbConn userId employerId documentId
+                Database.insertSentApplication dbConn userId employerId documentId
                 let userEmail = Database.getEmailByUserId dbConn userId |> Option.defaultValue ""
                 let myList =
                     [ ("$firmaName", employer.company)
@@ -293,7 +293,7 @@ module Server =
                 let odtPaths =
                     [ for item in document.pages do
                         match item with
-                        | DocumentPage htmlPage ->
+                        | HtmlPage htmlPage ->
                             let oPageTemplatePath = Option.map (Database.getHtmlPageTemplatePath dbConn) htmlPage.oTemplateId
                             let pageTemplatePath =
                                 match oPageTemplatePath with
@@ -312,7 +312,7 @@ module Server =
                                 *)
                             let tmpPath = "c:/users/rene/myodt1/" + Guid.NewGuid().ToString()
                             yield Odt.replaceInOdt pageTemplatePath "c:/users/rene/myodt/" tmpPath (myList @ lines)
-                        | DocumentFile filePage ->
+                        | FilePage filePage ->
                             let tmpPath = "c:/users/rene/myodt1/" + Guid.NewGuid().ToString()
                             yield Odt.replaceInOdt filePage.path "c:/users/rene/myodt/" tmpPath myList
                     ]
@@ -365,14 +365,14 @@ module Server =
         }
 
     [<Remote>]
-    let getDocumentMapOffset pageIndex documentIndex  =
+    let getPageMapOffset pageIndex documentIndex  =
         match getCurrentUserId () |> Async.RunSynchronously with
         | None -> failwith "Nobody logged in"
         | Some userId ->
             async {
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
-                return Database.getDocumentMapOffset dbConn userId pageIndex documentIndex
+                return Database.getPageMapOffset dbConn userId pageIndex documentIndex
             }
      
     [<Remote>]

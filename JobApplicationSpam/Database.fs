@@ -182,17 +182,17 @@ module Database =
             failwith <| "Email does not exist or guid was already null: " + email
         log.Debug(sprintf "%s = ()" email)
 
-    let insertJobApplication (dbConn : NpgsqlConnection) (userId : int) (employerId : int) (documentId : int) =
+    let insertSentApplication (dbConn : NpgsqlConnection) (userId : int) (employerId : int) (documentId : int) =
         log.Debug(sprintf "%i %i %i" userId employerId documentId)
-        use command = new NpgsqlCommand("insert into jobApplication(userId, employerId, documentId) values(:userId, :employerId, :documentId) returning id", dbConn)
+        use command = new NpgsqlCommand("insert into sentApplication(userId, employerId, documentId) values(:userId, :employerId, :documentId) returning id", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("employerId", employerId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
-        let jobApplicationId = command.ExecuteScalar() |> string |> Int32.Parse
+        let sentApplicationId = command.ExecuteScalar() |> string |> Int32.Parse
         command.Dispose()
 
-        use command = new NpgsqlCommand("""insert into jobApplicationStatus(jobApplicationId, statusCjangedOn, dueOn, statusValueId, statusMessage) values(:jobApplicationId, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 1, '') """, dbConn)
-        command.Parameters.Add(new NpgsqlParameter("jobApplicationId", jobApplicationId)) |> ignore
+        use command = new NpgsqlCommand("""insert into sentStatus(sentApplicationId, statusChangedOn, dueOn, sentStatusValueId, statusMessage) values(:sentApplicationId, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 1, '') """, dbConn)
+        command.Parameters.Add(new NpgsqlParameter("sentApplicationId", sentApplicationId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("employerId", employerId)) |> ignore
         command.ExecuteNonQuery() |> ignore
@@ -210,12 +210,12 @@ module Database =
         command.Dispose()
         for page in document.pages do
             match page with
-            | DocumentPage htmlPage ->
+            | HtmlPage htmlPage ->
                 use command = new NpgsqlCommand("insert into htmlPage(documentId, templateId, name) values (2, 1, 'Anschreiben') returning id", dbConn)
                 command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
                 let pageId = command.ExecuteScalar() |> string |> Int32.Parse
                 command.Dispose()
-            | DocumentFile _ -> ()
+            | FilePage _ -> ()
         log.Debug(sprintf "%A %i = %i" document userId documentId)
         documentId
        
@@ -244,7 +244,7 @@ module Database =
         let filePages =
             [ while reader.Read() do
                 yield
-                  DocumentFile
+                  FilePage
                     { path = reader.GetString(0)
                       pageIndex = reader.GetInt32(1)
                       name = reader.GetString(2)
@@ -253,17 +253,27 @@ module Database =
         reader.Dispose()
         command.Dispose()
 
-        
         let htmlPages =
             htmlPageData
             |> List.map
                 (fun (_, oTemplateId, pageIndex, pageName) ->
-                    DocumentPage
+                    HtmlPage
                       { name = pageName
                         oTemplateId = oTemplateId
                         pageIndex = pageIndex
+                        map =
+                            use command = new NpgsqlCommand("select key, value from pageMap where documentId = :documentId and pageIndex = :pageIndex", dbConn)
+                            command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+                            command.Parameters.Add(new NpgsqlParameter("pageIndex", pageIndex)) |> ignore
+                            use reader = command.ExecuteReader()
+                            [ while reader.Read() do
+                                yield reader.GetString(0), reader.GetString(1)
+                            ]
+                            |> Map.ofList
                       }
                 )
+
+
         { name = documentName
           pages = htmlPages @ filePages
         }
@@ -322,8 +332,8 @@ module Database =
         [ while reader.Read() do
             yield { name = reader.GetString(0); oTemplateId = if reader.IsDBNull(0) then None else Some <| reader.GetInt32(1) } ]
 
-    (*let getDocumentMapOffset (dbConn : NpgsqlConnection) (userId : int) (documentIndex : int) =
-        use command = new NpgsqlCommand("select pageIndex, key, value from documentMap where userId = :userId and documentId = (select documentId from document where userId = :userId offset :documentIndex limit 1) order by pageIndex", dbConn)
+    (*let getPageMapOffset (dbConn : NpgsqlConnection) (userId : int) (documentIndex : int) =
+        use command = new NpgsqlCommand("select pageIndex, key, value from pageMap where userId = :userId and documentId = (select documentId from document where userId = :userId offset :documentIndex limit 1) order by pageIndex", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("documentIndex", documentIndex)) |> ignore
         use reader = command.ExecuteReader()
@@ -363,8 +373,8 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
         command.ExecuteNonQuery() |> ignore
 
-    let getDocumentMapOffset (dbConn : NpgsqlConnection) (userId : int) (pageIndex : int) (documentIndex : int) =
-        use command = new NpgsqlCommand("select key, value from documentMap join document on documentMap.documentId = document.id where userId = :userId and documentId = (select documentId from document where userId = :userId offset :documentIndex limit 1) and pageIndex = :pageIndex", dbConn)
+    let getPageMapOffset (dbConn : NpgsqlConnection) (userId : int) (pageIndex : int) (documentIndex : int) =
+        use command = new NpgsqlCommand("select key, value from pageMap join document on pageMap.documentId = document.id where userId = :userId and documentId = (select documentId from document where userId = :userId offset :documentIndex limit 1) and pageIndex = :pageIndex", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("pageIndex", pageIndex)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("documentIndex", documentIndex)) |> ignore

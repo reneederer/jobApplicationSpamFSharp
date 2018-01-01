@@ -6,6 +6,7 @@ module Types =
     open log4net.Core
     open WebSharper.Core.ContentTypes.Text
 
+    [<WebSharper.JavaScript>]
     type Gender =
     | Male
     | Female
@@ -53,11 +54,6 @@ module Types =
           mobilePhone : string
         }
     
-    type TemplateForJobApplication =
-        { emailSubject : string
-          emailBody : string
-          filePaths : list<string>
-        }
 
     [<WebSharper.JavaScript>]
     type JobApplicationPageAction =
@@ -77,6 +73,7 @@ module Types =
         { name : string
           oTemplateId : option<int>
           pageIndex : int
+          map : Map<string, string>
         }
     
     type FilePage =
@@ -87,17 +84,17 @@ module Types =
 
     [<WebSharper.JavaScript>] 
     type DocumentPage =
-    | DocumentPage of HtmlPage
-    | DocumentFile of FilePage
+    | HtmlPage of HtmlPage
+    | FilePage of FilePage
     with
         member this.Name() =
             match this with
-            | DocumentPage page -> page.name
-            | DocumentFile file -> file.name
+            | HtmlPage htmlPage -> htmlPage.name
+            | FilePage filePage -> filePage.name
         member this.PageIndex() =
             match this with
-            | DocumentPage page -> page.pageIndex
-            | DocumentFile file -> file.pageIndex
+            | HtmlPage htmlPage -> htmlPage.pageIndex
+            | FilePage filePage -> filePage.pageIndex
 
     //[<WebSharper.JavaScript>]
     type Document =
@@ -120,7 +117,3 @@ module Types =
     | English
     | Deutsch
 
-    type DocumentMap =
-        { pageIndex : int
-          map : Map<string, string>
-        }

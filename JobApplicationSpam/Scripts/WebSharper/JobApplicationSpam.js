@@ -1,12 +1,12 @@
 (function()
 {
  "use strict";
- var Global,JobApplicationSpam,Types,JobApplicationPageAction,DocumentItem,Client,Language,Str,AddEmployerAction,SC$1,IntelliFactory,Runtime,WebSharper,Concurrency,Remoting,AjaxRemotingProvider,UI,Next,Var,Doc,AttrProxy,AttrModule,List,Seq,Unchecked,Collections,Map,Arrays,Date,Utils,Operators,Strings;
+ var Global,JobApplicationSpam,Types,JobApplicationPageAction,DocumentPage,Client,Language,Str,AddEmployerAction,SC$1,IntelliFactory,Runtime,WebSharper,Concurrency,Remoting,AjaxRemotingProvider,UI,Next,Var,Doc,AttrProxy,AttrModule,List,Seq,Numeric,Unchecked,Collections,Map,Arrays,Date,Utils,Operators,Strings;
  Global=window;
  JobApplicationSpam=Global.JobApplicationSpam=Global.JobApplicationSpam||{};
  Types=JobApplicationSpam.Types=JobApplicationSpam.Types||{};
  JobApplicationPageAction=Types.JobApplicationPageAction=Types.JobApplicationPageAction||{};
- DocumentItem=Types.DocumentItem=Types.DocumentItem||{};
+ DocumentPage=Types.DocumentPage=Types.DocumentPage||{};
  Client=JobApplicationSpam.Client=JobApplicationSpam.Client||{};
  Language=Client.Language=Client.Language||{};
  Str=Client.Str=Client.Str||{};
@@ -26,6 +26,7 @@
  AttrModule=Next&&Next.AttrModule;
  List=WebSharper&&WebSharper.List;
  Seq=WebSharper&&WebSharper.Seq;
+ Numeric=WebSharper&&WebSharper.Numeric;
  Unchecked=WebSharper&&WebSharper.Unchecked;
  Collections=WebSharper&&WebSharper.Collections;
  Map=Collections&&Collections.Map;
@@ -49,7 +50,7 @@
  JobApplicationPageAction.Upload=new JobApplicationPageAction({
   $:0
  });
- DocumentItem=Types.DocumentItem=Runtime.Class({
+ DocumentPage=Types.DocumentPage=Runtime.Class({
   PageIndex:function()
   {
    return this.$==1?this.$0.pageIndex:this.$0.pageIndex;
@@ -58,7 +59,7 @@
   {
    return this.$==1?this.$0.name:this.$0.name;
   }
- },null,DocumentItem);
+ },null,DocumentPage);
  Language.German={
   $:1
  };
@@ -169,7 +170,7 @@
  };
  Client.templates=function()
  {
-  var varDocument,varSelectDocumentName,varSelectPageTemplate,varPageButtons,varCurrentPageIndex,varDisplayedDocument,b;
+  var varDocument,varSelectDocumentName,varSelectHtmlPageTemplate,varNewDocument,varPageButtonsDiv,varPageButtons,varCurrentPageIndex,varPageCount,varDisplayedDocument,varAddPage,b;
   function setSelectDocumentName()
   {
    var b$1;
@@ -178,11 +179,11 @@
    {
     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getDocumentNames:1994133801",[]),function(a)
     {
-     Var.Set(varSelectDocumentName,Doc.Element("select",[AttrProxy.Create("id","selectDocumentName"),AttrModule.Handler("change",function()
+     Var.Set(varSelectDocumentName,Doc.Element("div",[],[Doc.TextNode("Your application documents: "),Doc.Element("select",[AttrProxy.Create("id","selectDocumentName"),AttrModule.Handler("change",function()
      {
       return function()
       {
-       return indexChanged_selectDocumentName();
+       return Concurrency.Start(indexChanged_selectDocumentName(),null);
       };
      })],List.ofSeq(Seq.delay(function()
      {
@@ -190,30 +191,81 @@
       {
        return Doc.Element("option",[],[Doc.TextNode(documentName)]);
       },a);
-     }))));
+     }))),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("style","margin-left: 20px"),AttrProxy.Create("value","+"),AttrModule.Handler("click",function()
+     {
+      return function()
+      {
+       return setNewDocument();
+      };
+     })],[]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("style","margin-left: 20px"),AttrProxy.Create("value","-"),AttrModule.Handler("click",function()
+     {
+      return function()
+      {
+       return Concurrency.Start(setNewDocumentEmpty(),null);
+      };
+     })],[])]));
      return Concurrency.Zero();
     });
    });
   }
-  function setSelectPageTemplate()
+  function addSelectDocumentName(value)
+  {
+   var documentNames;
+   documentNames=List.T.Empty;
+   Global.jQuery("#selectDocumentName option").each(function(i,el)
+   {
+    documentNames=new List.T({
+     $:1,
+     $0:Global.String(el.text),
+     $1:documentNames
+    });
+   });
+   documentNames=List.append(documentNames,List.ofArray([value]));
+   Var.Set(varSelectDocumentName,Doc.Element("div",[],[Doc.TextNode("Your application documents: "),Doc.Element("select",[AttrProxy.Create("id","selectDocumentName"),AttrModule.Handler("change",function()
+   {
+    return function()
+    {
+     return Concurrency.Start(indexChanged_selectDocumentName(),null);
+    };
+   })],List.ofSeq(Seq.delay(function()
+   {
+    return Seq.map(function(documentName)
+    {
+     return Doc.Element("option",[],[Doc.TextNode(documentName)]);
+    },documentNames);
+   }))),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("style","margin-left: 20px"),AttrProxy.Create("value","+"),AttrModule.Handler("click",function()
+   {
+    return function()
+    {
+     return setNewDocument();
+    };
+   })],[]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("style","margin-left: 20px"),AttrProxy.Create("value","-"),AttrModule.Handler("click",function()
+   {
+    return function()
+    {
+     return Concurrency.Start(setNewDocumentEmpty(),null);
+    };
+   })],[])]));
+  }
+  function setSelectHtmlPageTemplate()
   {
    var b$1;
    b$1=null;
    return Concurrency.Delay(function()
    {
-    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getPageTemplates:-1239889210",[]),function(a)
+    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getHtmlPageTemplates:1297380307",[]),function(a)
     {
-     Var.Set(varSelectPageTemplate,Doc.Element("select",[AttrProxy.Create("id","selectPageTemplate"),AttrModule.Handler("change",function()
+     Var.Set(varSelectHtmlPageTemplate,Doc.Element("select",[AttrProxy.Create("id","selectHtmlPageTemplate"),AttrModule.Handler("change",function()
      {
       return function()
       {
-       return indexChanged_selectPageTemplate();
+       return Concurrency.Start(indexChanged_selectHtmlPageTemplate(),null);
       };
      })],List.ofSeq(Seq.delay(function()
      {
-      return Seq.map(function(pageTemplate)
+      return Seq.map(function(htmlPageTemplate)
       {
-       return Doc.Element("option",[],[Doc.TextNode(pageTemplate.name)]);
+       return Doc.Element("option",[],[Doc.TextNode(htmlPageTemplate.name)]);
       },a);
      }))));
      return Concurrency.Zero();
@@ -226,27 +278,118 @@
    b$1=null;
    return Concurrency.Delay(function()
    {
-    Var.Set(varPageButtons,Doc.Element("ul",[],List.ofSeq(Seq.delay(function()
+    function setPageNameDiv()
     {
-     return Seq.collect(function(documentItem)
+     var varPageDiv;
+     function addHtmlPage(pageName)
      {
-      var file,page;
-      return documentItem.$==1?(file=documentItem.$0,[Doc.Element("li",[],[Doc.Element("button",[AttrModule.Handler("click",function()
+      var b$2;
+      b$2=null;
+      return Concurrency.Delay(function()
+      {
+       return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getDocumentIdOffset:-1214783449",[Numeric.ParseInt32(Global.String(Global.document.getElementById("selectDocumentName").selectedIndex))]),function(a)
+       {
+        return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.addHtmlPage:309601797",[a,null,varPageCount.c+1,pageName]),function()
+        {
+         Var.Set(varPageButtons,Doc.Element("div",[],List.append(List.ofArray([varPageButtons.c]),List.ofArray([Doc.Element("button",[AttrModule.Handler("click",function()
+         {
+          return function()
+          {
+           var b$3;
+           return Concurrency.Start((b$3=null,Concurrency.Delay(function()
+           {
+            var o;
+            Global.document.getElementById("selectHtmlPageTemplate").selectedIndex=(o=null,o==null?1:o.$0)-1;
+            Var.Set(varCurrentPageIndex,varPageCount.c);
+            return Concurrency.Bind(loadPageTemplate(),function()
+            {
+             return Concurrency.Bind(fillDocumentValues(),function()
+             {
+              return Concurrency.Return(null);
+             });
+            });
+           })),null);
+          };
+         })],[Doc.TextNode(pageName)])]))));
+         return Concurrency.Zero();
+        });
+       });
+      });
+     }
+     function htmlPageDiv()
+     {
+      return Doc.Element("div",[],[Doc.TextNode("Page name: "),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("id","txtAddPageName")],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("button",[AttrModule.Handler("click",function()
       {
        return function()
        {
-        Var.Set(varCurrentPageIndex,file.pageIndex);
+        Concurrency.Start(addHtmlPage(Global.String(Global.document.getElementById("txtAddPageName").value)),null);
+        return Var.Set(varAddPage,Doc.Element("div",[],[]));
+       };
+      })],[Doc.TextNode("Add page")]),Doc.Element("button",[AttrProxy.Create("style","margin-left: 20px"),AttrModule.Handler("click",function()
+      {
+       return function()
+       {
+        return Var.Set(varAddPage,Doc.Element("div",[],[]));
+       };
+      })],[Doc.TextNode("Abort")])]);
+     }
+     function filePageDiv()
+     {
+      var c;
+      return Doc.Element("div",[],[Doc.Element("form",[AttrProxy.Create("enctype","multipart/form-data"),AttrProxy.Create("method","POST"),AttrProxy.Create("action","")],[Doc.TextNode("Please choose a file: "),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("type","file"),AttrProxy.Create("name","file")],[]),Doc.Element("input",[AttrProxy.Create("type","hidden"),AttrProxy.Create("name","documentId"),AttrProxy.Create("value",(c=Global.document.getElementById("selectDocumentName").selectedIndex+1,Global.String(c)))],[]),Doc.Element("input",[AttrProxy.Create("type","hidden"),AttrProxy.Create("name","pageIndex"),AttrProxy.Create("value",Global.String(varPageCount.c+1))],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("button",[AttrProxy.Create("type","submit")],[Doc.TextNode("Add page")]),Doc.Element("button",[AttrProxy.Create("style","margin-left: 20px"),AttrModule.Handler("click",function()
+      {
+       return function()
+       {
+        return Var.Set(varAddPage,Doc.Element("div",[],[]));
+       };
+      })],[Doc.TextNode("Abort")])])]);
+     }
+     varPageDiv=Var.Create$1(Doc.Element("div",[],[]));
+     return Doc.Element("div",[],[Doc.Element("input",[AttrProxy.Create("type","radio"),AttrProxy.Create("name","rbgrpPageType"),AttrProxy.Create("id","rbHtmlPage"),AttrModule.Handler("click",function()
+     {
+      return function()
+      {
+       return Var.Set(varPageDiv,htmlPageDiv());
+      };
+     })],[]),Doc.Element("label",[AttrProxy.Create("for","rbHtmlPage")],[Doc.TextNode("Create online")]),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("type","radio"),AttrProxy.Create("id","rbFilePage"),AttrProxy.Create("name","rbgrpPageType"),AttrModule.Handler("click",function()
+     {
+      return function()
+      {
+       return Var.Set(varPageDiv,filePageDiv());
+      };
+     })],[]),Doc.Element("label",[AttrProxy.Create("for","rbFilePage")],[Doc.TextNode("Upload")]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.EmbedView(varPageDiv.v)]);
+    }
+    Var.Set(varAddPage,Doc.Element("div",[],[]));
+    Var.Set(varPageCount,varDocument.c.pages.get_Length());
+    Var.Set(varPageButtonsDiv,Doc.Element("div",[AttrProxy.Create("id","ulPageButtons")],List.append(List.ofArray([Doc.EmbedView(varPageButtons.v)]),List.ofArray([Doc.Element("div",[],[Doc.Element("button",[AttrModule.Handler("click",function()
+    {
+     return function()
+     {
+      return Var.Set(varAddPage,setPageNameDiv());
+     };
+    })],[Doc.TextNode("+")])])]))));
+    Var.Set(varPageButtons,Doc.Element("div",[],List.ofSeq(Seq.delay(function()
+    {
+     return Seq.collect(function(page)
+     {
+      var filePage,htmlPage;
+      return page.$==1?(filePage=page.$0,[Doc.Element("div",[],[Doc.Element("button",[AttrModule.Handler("click",function()
+      {
+       return function()
+       {
+        Var.Set(varCurrentPageIndex,filePage.pageIndex);
         return loadFileUploadTemplate();
        };
-      })],[Doc.TextNode(documentItem.Name())])])]):(page=documentItem.$0,[Doc.Element("li",[],[Doc.Element("button",[AttrModule.Handler("click",function()
+      })],[Doc.TextNode(page.Name())])])]):(htmlPage=page.$0,[Doc.Element("div",[],[Doc.Element("button",[AttrModule.Handler("click",function()
       {
        return function()
        {
         var b$2;
         return Concurrency.Start((b$2=null,Concurrency.Delay(function()
         {
-         Global.document.getElementById("selectPageTemplate").selectedIndex=page.templateId-1;
-         Var.Set(varCurrentPageIndex,page.pageIndex);
+         var o;
+         Global.document.getElementById("selectHtmlPageTemplate").selectedIndex=(o=htmlPage.oTemplateId,o==null?1:o.$0)-1;
+         Var.Set(varCurrentPageIndex,htmlPage.pageIndex);
          return Concurrency.Bind(loadPageTemplate(),function()
          {
           return Concurrency.Bind(fillDocumentValues(),function()
@@ -256,11 +399,11 @@
          });
         })),null);
        };
-      })],[Doc.TextNode(documentItem.Name())])])]);
+      })],[Doc.TextNode(page.Name())])])]);
      },List.sortBy(function(x)
      {
       return x.PageIndex();
-     },varDocument.c.items));
+     },varDocument.c.pages));
     }))));
     return Concurrency.Zero();
    });
@@ -273,10 +416,9 @@
    {
     var documentIndex;
     documentIndex=!Unchecked.Equals(Global.document.getElementById("selectDocumentName"),null)?Global.document.getElementById("selectDocumentName").selectedIndex:0;
-    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getDocumentOffset:-1572854490",[documentIndex]),function(a)
+    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getDocumentOffset:-1633111335",[documentIndex]),function(a)
     {
-     Var.Set(varDocument,a);
-     return Concurrency.Zero();
+     return a==null?Concurrency.Zero():(Var.Set(varDocument,a.$0),Concurrency.Zero());
     });
    });
   }
@@ -350,10 +492,55 @@
     });
    });
   }
+  function setNewDocument()
+  {
+   Var.Set(varNewDocument,Doc.Element("div",[],[Doc.TextNode("Name: "),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("id","txtNewTemplateName")],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.TextNode("Email-Subject: "),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("id","txtNewTemplateEmailSubject")],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.TextNode("Email-Body: "),Doc.Element("br",[],[]),Doc.Element("textarea",[AttrProxy.Create("id","txtNewTemplateEmailBody"),AttrProxy.Create("style","min-height: 300px; min-width: 100%")],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("value","Add"),AttrModule.Handler("click",function()
+   {
+    return function()
+    {
+     var b$1;
+     return Concurrency.Start((b$1=null,Concurrency.Delay(function()
+     {
+      var newDocumentName,newDocumentEmailSubject,newDocumentEmailBody;
+      newDocumentName=Global.String(Global.document.getElementById("txtNewTemplateName").value);
+      newDocumentEmailSubject=Global.String(Global.document.getElementById("txtNewTemplateEmailSubject").value);
+      newDocumentEmailBody=Global.String(Global.document.getElementById("txtNewTemplateEmailBody").value);
+      return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.addNewDocument:408203192",[newDocumentName,newDocumentEmailSubject,newDocumentEmailBody]),function()
+      {
+       addSelectDocumentName(newDocumentName);
+       return Concurrency.Bind(setNewDocumentEmpty(),function()
+       {
+        return Concurrency.Return(null);
+       });
+      });
+     })),null);
+    };
+   })],[])]));
+   Var.Set(varPageButtonsDiv,Doc.Element("div",[],[]));
+   Var.Set(varSelectHtmlPageTemplate,Doc.Element("div",[],[]));
+   Var.Set(varDisplayedDocument,Doc.Element("div",[],[]));
+  }
+  function setNewDocumentEmpty()
+  {
+   var b$1;
+   b$1=null;
+   return Concurrency.Delay(function()
+   {
+    Var.Set(varNewDocument,Doc.Element("div",[],[]));
+    return Concurrency.Bind(setPageButtons(),function()
+    {
+     return Concurrency.Bind(setSelectHtmlPageTemplate(),function()
+     {
+      return Concurrency.Return(null);
+     });
+    });
+   });
+  }
   function indexChanged_selectDocumentName()
   {
    var b$1;
-   Concurrency.Start((b$1=null,Concurrency.Delay(function()
+   b$1=null;
+   return Concurrency.Delay(function()
    {
     return Concurrency.Bind(setDocument(),function()
     {
@@ -362,12 +549,13 @@
       return Concurrency.Return(null);
      });
     });
-   })),null);
+   });
   }
-  function indexChanged_selectPageTemplate()
+  function indexChanged_selectHtmlPageTemplate()
   {
    var b$1;
-   Concurrency.Start((b$1=null,Concurrency.Delay(function()
+   b$1=null;
+   return Concurrency.Delay(function()
    {
     return Concurrency.Bind(loadPageTemplate(),function()
     {
@@ -376,7 +564,7 @@
       return Concurrency.Return(null);
      });
     });
-   })),null);
+   });
   }
   function loadPageTemplate()
   {
@@ -397,8 +585,8 @@
     })),Concurrency.Delay(function()
     {
      var pageTemplateIndex;
-     pageTemplateIndex=Global.document.getElementById("selectPageTemplate").selectedIndex;
-     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getPageTemplate:-1212795141",[pageTemplateIndex+1]),function(a)
+     pageTemplateIndex=Global.document.getElementById("selectHtmlPageTemplate").selectedIndex;
+     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getHtmlPageTemplate:-1212795141",[pageTemplateIndex+1]),function(a)
      {
       Var.Set(varDisplayedDocument,Doc.Verbatim(a));
       return Concurrency.While(function()
@@ -417,15 +605,19 @@
   }
   function loadFileUploadTemplate()
   {
-   var c,c$1;
-   Var.Set(varDisplayedDocument,Doc.Element("form",[AttrProxy.Create("enctype","multipart/form-data"),AttrProxy.Create("method","POST"),AttrProxy.Create("action","")],[Doc.Element("input",[AttrProxy.Create("type","file"),AttrProxy.Create("name","file")],[]),Doc.Element("input",[AttrProxy.Create("type","hidden"),AttrProxy.Create("name","documentId"),AttrProxy.Create("value",(c=Global.document.getElementById("selectDocumentName").selectedIndex+1,Global.String(c)))],[]),Doc.Element("input",[AttrProxy.Create("type","hidden"),AttrProxy.Create("name","pageIndex"),AttrProxy.Create("value",(c$1=varCurrentPageIndex.c,Global.String(c$1)))],[]),Doc.Element("input",[AttrProxy.Create("type","submit")],[])]));
+   var c;
+   Var.Set(varDisplayedDocument,Doc.Element("form",[AttrProxy.Create("enctype","multipart/form-data"),AttrProxy.Create("method","POST"),AttrProxy.Create("action","")],[Doc.Element("input",[AttrProxy.Create("type","file"),AttrProxy.Create("name","file")],[]),Doc.Element("input",[AttrProxy.Create("type","hidden"),AttrProxy.Create("name","documentId"),AttrProxy.Create("value",(c=Global.document.getElementById("selectDocumentName").selectedIndex+1,Global.String(c)))],[]),Doc.Element("input",[AttrProxy.Create("type","hidden"),AttrProxy.Create("name","pageIndex"),AttrProxy.Create("value",Global.String(varCurrentPageIndex))],[]),Doc.Element("input",[AttrProxy.Create("type","submit")],[])]));
   }
   varDocument=Var.CreateWaiting();
   varSelectDocumentName=Var.Create$1(Doc.Element("div",[],[]));
-  varSelectPageTemplate=Var.Create$1(Doc.Element("div",[],[]));
+  varSelectHtmlPageTemplate=Var.Create$1(Doc.Element("div",[],[]));
+  varNewDocument=Var.Create$1(Doc.Element("div",[],[]));
+  varPageButtonsDiv=Var.Create$1(Doc.Element("div",[],[]));
   varPageButtons=Var.Create$1(Doc.Element("div",[],[]));
   varCurrentPageIndex=Var.Create$1(1);
+  varPageCount=Var.Create$1(1);
   varDisplayedDocument=Var.Create$1(Doc.Element("div",[],[]));
+  varAddPage=Var.Create$1(Doc.Element("div",[],[]));
   Concurrency.Start((b=null,Concurrency.Delay(function()
   {
    return Concurrency.Bind(setSelectDocumentName(),function()
@@ -449,11 +641,11 @@
        {
         return Concurrency.Bind(setPageButtons(),function()
         {
-         return Concurrency.Bind(setSelectPageTemplate(),function()
+         return Concurrency.Bind(setSelectHtmlPageTemplate(),function()
          {
           return Concurrency.Combine(Concurrency.For(Operators.range(0,1000),function()
           {
-           return Unchecked.Equals(Global.document.getElementById("selectPageTemplate"),null)?Concurrency.Bind(Concurrency.Sleep(10),function()
+           return Unchecked.Equals(Global.document.getElementById("selectHtmlPageTemplate"),null)?Concurrency.Bind(Concurrency.Sleep(10),function()
            {
             return Concurrency.Return(null);
            }):Concurrency.Zero();
@@ -472,7 +664,7 @@
     }));
    });
   })),null);
-  return Doc.Element("div",[],[Doc.TextNode("Your application documents: "),Doc.EmbedView(varSelectDocumentName.v),Doc.EmbedView(varPageButtons.v),Doc.EmbedView(varSelectPageTemplate.v),Doc.EmbedView(varDisplayedDocument.v)]);
+  return Doc.Element("div",[],[Doc.EmbedView(varSelectDocumentName.v),Doc.EmbedView(varNewDocument.v),Doc.EmbedView(varPageButtonsDiv.v),Doc.EmbedView(varAddPage.v),Doc.EmbedView(varSelectHtmlPageTemplate.v),Doc.EmbedView(varDisplayedDocument.v)]);
  };
  Client.showSentJobApplications=function()
  {

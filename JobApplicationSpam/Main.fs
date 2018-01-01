@@ -139,7 +139,7 @@ module Site =
                         match ctx.Request.Post.["documentId"], ctx.Request.Post.["pageIndex"], ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously |> Option.map Int32.Parse with
                         | Some documentIdStr, Some pageIndexStr, Some userId ->
                             let documentId = documentIdStr |> Int32.Parse
-                            Server.addFile documentId path (pageIndexStr |> Int32.Parse) |> Async.RunSynchronously
+                            Server.addFilePage documentId path (pageIndexStr |> Int32.Parse) |> Async.RunSynchronously
                             Server.setLastEditedDocumentId userId documentId |> Async.RunSynchronously
                         | _, _, _ ->
                             failwith "Document id or pageIndex unknown or userId was None"

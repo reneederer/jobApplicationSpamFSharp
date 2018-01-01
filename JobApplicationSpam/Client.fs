@@ -9,8 +9,6 @@ open WebSharper.JavaScript
 
 
 module Client =
-
-    open Server
     open Chessie.ErrorHandling
     open JobApplicationSpam.Types
     open System.Web
@@ -28,6 +26,7 @@ module Client =
     open WebSharper.JavaScript
     open WebSharper.UI.Next.Html.Tags
     open System.Collections
+    open WebSharper.UI.Next.CSharp.Client.Html.SvgElements
 
     [<JavaScript>]
     type Language =
@@ -222,57 +221,202 @@ module Client =
     let templates () = 
         let varDocument = Var.CreateWaiting()
         let varSelectDocumentName = Var.Create(div [])
-        let varSelectPageTemplate = Var.Create(div [])
+        let varSelectHtmlPageTemplate = Var.Create(div [])
+        let varNewDocument = Var.Create(div [])
+        let varPageButtonsDiv = Var.Create(div [])
         let varPageButtons = Var.Create(div [])
         let varCurrentPageIndex = Var.Create(1)
+        let varPageCount = Var.Create(1)
         let varDisplayedDocument = Var.Create(div [] :> Doc)
+        let varAddPage = Var.Create (div [] :> Doc)
+        
 
         let rec setSelectDocumentName() =
             async {
                 let! documentNames = Server.getDocumentNames()
                 varSelectDocumentName.Value <-
-                    selectAttr
-                      [attr.id "selectDocumentName"; on.change (fun _ _ -> indexChanged_selectDocumentName())]
-                      [ for documentName in documentNames do
-                          yield optionAttr [] [text documentName] :> Doc
-                      ]
-            }
-
-        and setSelectPageTemplate() =
-            async {
-                let! pageTemplates = Server.getPageTemplates()
-                varSelectPageTemplate.Value <-
-                    selectAttr
-                      [ attr.id "selectPageTemplate"; on.change (fun _ _ -> indexChanged_selectPageTemplate()) ]
-                      [ for pageTemplate in pageTemplates do
-                          yield optionAttr [] [text pageTemplate.name] :> Doc
+                    div
+                      [ text "Your application documents: "
+                        selectAttr
+                          [attr.id "selectDocumentName"; on.change (fun _ _ -> indexChanged_selectDocumentName() |> Async.Start)]
+                          [ for documentName in documentNames do
+                                yield optionAttr [] [text documentName] :> Doc
+                          ]
+                        inputAttr
+                          [ attr.``type`` "button"
+                            attr.style "margin-left: 20px"
+                            attr.value "+"
+                            on.click(fun _ _ -> setNewDocument())
+                          ]
+                          []
+                        inputAttr
+                          [ attr.``type`` "button"
+                            attr.style "margin-left: 20px"
+                            attr.value "-"
+                            on.click(fun _ _ -> setNewDocumentEmpty() |> Async.Start)
+                          ]
+                          []
                       ]
             }
         
+        and addSelectDocumentName value =
+            let mutable documentNames : list<string> = []
+            JQuery("#selectDocumentName option").Each (fun i el -> documentNames <- (el?text |> string) :: documentNames) |> ignore
+            documentNames <- documentNames @ [value]
+
+            varSelectDocumentName.Value <-
+                div
+                  [ text "Your application documents: "
+                    selectAttr
+                      [attr.id "selectDocumentName"; on.change (fun _ _ -> indexChanged_selectDocumentName() |> Async.Start)]
+                      [ for documentName in documentNames do
+                            yield optionAttr [] [text documentName] :> Doc
+                      ]
+                    inputAttr
+                      [ attr.``type`` "button"
+                        attr.style "margin-left: 20px"
+                        attr.value "+"
+                        on.click(fun _ _ -> setNewDocument())
+                      ]
+                      []
+                    inputAttr
+                      [ attr.``type`` "button"
+                        attr.style "margin-left: 20px"
+                        attr.value "-"
+                        on.click(fun _ _ -> setNewDocumentEmpty() |> Async.Start)
+                      ]
+                      []
+                  ]
+
+        and setSelectHtmlPageTemplate() =
+            async {
+                let! htmlPageTemplates = Server.getHtmlPageTemplates()
+                varSelectHtmlPageTemplate.Value <-
+                    selectAttr
+                      [ attr.id "selectHtmlPageTemplate"; on.change (fun _ _ -> indexChanged_selectHtmlPageTemplate() |> Async.Start) ]
+                      [ for htmlPageTemplate in htmlPageTemplates do
+                          yield optionAttr [] [text htmlPageTemplate.name] :> Doc
+                      ]
+            }
+
+
+
+
+
+
+        
         and setPageButtons () =
             async {
+                let rec setPageNameDiv () =
+                    let addHtmlPage (pageName : string) =
+                        async {
+                            let! documentId = Server.getDocumentIdOffset (JS.Document.GetElementById("selectDocumentName")?selectedIndex |> string |> Int32.Parse) 
+                            do! Server.addHtmlPage documentId None (varPageCount.Value + 1) pageName
+                            varPageButtons.Value <-
+                                 div
+                                   (
+                                   [ varPageButtons.Value ]
+                                   @
+                                   [ buttonAttr [on.click (fun _ _ ->
+                                       async {
+                                           JS.Document.GetElementById("selectHtmlPageTemplate")?selectedIndex <- (Option.defaultValue 1 None) - 1
+                                           varCurrentPageIndex.Value <- varPageCount.Value
+                                           do! loadPageTemplate()
+                                           do! fillDocumentValues()
+                                       } |> Async.Start)] [text (pageName)] :> Doc
+                                   ])
+                        }
+                    let htmlPageDiv ()=
+                        div
+                          [
+                            text "Page name: "
+                            br []
+                            inputAttr [ attr.id "txtAddPageName" ] []
+                            br []
+                            br []
+                            buttonAttr [ on.click (fun _ _ -> addHtmlPage (JS.Document.GetElementById("txtAddPageName")?value |> string) |> Async.Start; varAddPage.Value <- div [] )] [text "Add page"]
+                            buttonAttr [ attr.style "margin-left: 20px"; on.click (fun _ _ -> varAddPage.Value <- div []) ] [text "Abort"]
+                          ]
+                    let filePageDiv () =
+                        div
+                          [ formAttr [attr.enctype "multipart/form-data"; attr.method "POST"; attr.action ""]
+                              [ text "Please choose a file: "
+                                br []
+                                inputAttr
+                                  [ attr.``type`` "file"
+                                    attr.name "file"
+                                  ]
+                                  []
+                                inputAttr [ attr.``type`` "hidden"; attr.name "documentId"; attr.value ((JS.Document.GetElementById("selectDocumentName")?selectedIndex + 1).ToString()); ] []
+                                inputAttr [ attr.``type`` "hidden"; attr.name "pageIndex"; attr.value ((varPageCount.Value + 1) |> string); ] []
+                                br []
+                                br []
+                                buttonAttr [attr.``type`` "submit" ] [text "Add page"]
+                                buttonAttr [ attr.style "margin-left: 20px"; on.click (fun _ _ -> varAddPage.Value <- div []) ] [text "Abort"]
+                              ]
+                          ]
+                    let varPageDiv = Var.Create(div [])
+                    div
+                      [
+                        inputAttr
+                          [ attr.``type`` "radio"; attr.name "rbgrpPageType"; attr.id "rbHtmlPage"; on.click (fun _ _ -> varPageDiv.Value <- htmlPageDiv ()) ]
+                          []
+                        labelAttr
+                          [ attr.``for`` "rbHtmlPage" ]
+                          [ text "Create online" ]
+                        br []
+                        inputAttr
+                          [ attr.``type`` "radio"; attr.id "rbFilePage"; attr.name "rbgrpPageType"; on.click (fun _ _ -> varPageDiv.Value <- filePageDiv ()) ]
+                          []
+                        labelAttr
+                          [ attr.``for`` "rbFilePage" ]
+                          [ text "Upload" ]
+                        br []
+                        br []
+                        Doc.EmbedView varPageDiv.View
+                      ]
+
+                varAddPage.Value <- div []
+                varPageCount.Value <- varDocument.Value.pages.Length
+                varPageButtonsDiv.Value <-
+                    divAttr
+                      [attr.id "ulPageButtons"]
+                      ([ Doc.EmbedView varPageButtons.View
+                      ]
+                      @
+                      [ div
+                          [ buttonAttr
+                              [ on.click
+                                  (fun el _ ->
+                                      varAddPage.Value <- setPageNameDiv ()
+                                  )
+                              ]
+                              [ text "+"]
+                          ]
+                      ])
                 varPageButtons.Value <-
-                    ul
-                      [ for documentItem in varDocument.Value.items |> List.sortBy (fun x -> x.PageIndex()) do
-                          match documentItem with
-                          | DocumentPage page ->
-                              yield
-                                li
-                                  [ buttonAttr [on.click (fun _ _ ->
-                                      async {
-                                          JS.Document.GetElementById("selectPageTemplate")?selectedIndex <- page.templateId - 1
-                                          varCurrentPageIndex.Value <- page.pageIndex
-                                          do! loadPageTemplate()
-                                          do! fillDocumentValues()
-                                      } |> Async.Start)] [text (documentItem.Name())] :> Doc
-                                  ]
-                                :> Doc
-                          | DocumentFile file ->
-                              yield
-                                li
-                                  [ buttonAttr [on.click (fun _ _ -> varCurrentPageIndex.Value <- file.pageIndex; loadFileUploadTemplate();)] [text (documentItem.Name())]
-                                  ]
-                                :> Doc
+                    div
+                      [
+                        for page in varDocument.Value.pages |> List.sortBy (fun x -> x.PageIndex()) do
+                           match page with
+                           | DocumentPage htmlPage ->
+                               yield
+                                 div
+                                   [ buttonAttr [on.click (fun _ _ ->
+                                       async {
+                                           JS.Document.GetElementById("selectHtmlPageTemplate")?selectedIndex <- (Option.defaultValue 1 htmlPage.oTemplateId) - 1
+                                           varCurrentPageIndex.Value <- htmlPage.pageIndex
+                                           do! loadPageTemplate()
+                                           do! fillDocumentValues()
+                                       } |> Async.Start)] [text (page.Name())] :> Doc
+                                   ]
+                                 :> Doc
+                           | DocumentFile filePage ->
+                               yield
+                                 div
+                                   [ buttonAttr [on.click (fun _ _ -> varCurrentPageIndex.Value <- filePage.pageIndex; loadFileUploadTemplate();)] [text (page.Name())]
+                                   ]
+                                 :> Doc
                       ]
             }
             
@@ -283,8 +427,12 @@ module Client =
                     if selectDocumentNameEl <> null
                     then JS.Document.GetElementById("selectDocumentName")?selectedIndex
                     else 0
-                let! document = Server.getDocumentOffset documentIndex
-                varDocument.Value <- document
+                let! oDocument = Server.getDocumentOffset documentIndex
+                match oDocument with
+                | Some document ->
+                    varDocument.Value <- document
+                | None ->
+                    ()
             }
         
         and fillDocumentValues() =
@@ -343,45 +491,89 @@ module Client =
                     ) |> ignore
             }
 
+        and setNewDocument() =
+            varNewDocument.Value <-
+                div
+                  [ text "Name: "
+                    br []
+                    inputAttr [attr.id "txtNewTemplateName"] []
+                    br []
+                    br []
+                    text "Email-Subject: "
+                    br []
+                    inputAttr [attr.id "txtNewTemplateEmailSubject"] []
+                    br []
+                    br []
+                    text "Email-Body: "
+                    br []
+                    textareaAttr [attr.id "txtNewTemplateEmailBody"; attr.style "min-height: 300px; min-width: 100%"] []
+                    br []
+                    br []
+                    inputAttr
+                      [ attr.``type`` "button"
+                        attr.value "Add"
+                        on.click (fun _ _ ->
+                            async {
+                                let newDocumentName = JS.Document.GetElementById("txtNewTemplateName")?value |> string
+                                let newDocumentEmailSubject = JS.Document.GetElementById("txtNewTemplateEmailSubject")?value |> string
+                                let newDocumentEmailBody = JS.Document.GetElementById("txtNewTemplateEmailBody")?value |> string
+                                do! Server.addNewDocument newDocumentName newDocumentEmailSubject newDocumentEmailBody
+                                addSelectDocumentName newDocumentName
+                                do! setNewDocumentEmpty()
+                            } |> Async.Start
+                          )
+                      ]
+                      []
+                  ]
+            varPageButtonsDiv.Value <- div []
+            varSelectHtmlPageTemplate.Value <- div []
+            varDisplayedDocument.Value <- div []
+
+        and setNewDocumentEmpty() =
+            async {
+                varNewDocument.Value <- div []
+                do! setPageButtons()
+                do! setSelectHtmlPageTemplate()
+            }
 
         and indexChanged_selectDocumentName() =
             async {
                 do! setDocument()
                 do! setPageButtons()
-            } |> Async.Start
+            }
 
-        and indexChanged_selectPageTemplate() =
+        and indexChanged_selectHtmlPageTemplate() =
             async {
                 do! loadPageTemplate()
                 do! fillDocumentValues()
-            } |> Async.Start
+            }
 
         and loadPageTemplate() : Async<unit> =
             async {
                 JQuery("#insertDiv").Remove() |> ignore
                 while JS.Document.GetElementById("insertDiv") <> null do
                     do! Async.Sleep 10
-                let pageTemplateIndex = JS.Document.GetElementById("selectPageTemplate")?selectedIndex
-                let! template = Server.getPageTemplate (pageTemplateIndex + 1)
+                let pageTemplateIndex = JS.Document.GetElementById("selectHtmlPageTemplate")?selectedIndex
+                let! template = Server.getHtmlPageTemplate (pageTemplateIndex + 1)
                 varDisplayedDocument.Value <- template |> Doc.Verbatim
                 while JS.Document.GetElementById("insertDiv") = null do
                     do! Async.Sleep 10
             }
-
+        
         and loadFileUploadTemplate() =
             varDisplayedDocument.Value <-
                 formAttr [attr.enctype "multipart/form-data"; attr.method "POST"; attr.action ""]
                   [ inputAttr [ attr.``type`` "file"; attr.name "file" ] []
                     inputAttr [ attr.``type`` "hidden"; attr.name "documentId"; attr.value ((JS.Document.GetElementById("selectDocumentName")?selectedIndex + 1).ToString()); ] []
-                    inputAttr [ attr.``type`` "hidden"; attr.name "pageIndex"; attr.value (varCurrentPageIndex.Value.ToString()); ] []
+                    inputAttr [ attr.``type`` "hidden"; attr.name "pageIndex"; attr.value (varCurrentPageIndex |> string); ] []
                     inputAttr [ attr.``type`` "submit" ] []
                   ]
         
-        let itemToDoc (documentItem : DocumentItem) = 
-            match documentItem with
-            | DocumentPage page -> 
+        let itemToDoc (documentPage : DocumentPage) = 
+            match documentPage with
+            | DocumentPage htmlPage -> 
                   div [text "page " ] :> Doc
-            | DocumentFile file ->
+            | DocumentFile filePage ->
                   div [text "file " ] :> Doc
             
         async {
@@ -396,18 +588,19 @@ module Client =
                 JS.Document.GetElementById("selectDocumentName")?selectedIndex <- lastEditedDocumentId - 1
             do! setDocument()
             do! setPageButtons()
-            do! setSelectPageTemplate()
+            do! setSelectHtmlPageTemplate()
             for i = 0 to 1000 do
-                if JS.Document.GetElementById("selectPageTemplate") = null
+                if JS.Document.GetElementById("selectHtmlPageTemplate") = null
                 then do! Async.Sleep 10
             do! fillDocumentValues()
         } |> Async.Start
 
         div
-          [ text "Your application documents: "
-            Doc.EmbedView varSelectDocumentName.View
-            Doc.EmbedView varPageButtons.View
-            Doc.EmbedView varSelectPageTemplate.View
+          [ Doc.EmbedView varSelectDocumentName.View
+            Doc.EmbedView varNewDocument.View
+            Doc.EmbedView varPageButtonsDiv.View
+            Doc.EmbedView varAddPage.View
+            Doc.EmbedView varSelectHtmlPageTemplate.View
             Doc.EmbedView varDisplayedDocument.View
           ]
 

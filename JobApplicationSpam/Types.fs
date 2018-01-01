@@ -73,22 +73,22 @@ module Types =
      
 
     //[<WebSharper.JavaScript>]
-    type Page =
+    type HtmlPage =
         { name : string
-          templateId : int
+          oTemplateId : option<int>
           pageIndex : int
         }
     
-    type File =
+    type FilePage =
         { name : string
           path : string
           pageIndex : int
         }
 
     [<WebSharper.JavaScript>] 
-    type DocumentItem =
-    | DocumentPage of Page
-    | DocumentFile of File
+    type DocumentPage =
+    | DocumentPage of HtmlPage
+    | DocumentFile of FilePage
     with
         member this.Name() =
             match this with
@@ -102,10 +102,10 @@ module Types =
     //[<WebSharper.JavaScript>]
     type Document =
         { name : string
-          items : list<DocumentItem>
+          pages : list<DocumentPage>
         }
 
-    type PageTemplate =
+    type HtmlPageTemplate =
         { html : string
           name : string
           id : int
@@ -113,7 +113,7 @@ module Types =
 
     type PageDB =
         { name : string
-        ; pageTemplateId : int
+        ; oTemplateId : option<int>
         }
     
     type Language =

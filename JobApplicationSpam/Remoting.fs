@@ -291,10 +291,15 @@ module Server =
                       ("$datumHeute", DateTime.Today.ToString("dd.MM.yyyy"))
                     ]
                 let odtPaths =
-                    [ for item in document.items do
+                    [ for item in document.pages do
                         match item with
-                        | DocumentPage page ->
-                            let pageTemplatePath = Database.getPageTemplatePath dbConn page.templateId
+                        | DocumentPage htmlPage ->
+                            let oPageTemplatePath = Option.map (Database.getHtmlPageTemplatePath dbConn) htmlPage.oTemplateId
+                            let pageTemplatePath =
+                                match oPageTemplatePath with
+                                | None -> 
+                                    failwith "oPageTemplatePath was None"
+                                | Some path -> path
                             let lines = []
                                 (*let emptyLines = List.init 50 (fun i -> sprintf "$line%i" (i + 1), "")
                                 let pageLines = page.map.["mainText"].Split([|'\n'|])
@@ -307,9 +312,9 @@ module Server =
                                 *)
                             let tmpPath = "c:/users/rene/myodt1/" + Guid.NewGuid().ToString()
                             yield Odt.replaceInOdt pageTemplatePath "c:/users/rene/myodt/" tmpPath (myList @ lines)
-                        | DocumentFile file ->
+                        | DocumentFile filePage ->
                             let tmpPath = "c:/users/rene/myodt1/" + Guid.NewGuid().ToString()
-                            yield Odt.replaceInOdt file.path "c:/users/rene/myodt/" tmpPath myList
+                            yield Odt.replaceInOdt filePage.path "c:/users/rene/myodt/" tmpPath myList
                     ]
                 let pdfPaths =
                     [ for odtPath in odtPaths do
@@ -327,36 +332,36 @@ module Server =
         //}
 
     [<Remote>]
-    let addFile documentId path pageIndex =
+    let addFilePage documentId path pageIndex =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.addFile dbConn documentId path pageIndex
+            return Database.addFilePage dbConn documentId path pageIndex
         }
 
     
     [<Remote>]
-    let getPageTemplates () =
+    let getHtmlPageTemplates () =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.getPageTemplates dbConn
+            return Database.getHtmlPageTemplates dbConn
         }
 
     [<Remote>]
-    let getPageTemplate (templateId : int) =
+    let getHtmlPageTemplate (templateId : int) =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.getPageTemplate dbConn templateId
+            return Database.getHtmlPageTemplate dbConn templateId
         }
     
     [<Remote>]
-    let getPages documentId =
+    let getHtmlPages documentId =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.getPages dbConn documentId
+            return Database.getHtmlPages dbConn documentId
         }
 
     [<Remote>]
@@ -425,3 +430,39 @@ module Server =
                 ]
             }
 
+    [<Remote>]
+    let addNewDocument name emailSubject emailBody =
+        let oUserId = getCurrentUserId() |> Async.RunSynchronously
+        match oUserId with
+        | None -> failwith "No user logged in"
+        | Some userId ->
+            async {
+                use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+                dbConn.Open()
+                return Database.addNewDocument dbConn userId name emailSubject emailBody
+            }
+
+
+    [<Remote>]
+    let addHtmlPage (documentId : int) (oTemplateId : option<int>) (pageIndex : int) (name : string) =
+        let oUserId = getCurrentUserId() |> Async.RunSynchronously
+        match oUserId with
+        | None -> failwith "No user logged in"
+        | Some userId ->
+            async {
+                use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+                dbConn.Open()
+                return Database.addHtmlPage dbConn documentId oTemplateId pageIndex name
+            }
+
+    [<Remote>]
+    let getDocumentIdOffset documentIndex =
+        let oUserId = getCurrentUserId() |> Async.RunSynchronously
+        match oUserId with
+        | None -> failwith "No user logged in"
+        | Some userId ->
+            async {
+                use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+                dbConn.Open()
+                return Database.getDocumentIdOffset dbConn userId documentIndex
+            }

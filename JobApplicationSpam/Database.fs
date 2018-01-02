@@ -207,20 +207,21 @@ module Database =
 
     let overwriteDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) =
         log.Debug(sprintf "%A %i" document userId)
-        use command = new NpgsqlCommand("update document set name = :name where documentId = :documentId", dbConn)
+        use command = new NpgsqlCommand("update document set name = :name where id = :documentId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("name", document.name)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter(":documentId", document.id)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
         command.ExecuteNonQuery() |> ignore
         command.Dispose()
-        use command = new NpgsqlCommand("update documentEmail set (subject, body) = (:subject, :body) where documentId = :documentId", dbConn)
+        use command = new NpgsqlCommand("insert into documentEmail(documentId, subject, body) values (:documentId, :subject, :body) on conflict(documentId) do update set (subject, body) = (:subject, :body)", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("subject", document.email.subject)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter(":body", document.email.body)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("body", document.email.body)) |> ignore
         command.ExecuteNonQuery() |> ignore
         command.Dispose()
         for page in document.pages do
             match page with
             | HtmlPage htmlPage ->
-                use command = new NpgsqlCommand("update htmlPage set (templateId, pageIndex, name) = (:templateId, :pageIndex, :name) where documentId = :documentId and pageIndex = :pageIndex", dbConn)
+                use command = new NpgsqlCommand("insert into htmlPage(documentId, templateId, pageIndex, name) values (:documentId, :templateId, :pageIndex, :name) on conflict on constraint htmlPage_unique do update set (templateId, pageIndex, name) = (:templateId, :pageIndex, :name)", dbConn)
                 command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("templateId", htmlPage.oTemplateId |> Option.get)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("pageIndex", htmlPage.pageIndex)) |> ignore
@@ -228,7 +229,7 @@ module Database =
                 command.ExecuteNonQuery() |> ignore
                 command.Dispose()
                 for mapItem in htmlPage.map do
-                    use command = new NpgsqlCommand("update pageMap set (pageIndex, key, value) = (:pageIndex, :key, :value) where documentId = :documentId and pageIndex = :pageIndex", dbConn)
+                    use command = new NpgsqlCommand("insert into pageMap(documentId, pageIndex, key, value) values (:documentId, :pageIndex, :key, :value) on conflict on constraint pageMap_unique do update set (pageIndex, key, value) = (:pageIndex, :key, :value)", dbConn)
                     command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
                     command.Parameters.Add(new NpgsqlParameter("pageIndex", htmlPage.pageIndex)) |> ignore
                     command.Parameters.Add(new NpgsqlParameter("key", mapItem.Key)) |> ignore
@@ -236,26 +237,34 @@ module Database =
                     command.ExecuteNonQuery() |> ignore
                     command.Dispose()
             | FilePage filePage ->
-                use command = new NpgsqlCommand("update FilePage set (path, pageIndex, name) values (:path, :pageIndex, :name) where documentId = :documentId and pageIndex = :pageIndex", dbConn)
+                use command =
+                    new NpgsqlCommand(
+                        "insert into filePage
+                            (documentId, path, pageIndex, name)
+                            values (:documentId, :path, :pageIndex, :name)
+                         on conflict on constraint filePage_unique do
+                         update set
+                            (path, pageIndex, name) = (:path, :pageIndex, :name)", dbConn)
                 command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("path", filePage.path)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("pageIndex", filePage.pageIndex)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("name", filePage.name)) |> ignore
-                let pageId = command.ExecuteScalar() |> string |> Int32.Parse
+                command.ExecuteNonQuery() |> ignore
                 command.Dispose()
         log.Debug(sprintf "%A %i = %i" document userId document.id)
         document.id
     
     let saveNewDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) =
         log.Debug(sprintf "%A %i" document userId)
-        use command = new NpgsqlCommand("insert into document (userId, name, emailSubject, emailBody) values (:userId, :name, '', '') returning id", dbConn)
+        use command = new NpgsqlCommand("insert into document (userId, name) values (:userId, :name) returning id", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("name", document.name)) |> ignore
         let documentId = command.ExecuteScalar() |> string |> Int32.Parse
         command.Dispose()
-        use command = new NpgsqlCommand("insert into documentEmail (subject, body) values (:subject, :body)", dbConn)
+        use command = new NpgsqlCommand("insert into documentEmail (documentId, subject, body) values (:documentId, :subject, :body)", dbConn)
         command.Parameters.Add(new NpgsqlParameter("subject", document.email.subject)) |> ignore
         command.Parameters.Add(new NpgsqlParameter(":body", document.email.body)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter(":documentId", documentId)) |> ignore
         command.ExecuteNonQuery() |> ignore
         command.Dispose()
         for page in document.pages do
@@ -465,7 +474,7 @@ module Database =
         command.ExecuteNonQuery() |> ignore
 
     let addNewDocument (dbConn : NpgsqlConnection) (userId : int) (name : string) =
-        use command = new NpgsqlCommand("insert into document (userId, name, emailSubject, emailBody) values (:userId, :name, :emailSubject, :emailBody)", dbConn)
+        use command = new NpgsqlCommand("insert into document (userId, name) values (:userId, :name)", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("name", name)) |> ignore
         command.ExecuteNonQuery() |> ignore

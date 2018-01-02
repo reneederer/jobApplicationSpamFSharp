@@ -21,12 +21,14 @@ module Types =
             | "f" -> Gender.Female
             | x -> failwith ("Failed to convert string to gender: " + x)
 
+    [<WebSharper.JavaScript>]
     type Login =
         { email : string
           password : string
         }
 
 
+    [<WebSharper.JavaScript>]
     type UserValues =
         { gender : Gender
           degree : string
@@ -40,6 +42,7 @@ module Types =
         }
     
 
+    [<WebSharper.JavaScript>]
     type Employer =
         { company : string
           street : string
@@ -68,7 +71,7 @@ module Types =
             | UseCreated -> "UseCreated"
      
 
-    //[<WebSharper.JavaScript>]
+    [<WebSharper.JavaScript>]
     type HtmlPage =
         { name : string
           oTemplateId : option<int>
@@ -76,6 +79,7 @@ module Types =
           map : Map<string, string>
         }
     
+    [<WebSharper.JavaScript>]
     type FilePage =
         { name : string
           path : string
@@ -96,12 +100,13 @@ module Types =
             | HtmlPage htmlPage -> htmlPage.pageIndex
             | FilePage filePage -> filePage.pageIndex
 
-    //[<WebSharper.JavaScript>]
+    [<WebSharper.JavaScript>]
     type DocumentEmail =
         { subject : string
           body : string
         }
 
+    [<WebSharper.JavaScript>]
     type Document =
         { id : int
           name : string
@@ -109,17 +114,20 @@ module Types =
           email : DocumentEmail
         }
 
+    [<WebSharper.JavaScript>]
     type HtmlPageTemplate =
         { html : string
           name : string
           id : int
         }
 
+    [<WebSharper.JavaScript>]
     type PageDB =
         { name : string
         ; oTemplateId : option<int>
         }
     
+    [<WebSharper.JavaScript>]
     type Language =
     | English
     | Deutsch

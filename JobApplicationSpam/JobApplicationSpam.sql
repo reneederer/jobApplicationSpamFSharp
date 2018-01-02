@@ -14,15 +14,15 @@ drop table if exists userValues cascade;
 drop table if exists users cascade;
 
 create table users (id serial primary key, email varchar(200) unique not null, password varchar(200) not null, salt varchar(200) not null, guid varchar(128) null);
-create table userValues(id serial primary key, userId int, gender varchar(1) not null, degree varchar(20) not null, firstName varchar(50) not null, lastName varchar(50) not null, street varchar(50) not null, postcode varchar(20) not null, city varchar(50) not null, phone varchar(30) not null, mobilePhone varchar(30) not null, foreign key(userId) references users(id));
+create table userValues(id serial primary key, userId int not null, gender varchar(1) not null, degree varchar(20) not null, firstName varchar(50) not null, lastName varchar(50) not null, street varchar(50) not null, postcode varchar(20) not null, city varchar(50) not null, phone varchar(30) not null, mobilePhone varchar(30) not null, foreign key(userId) references users(id));
 create table employer(id serial primary key, userId int not null, company varchar(100) not null, street varchar(30) not null, postcode varchar(10) not null, city varchar(30) not null, gender varchar(20) not null, degree varchar(20) not null, firstName varchar(50) not null, lastName varchar(50) not null, email varchar(200) not null, phone varchar(30) not null, mobilePhone varchar(30) not null, foreign key(userId) references users(id));
-create table htmlPageTemplate(id serial primary key, name varchar(50) not null, odtPath varchar(100) not null, html text not null);
+create table htmlPageTemplate(id serial primary key, name varchar(50) unique not null, odtPath varchar(100) unique not null, html text not null);
 create table document(id serial primary key, userId int not null, name varchar(100) not null, foreign key(userId) references users(id));
-create table lastEditedDocumentId(userId int primary key not null, documentId int not null);
-create table filePage(id serial primary key, documentId int not null, path varchar(60) not null, pageIndex int not null, name varchar(50) not null, foreign key(documentId) references document(id));
-create table htmlPage(id serial primary key, documentId int not null, templateId int null, pageIndex int not null, name varchar(50) not null, foreign key(documentId) references document(id), foreign key(templateId) references htmlPageTemplate(id));
+create table lastEditedDocumentId(userId int unique primary key not null, documentId int not null, foreign key(userId) references users(id), foreign key(documentId) references document(id));
+create table filePage(id serial primary key, documentId int not null, path varchar(60) not null, pageIndex int not null, name varchar(50) not null, foreign key(documentId) references document(id), constraint filePage_unique unique(documentId, pageIndex));
+create table htmlPage(id serial primary key, documentId int not null, templateId int null, pageIndex int not null, name varchar(50) not null, foreign key(documentId) references document(id), foreign key(templateId) references htmlPageTemplate(id), constraint htmlPage_unique unique(documentId, pageIndex));
 create table documentEmail(id serial primary key, documentId int not null unique, subject varchar(200) not null, body text not null, foreign key(documentId) references document(id));
-create table pageMap(id serial primary key, documentId int not null, pageIndex int not null, key varchar(100) not null, value text not null, foreign key(documentId) references document(id));
+create table pageMap(id serial primary key, documentId int not null, pageIndex int not null, key varchar(100) not null, value text not null, foreign key(documentId) references document(id), constraint pageMap_unique unique(documentId, pageIndex, key));
 create table sentApplication(id serial primary key, userId int not null, employerId int not null, documentId int not null, foreign key(documentId) references document(id), foreign key(employerId) references employer(id), foreign key(userId) references users(id));
 create table sentStatusValue(id int primary key, status varchar(50));
 create table sentStatus(id serial primary key, sentApplicationId int, statusChangedOn date, dueOn timestamp, sentStatusValueId int, statusMessage varchar(200), foreign key(sentApplicationId) references sentApplication(id), foreign key(sentStatusValueId) references sentStatusValue(id));
@@ -78,7 +78,7 @@ insert into htmlPageTemplate(name, odtPath, html) values('Anschreiben nach DIN 5
     </div>
     <div style="width: 100%;">
         <textarea rows="7" data-html-page-key="mainText" data-html-page-value="Sehr geehrte Damen und Herren" style="wrap: soft; border: solid 2px red; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; overflow: hidden; min-height: 100%; min-width: 100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block"></textarea>
-        <textarea rows="7" data-html-page-key="mainText" data-html-page-value="Sehr geehrte Damen und Herren" style="wrap: soft; border: solid 2px red; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; overflow: hidden; min-height: 100%; min-width: 100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block"></textarea>
+        <textarea rows="7" data-html-page-key="mainText1" data-html-page-value="Sehr geehrte Damen und Herren" style="wrap: soft; border: solid 2px red; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; overflow: hidden; min-height: 100%; min-width: 100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block"></textarea>
     </div>
     <div style="width: 100%">
         <br />

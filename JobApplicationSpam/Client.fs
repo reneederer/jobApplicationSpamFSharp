@@ -261,6 +261,7 @@ module Client =
                     createInput "Phone" varUserValues.Value.phone (fun v -> varUserValues.Value <- { varUserValues.Value with phone = v })
                     createInput "Mobile phone" varUserValues.Value.mobilePhone (fun v -> varUserValues.Value <- { varUserValues.Value with mobilePhone = v })
                   ]
+                :> Doc
             )
         and updateEditUserValuesDiv() =
             varEditUserValuesDiv.Value <-
@@ -304,6 +305,13 @@ module Client =
                     createInput "Email"varEmployer.Value.email  (fun v -> varEmployer.Value <- { varEmployer.Value with email = v })
                     createInput "Phone" varEmployer.Value.phone (fun v -> varEmployer.Value <- { varEmployer.Value with phone = v })
                     createInput "Mobile phone" varEmployer.Value.mobilePhone (fun v -> varEmployer.Value <- { varEmployer.Value with mobilePhone = v })
+                  ]
+        and varEmailDiv = Var.Create(div [])
+        and updateEmailDiv () =
+            varEmailDiv.Value <-
+                div
+                  [ createInput "Email-Subject" varDocument.Value.email.subject (fun v -> varDocument.Value <- { varDocument.Value with email = {varDocument.Value.email with subject = v }})
+                    createInput "Email-Body" varDocument.Value.email.body (fun v -> varDocument.Value <- { varDocument.Value with email = {varDocument.Value.email with body = v }})
                   ]
 
 
@@ -522,6 +530,7 @@ module Client =
                 match oDocument with
                 | Some document ->
                     varDocument.Value <- document
+                    updateEmailDiv()
                 | None ->
                     ()
             }
@@ -548,30 +557,8 @@ module Client =
                             if htmlPage.map.ContainsKey key
                             then
                                 jEl.Val(htmlPage.map.[key]) |> ignore
-                                let eventAction = 
-                                    (fun () ->
-                                          let beforePages, currentPage, afterPages =
-                                              (List.splitAt (varCurrentPageIndex.Value - 1) varDocument.Value.pages)
-                                              |> (fun (before, currentAndAfter) ->
-                                                     let current, after =
-                                                          match currentAndAfter with
-                                                          | [HtmlPage htmlPage] ->
-                                                                HtmlPage { htmlPage with map = Map.add key (JQuery(el).Val() |> string) htmlPage.map }, []
-                                                          | (HtmlPage htmlPage)::xs ->
-                                                                HtmlPage { htmlPage with map = Map.add key (JQuery(el).Val() |> string) htmlPage.map }, xs
-                                                          | [] -> failwith "pageList was empty"
-                                                          | (FilePage filePage)::_ -> FilePage filePage, []
-                                                     before, current, after
-                                                 )
-                                          varDocument.Value <- { varDocument.Value with pages = beforePages @ (currentPage :: afterPages) }
-                                          fillDocumentValues() |> Async.Start
-                                    )
-                                el.RemoveEventListener("input", eventAction, true)
-                                el.AddEventListener( "input", eventAction, true)
-
                             else
                                 jEl.Val(el.GetAttribute("data-html-page-value") |> string) |> ignore
-
                     ) |> ignore
                 | FilePage filePage ->
                     ()
@@ -624,6 +611,7 @@ module Client =
                                         ) |> ignore
                                     updateEditUserValuesDiv ()
                                     updateAddEmployerDiv ()
+                                    updateEmailDiv ()
                                 )
                             el.RemoveEventListener("input", eventAction, true)
                             el.AddEventListener("input", eventAction, true)
@@ -696,6 +684,31 @@ module Client =
                 varDisplayedDocument.Value <- template |> Doc.Verbatim
                 while JS.Document.GetElementById("insertDiv") = null do
                     do! Async.Sleep 10
+                let pageMapElements = JS.Document.QuerySelectorAll("[data-html-page-key]")
+                JQuery(pageMapElements).
+                    Each(fun i el ->
+                        let key = el.GetAttribute("data-html-page-key")
+                        let eventAction = 
+                            (fun () ->
+                                  let beforePages, currentPage, afterPages =
+                                      (List.splitAt (varCurrentPageIndex.Value - 1) varDocument.Value.pages)
+                                      |> (fun (before, currentAndAfter) ->
+                                             let current, after =
+                                                  match currentAndAfter with
+                                                  | [HtmlPage htmlPage] ->
+                                                        HtmlPage { htmlPage with map = Map.add key (JQuery(el).Val() |> string) htmlPage.map }, []
+                                                  | (HtmlPage htmlPage)::xs ->
+                                                        HtmlPage { htmlPage with map = Map.add key (JQuery(el).Val() |> string) htmlPage.map }, xs
+                                                  | [] -> failwith "pageList was empty"
+                                                  | (FilePage filePage)::_ -> FilePage filePage, []
+                                             before, current, after
+                                         )
+                                  varDocument.Value <- { varDocument.Value with pages = beforePages @ (currentPage :: afterPages) }
+                                  //fillDocumentValues() |> Async.Start
+                            )
+                        el.RemoveEventListener("input", eventAction, true)
+                        el.AddEventListener("input", eventAction, true)
+                    ) |> ignore
             }
         
         and loadFileUploadTemplate() =
@@ -734,6 +747,9 @@ module Client =
             Doc.EmbedView varAddPage.View
             Doc.EmbedView varSelectHtmlPageTemplate.View
             Doc.EmbedView varDisplayedDocument.View
+            br []
+            br []
+            varEmailDiv.View |> Doc.EmbedView
             br []
             br []
             varEditUserValuesDiv.View |> Doc.EmbedView

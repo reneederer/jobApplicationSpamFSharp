@@ -84,13 +84,13 @@ module Server =
                 dbConn.Open()
                 use transaction = dbConn.BeginTransaction()
                 try
-                    let insertedUserValuesId = Database.addUserValues dbConn userValues userId
+                    let insertedUserValuesId = Database.setUserValues dbConn userValues userId
                     transaction.Commit()
                     return ok "User values have been updated."
                 with
                 | e ->
                     transaction.Rollback()
-                    return fail "Inserting user values failed"
+                    return fail "Setting user values failed"
             | None -> return fail "Please login."
         }
 
@@ -118,6 +118,7 @@ module Server =
 
     open System.Security.Cryptography
     open WebSharper.Html.Server.Tags
+    open System.Net.Mime
 
     let generateSalt length =
         let (bytes : array<byte>) = Array.replicate length (0uy)
@@ -271,85 +272,92 @@ module Server =
 
 
     [<Remote>]
-    let applyNowWithHtmlTemplate (employer : Employer) (employerId : int) (document : Document) (userValues : UserValues) =
+    let applyNowWithHtmlTemplate (employer : Employer) (document : Document) (userValues : UserValues) =
         let oUserId = getCurrentUserId() |> Async.RunSynchronously
-        //async {
-        match oUserId with 
-        | None -> failwith "No user loggeg in"
-        | Some userId ->
-            use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
-            dbConn.Open()
-            use transaction = dbConn.BeginTransaction()
-            try
-                let documentId = Database.saveNewDocument dbConn document userId
-                Database.insertSentApplication dbConn userId employerId documentId
-                let userEmail = Database.getEmailByUserId dbConn userId |> Option.defaultValue ""
-                let myList =
-                    [ ("$firmaName", employer.company)
-                      ("$firmaStrasse", employer.street)
-                      ("$firmaPlz", employer.postcode)
-                      ("$firmaStadt", employer.city)
-                      ("$chefAnredeBriefkopf", match employer.gender with Gender.Male -> "Herrn" | Gender.Female -> "Frau")
-                      ("$chefAnrede", employer.gender.ToString())
-                      ("$geehrter", match employer.gender with Gender.Male -> "geehrter" | Gender.Female -> "geehrte")
-                      ("$chefTitel", employer.degree)
-                      ("$chefVorname", employer.firstName)
-                      ("$chefNachname", employer.lastName)
-                      ("$chefEmail", employer.email)
-                      ("$chefTelefon", employer.phone)
-                      ("$chefMobil", employer.mobilePhone)
-                      ("$meinGeschlecht", userValues.gender.ToString())
-                      ("$meinTitel", userValues.degree)
-                      ("$meinVorname", userValues.firstName)
-                      ("$meinNachname", userValues.lastName)
-                      ("$meineStrasse", userValues.street)
-                      ("$meinePlz", userValues.postcode)
-                      ("$meineStadt", userValues.city)
-                      ("$meineEmail", userEmail)
-                      ("$meinMobilTelefon", userValues.mobilePhone)
-                      ("$meineTelefonnr", userValues.phone)
-                      ("$datumHeute", DateTime.Today.ToString("dd.MM.yyyy"))
-                    ]
-                let odtPaths =
-                    [ for item in document.pages do
-                        match item with
-                        | HtmlPage htmlPage ->
-                            let oPageTemplatePath = Option.map (Database.getHtmlPageTemplatePath dbConn) htmlPage.oTemplateId
-                            let pageTemplatePath =
-                                match oPageTemplatePath with
-                                | None -> 
-                                    failwith "oPageTemplatePath was None"
-                                | Some path -> path
-                            let lines = []
-                                (*let emptyLines = List.init 50 (fun i -> sprintf "$line%i" (i + 1), "")
-                                let pageLines = page.map.["mainText"].Split([|'\n'|])
-                                let len = pageLines.Length
-                                (pageLines
-                                |> Array.mapi (fun i x -> sprintf "$line%i" (i + 1), x)
-                                |> List.ofArray)
-                                @ List.skip len emptyLines
-                                |> List.sortByDescending (fun (key, _) -> key.Length)
-                                *)
-                            let tmpPath = "c:/users/rene/myodt1/" + Guid.NewGuid().ToString()
-                            yield Odt.replaceInOdt pageTemplatePath "c:/users/rene/myodt/" tmpPath (myList @ lines)
-                        | FilePage filePage ->
-                            let tmpPath = "c:/users/rene/myodt1/" + Guid.NewGuid().ToString()
-                            yield Odt.replaceInOdt filePage.path "c:/users/rene/myodt/" tmpPath myList
-                    ]
-                let pdfPaths =
-                    [ for odtPath in odtPaths do
-                        yield Odt.odtToPdf odtPath
-                    ]
-                Odt.mergePdfs pdfPaths "c:/users/rene/myodt1/mygreatpdf.pdf"
-                transaction.Commit()
-                //return ()
-            with
-            | e ->
-                log.Error ("", e)
-                transaction.Rollback()
-                //sendEmail "rene.ederer.nbg@gmail.com" "René Ederer" employer.email template.emailSubject template.emailBody template.pdfPaths
-                //return ()
-        //}
+        async {
+            match oUserId with 
+            | None -> failwith "No user loggeg in"
+            | Some userId ->
+                use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+                dbConn.Open()
+                use transaction = dbConn.BeginTransaction()
+                try
+                    let documentId = Database.saveNewDocument dbConn document userId
+                    let employerId = Database.addEmployer dbConn employer userId
+                    Database.insertSentApplication dbConn userId employerId documentId
+                    let userEmail = Database.getEmailByUserId dbConn userId |> Option.defaultValue ""
+                    Database.setUserValues dbConn userValues userId |> ignore
+                    let myList =
+                        [ ("$firmaName", employer.company)
+                          ("$firmaStrasse", employer.street)
+                          ("$firmaPlz", employer.postcode)
+                          ("$firmaStadt", employer.city)
+                          ("$chefAnredeBriefkopf", match employer.gender with Gender.Male -> "Herrn" | Gender.Female -> "Frau")
+                          ("$chefAnrede", employer.gender.ToString())
+                          ("$geehrter", match employer.gender with Gender.Male -> "geehrter" | Gender.Female -> "geehrte")
+                          ("$chefTitel", employer.degree)
+                          ("$chefVorname", employer.firstName)
+                          ("$chefNachname", employer.lastName)
+                          ("$chefEmail", employer.email)
+                          ("$chefTelefon", employer.phone)
+                          ("$chefMobil", employer.mobilePhone)
+                          ("$meinGeschlecht", userValues.gender.ToString())
+                          ("$meinTitel", userValues.degree)
+                          ("$meinVorname", userValues.firstName)
+                          ("$meinNachname", userValues.lastName)
+                          ("$meineStrasse", userValues.street)
+                          ("$meinePlz", userValues.postcode)
+                          ("$meineStadt", userValues.city)
+                          ("$meineEmail", userEmail)
+                          ("$meinMobilTelefon", userValues.mobilePhone)
+                          ("$meineTelefonnr", userValues.phone)
+                          ("$datumHeute", DateTime.Today.ToString("dd.MM.yyyy"))
+                        ]
+                    let odtPaths =
+                        [ for item in document.pages do
+                            match item with
+                            | HtmlPage htmlPage ->
+                                let oPageTemplatePath = Option.map (Database.getHtmlPageTemplatePath dbConn) htmlPage.oTemplateId
+                                let pageTemplatePath =
+                                    match oPageTemplatePath with
+                                    | None -> 
+                                        failwith "oPageTemplatePath was None"
+                                    | Some path -> path
+                                let lines = []
+                                    (*let emptyLines = List.init 50 (fun i -> sprintf "$line%i" (i + 1), "")
+                                    let pageLines = page.map.["mainText"].Split([|'\n'|])
+                                    let len = pageLines.Length
+                                    (pageLines
+                                    |> Array.mapi (fun i x -> sprintf "$line%i" (i + 1), x)
+                                    |> List.ofArray)
+                                    @ List.skip len emptyLines
+                                    |> List.sortByDescending (fun (key, _) -> key.Length)
+                                    *)
+                                let tmpPath = "c:/users/rene/myodt1/" + Guid.NewGuid().ToString()
+                                yield Odt.replaceInOdt pageTemplatePath "c:/users/rene/myodt/" tmpPath (myList @ lines)
+                            | FilePage filePage ->
+                                let tmpPath = "c:/users/rene/myodt1/" + Guid.NewGuid().ToString()
+                                yield
+                                    if filePage.path.EndsWith ".pdf"
+                                    then
+                                        filePage.path
+                                    else
+                                        Odt.replaceInOdt filePage.path "c:/users/rene/myodt/" tmpPath myList
+                        ]
+                    let pdfPaths =
+                        [ for odtPath in odtPaths do
+                            yield Odt.odtToPdf odtPath
+                        ]
+                    Odt.mergePdfs pdfPaths "c:/users/rene/myodt1/mygreatpdf.pdf"
+                    transaction.Commit()
+                    //return ()
+                with
+                | e ->
+                    log.Error ("", e)
+                    transaction.Rollback()
+                    //sendEmail "rene.ederer.nbg@gmail.com" "René Ederer" employer.email template.emailSubject template.emailBody template.pdfPaths
+                    //return ()
+        }
 
     [<Remote>]
     let addFilePage documentId path pageIndex =

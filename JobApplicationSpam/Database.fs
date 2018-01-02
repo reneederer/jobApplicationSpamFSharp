@@ -97,14 +97,13 @@ module Database =
         log.Debug(sprintf "%i = %A" userId oUserValues)
         oUserValues
 
-    let addUserValues (dbConn : NpgsqlConnection) (userValues : UserValues) (userId : int) =
+    let setUserValues (dbConn : NpgsqlConnection) (userValues : UserValues) (userId : int) =
         log.Debug(sprintf "%A %i" userValues userId)
         use command =
             new NpgsqlCommand(
                 "insert into userValues
                 (userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone)
                 values (:userId, :gender, :degree, :firstName, :lastName, :street, :postcode, :city, :phone, :mobilePhone)
-                where userId = :userId
                 on conflict(userId) do
                 update set (gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone)
                         = (:gender, :degree, :firstName, :lastName, :street, :postcode, :city, :phone, :mobilePhone)"
@@ -392,13 +391,13 @@ module Database =
         ret
 
     let getHtmlPageTemplatePath (dbConn : NpgsqlConnection) (htmlPageTemplateId : int) =
-        use command = new NpgsqlCommand("select odtPath from template where id = :pageTemplateId", dbConn)
+        use command = new NpgsqlCommand("select odtPath from htmlPageTemplate where id = :htmlPageTemplateId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("htmlPageTemplateId", htmlPageTemplateId)) |> ignore
         command.ExecuteScalar() |> string
 
 
     let getHtmlPageTemplates (dbConn : NpgsqlConnection) =
-        use command = new NpgsqlCommand("select id, html, name from htmlpageTemplate", dbConn)
+        use command = new NpgsqlCommand("select id, html, name from htmlPageTemplate", dbConn)
         use reader = command.ExecuteReader()
         [ while reader.Read() do
             yield { id = reader.GetInt32(0); html = reader.GetString(1); name = reader.GetString(2) } ]
@@ -492,7 +491,7 @@ module Database =
         command.ExecuteNonQuery() |> ignore
 
     let getDocumentIdOffset dbConn (userId : int) (documentIndex : int) =
-        use command = new NpgsqlCommand("select id from document where userId = :userId offset :documentIndex limit 1", dbConn)
+        use command = new NpgsqlCommand("select id from document where userId = :userId limit 1 offset :documentIndex", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("documentIndex", documentIndex)) |> ignore
         command.ExecuteScalar() |> string |> Int32.Parse

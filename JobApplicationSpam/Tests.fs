@@ -63,11 +63,11 @@ module MyTests =
         Database.getUserValues dbConn 1 |> should equal (Some userValues)
 
     [<Test; CategoryAttribute("Database")>]
-    let ``addUserValues should add the UserValues`` () =
+    let ``setUserValues should add the UserValues`` () =
         let userValues = { gender = Gender.Female; degree = "Prof."; firstName = "Katja"; lastName = "Großjohann"; street = "Fürther Str. 22"; postcode = "90429"; city = "Nürnberg"; phone = "0911 91821"; mobilePhone = "0151 147111" }
         let userId = 1
         let addedUserValuesId =
-            Database.addUserValues
+            Database.setUserValues
                 dbConn
                 userValues
                 userId

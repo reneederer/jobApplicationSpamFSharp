@@ -14,7 +14,7 @@ drop table if exists userValues cascade;
 drop table if exists users cascade;
 
 create table users (id serial primary key, email varchar(200) unique not null, password varchar(200) not null, salt varchar(200) not null, guid varchar(128) null);
-create table userValues(id serial primary key, userId int not null, gender varchar(1) not null, degree varchar(20) not null, firstName varchar(50) not null, lastName varchar(50) not null, street varchar(50) not null, postcode varchar(20) not null, city varchar(50) not null, phone varchar(30) not null, mobilePhone varchar(30) not null, foreign key(userId) references users(id));
+create table userValues(id serial primary key, userId int unique not null, gender varchar(1) not null, degree varchar(20) not null, firstName varchar(50) not null, lastName varchar(50) not null, street varchar(50) not null, postcode varchar(20) not null, city varchar(50) not null, phone varchar(30) not null, mobilePhone varchar(30) not null, foreign key(userId) references users(id));
 create table employer(id serial primary key, userId int not null, company varchar(100) not null, street varchar(30) not null, postcode varchar(10) not null, city varchar(30) not null, gender varchar(20) not null, degree varchar(20) not null, firstName varchar(50) not null, lastName varchar(50) not null, email varchar(200) not null, phone varchar(30) not null, mobilePhone varchar(30) not null, foreign key(userId) references users(id));
 create table htmlPageTemplate(id serial primary key, name varchar(50) unique not null, odtPath varchar(100) unique not null, html text not null);
 create table document(id serial primary key, userId int not null, name varchar(100) not null, foreign key(userId) references users(id));
@@ -115,7 +115,7 @@ insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 2, 3, 'm
 insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 3, 4, 'mein dritter Lebenslauf');
 insert into filePage(documentId, path, pageIndex, name) values(2, 'C:/Users/rene/Downloads/labenwolf_zeugnis_small.pdf', 5, 'LabenwolfZeugnis');
 insert into htmlPage(documentId, templateId, pageIndex, name) values(1, 1, 1, 'mein Anschreiben');
-insert into htmlPage(documentId, templateId, pageIndex, name) values(1, 2, 2, 'mein Deckblatt');
+insert into htmlPage(documentId, templateId, pageIndex, name) values(1, 1, 2, 'mein Deckblatt');
 insert into pageMap(documentId, pageIndex, key, value) values (1, 1, 'mainText', 'Sehr geehrte Damen und Herren\n\nhiermit bewerbe ich mich auf Ihre Stellenzeige\nauf LinkedIn\n\nMit freundlichen Grüßen\n\n\n\nRené Ederer');
 insert into pageMap(documentId, pageIndex, key, value) values (1, 2, 'mainText', 'nur ein gruß');
 

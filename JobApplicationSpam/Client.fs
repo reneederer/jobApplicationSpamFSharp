@@ -711,6 +711,12 @@ module Client =
                     ) |> ignore
             }
         
+        and applyNow () =
+            async { 
+                do! Server.applyNowWithHtmlTemplate varEmployer.Value varDocument.Value varUserValues.Value
+                ()
+            }
+        
         and loadFileUploadTemplate() =
             varDisplayedDocument.Value <-
                 formAttr [attr.enctype "multipart/form-data"; attr.method "POST"; attr.action ""]
@@ -760,4 +766,6 @@ module Client =
             inputAttr [attr.``type`` "button"; attr.value "Save as new document"; on.click (fun _ _ -> saveNewDocument() |> Async.Start)] []
             br []
             inputAttr [attr.``type`` "button"; attr.value "Overwrite document"; on.click (fun _ _ -> overwriteDocument() |> Async.Start)] []
+            br []
+            inputAttr [attr.``type`` "button"; attr.value "Apply now"; on.click (fun _ _ -> applyNow() |> Async.Start)] []
           ]

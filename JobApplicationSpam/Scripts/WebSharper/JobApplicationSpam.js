@@ -1025,6 +1025,18 @@
     }));
    });
   }
+  function applyNow()
+  {
+   var b$1;
+   b$1=null;
+   return Concurrency.Delay(function()
+   {
+    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.applyNowWithHtmlTemplate:2103313263",[varEmployer.c,varDocument.c,varUserValues.c]),function()
+    {
+     return Concurrency.Zero();
+    });
+   });
+  }
   function loadFileUploadTemplate()
   {
    var c;
@@ -1184,6 +1196,12 @@
    return function()
    {
     return Concurrency.Start(overwriteDocument(),null);
+   };
+  })],[]),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("value","Apply now"),AttrModule.Handler("click",function()
+  {
+   return function()
+   {
+    return Concurrency.Start(applyNow(),null);
    };
   })],[])]);
  };

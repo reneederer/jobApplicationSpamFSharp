@@ -6,6 +6,7 @@ drop table if exists pageMap cascade;
 drop table if exists lastEditedDocumentId cascade;
 drop table if exists htmlPage cascade;
 drop table if exists filePage cascade;
+drop table if exists documentEmail cascade;
 drop table if exists document cascade;
 drop table if exists htmlPageTemplate cascade;
 drop table if exists employer cascade;
@@ -16,10 +17,11 @@ create table users (id serial primary key, email varchar(200) unique not null, p
 create table userValues(id serial primary key, userId int, gender varchar(1) not null, degree varchar(20) not null, firstName varchar(50) not null, lastName varchar(50) not null, street varchar(50) not null, postcode varchar(20) not null, city varchar(50) not null, phone varchar(30) not null, mobilePhone varchar(30) not null, foreign key(userId) references users(id));
 create table employer(id serial primary key, userId int not null, company varchar(100) not null, street varchar(30) not null, postcode varchar(10) not null, city varchar(30) not null, gender varchar(20) not null, degree varchar(20) not null, firstName varchar(50) not null, lastName varchar(50) not null, email varchar(200) not null, phone varchar(30) not null, mobilePhone varchar(30) not null, foreign key(userId) references users(id));
 create table htmlPageTemplate(id serial primary key, name varchar(50) not null, odtPath varchar(100) not null, html text not null);
-create table document(id serial primary key, userId int not null, name varchar(100) not null, emailSubject varchar(100) not null, emailBody text not null, foreign key(userId) references users(id));
+create table document(id serial primary key, userId int not null, name varchar(100) not null, foreign key(userId) references users(id));
 create table lastEditedDocumentId(userId int primary key not null, documentId int not null);
 create table filePage(id serial primary key, documentId int not null, path varchar(60) not null, pageIndex int not null, name varchar(50) not null, foreign key(documentId) references document(id));
 create table htmlPage(id serial primary key, documentId int not null, templateId int null, pageIndex int not null, name varchar(50) not null, foreign key(documentId) references document(id), foreign key(templateId) references htmlPageTemplate(id));
+create table documentEmail(id serial primary key, documentId int not null unique, subject varchar(200) not null, body text not null, foreign key(documentId) references document(id));
 create table pageMap(id serial primary key, documentId int not null, pageIndex int not null, key varchar(100) not null, value text not null, foreign key(documentId) references document(id));
 create table sentApplication(id serial primary key, userId int not null, employerId int not null, documentId int not null, foreign key(documentId) references document(id), foreign key(employerId) references employer(id), foreign key(userId) references users(id));
 create table sentStatusValue(id int primary key, status varchar(50));
@@ -27,7 +29,7 @@ create table sentStatus(id serial primary key, sentApplicationId int, statusChan
 
 insert into users(email, password, salt, guid) values('rene.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null);
 insert into users(email, password, salt, guid) values('helmut.goerke@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', 'someguid');
-insert into users(email, password, salt, guid) values('some.email@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null);
+insert into users(email, password, salt, guid) values('r', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null);
 
 insert into userValues(userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone) values(1, 'm', '', 'René', 'Ederer', 'Raabstr. 24A', '90429', 'Nürnberg', 'kein Telefon', 'kein Handy');
 insert into userValues(userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone) values(2, 'm', '', 'Helmut', 'Görke', 'Raabstr. 24A', '90429', 'Nürnberg', '0911 918273', '01520 2723494');
@@ -45,7 +47,7 @@ insert into htmlPageTemplate(name, odtPath, html) values('Anschreiben nach DIN 5
     <div style="width: 100%; background-color: white">
         <input class="resizing field-updating" autofocus "autofocus" style="font-family: Arial; font-size: 12pt; font-weight: normal" data-update-field="userDegree" data-variable-value="userDegree" placeholder="Dein Titel" />
         <input class="resizing field-updating" value="test" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-variable-value="userFirstName" data-update-field="userFirstName" placeholder="Dein Vorname" />
-        <input class="resizing field-updating" style="border:none; outline: none; letter-spacing: 0px; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userLastName" data-variable-value="userLastName" placeholder="Dein Nachname" />
+        <input class="resizing field-updating" style="border:none; outline: none; letter-spacing: 0px; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userLastName" data-variable-value="userLasssstName" placeholder="Dein Nachname" />
         <br />
         <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userStreet" style= "width:150px" data-variable-value="userStreet" placeholder="Deine Straße" />
         <br />
@@ -76,6 +78,7 @@ insert into htmlPageTemplate(name, odtPath, html) values('Anschreiben nach DIN 5
     </div>
     <div style="width: 100%;">
         <textarea rows="7" data-html-page-key="mainText" data-html-page-value="Sehr geehrte Damen und Herren" style="wrap: soft; border: solid 2px red; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; overflow: hidden; min-height: 100%; min-width: 100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block"></textarea>
+        <textarea rows="7" data-html-page-key="mainText" data-html-page-value="Sehr geehrte Damen und Herren" style="wrap: soft; border: solid 2px red; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; overflow: hidden; min-height: 100%; min-width: 100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block"></textarea>
     </div>
     <div style="width: 100%">
         <br />
@@ -101,8 +104,10 @@ insert into htmlPageTemplate(name, odtPath, html) values('Deckblatt', 'c:/users/
 hallo div!</div>
 ');
 insert into htmlPageTemplate(name, odtPath, html) values('Lebenslauf', 'c:/users/rene/desktop/bewerbung_lebenslauf.odt', '<div id="insertDiv"><b>Lebenslauf...</b></div>');
-insert into document(userId, name, emailSubject, emailBody) values(1, 'mein htmlTemplate', 'emailTitel', 'emailKoerper');
-insert into document(userId, name, emailSubject, emailBody) values(1, 'mein zweites htmlTemplate', 'emailTitel', 'emailKoerper');
+insert into document(userId, name) values(1, 'mein htmlTemplate');
+insert into document(userId, name) values(1, 'mein zweites htmlTemplate');
+insert into documentEmail(documentId, subject, body) values(1, 'titel1', 'body1');
+insert into documentEmail(documentId, subject, body) values(2, 'titel2', 'body2');
 insert into filePage(documentId, path, pageIndex, name) values(1, 'C:/Users/rene/Downloads/labenwolf_zeugnis_small.pdf', 3, 'Labenwolf Zeugnis');
 insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 1, 1, 'mein zweites Anschreiben');
 insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 2, 2, 'mein zweites Deckblatt');

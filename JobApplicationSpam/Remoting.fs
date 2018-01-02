@@ -213,9 +213,8 @@ module Server =
                 return  failwith "No user logged in"
         }
 
-
     [<Remote>]
-    let saveDocument (document : Document) =
+    let overwriteDocument (document : Document) =
         let oUserId = getCurrentUserId() |> Async.RunSynchronously
         async {
             match oUserId with
@@ -224,7 +223,28 @@ module Server =
                 dbConn.Open()
                 use transaction = dbConn.BeginTransaction()
                 try
-                    let documentId = Database.saveDocument dbConn document userId
+                    let documentId = Database.overwriteDocument dbConn document userId
+                    transaction.Commit()
+                    return documentId
+                with
+                | e ->
+                    transaction.Rollback()
+                    log.Error("Saving Document failed", e)
+                    return failwith "Saving Document failed"
+            | None -> return failwith "User is not logged in"
+        }
+
+    [<Remote>]
+    let saveNewDocument (document : Document) =
+        let oUserId = getCurrentUserId() |> Async.RunSynchronously
+        async {
+            match oUserId with
+            | Some userId ->
+                use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+                dbConn.Open()
+                use transaction = dbConn.BeginTransaction()
+                try
+                    let documentId = Database.saveNewDocument dbConn document userId
                     transaction.Commit()
                     return documentId
                 with
@@ -261,7 +281,7 @@ module Server =
             dbConn.Open()
             use transaction = dbConn.BeginTransaction()
             try
-                let documentId = Database.saveDocument dbConn document userId
+                let documentId = Database.saveNewDocument dbConn document userId
                 Database.insertSentApplication dbConn userId employerId documentId
                 let userEmail = Database.getEmailByUserId dbConn userId |> Option.defaultValue ""
                 let myList =
@@ -431,7 +451,7 @@ module Server =
             }
 
     [<Remote>]
-    let addNewDocument name emailSubject emailBody =
+    let addNewDocument name =
         let oUserId = getCurrentUserId() |> Async.RunSynchronously
         match oUserId with
         | None -> failwith "No user logged in"
@@ -439,7 +459,7 @@ module Server =
             async {
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
-                return Database.addNewDocument dbConn userId name emailSubject emailBody
+                return Database.addNewDocument dbConn userId name
             }
 
 

@@ -97,9 +97,16 @@ module Types =
             | FilePage filePage -> filePage.pageIndex
 
     //[<WebSharper.JavaScript>]
+    type DocumentEmail =
+        { subject : string
+          body : string
+        }
+
     type Document =
-        { name : string
+        { id : int
+          name : string
           pages : list<DocumentPage>
+          email : DocumentEmail
         }
 
     type HtmlPageTemplate =

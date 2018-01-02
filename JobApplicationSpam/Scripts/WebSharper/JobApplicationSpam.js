@@ -1,7 +1,7 @@
 (function()
 {
  "use strict";
- var Global,JobApplicationSpam,Types,Gender,JobApplicationPageAction,DocumentPage,Client,Language,Str,AddEmployerAction,SC$1,IntelliFactory,Runtime,WebSharper,Operators,Concurrency,Remoting,AjaxRemotingProvider,UI,Next,Var,Doc,AttrProxy,AttrModule,List,Seq,Numeric,Unchecked,Enumerator,Collections,Map,Arrays,Utils,Strings;
+ var Global,JobApplicationSpam,Types,Gender,JobApplicationPageAction,DocumentPage,Client,Language,Str,AddEmployerAction,SC$1,IntelliFactory,Runtime,WebSharper,Operators,UI,Next,Doc,AttrProxy,AttrModule,Concurrency,Var,View,Remoting,AjaxRemotingProvider,List,Seq,Numeric,Unchecked,Collections,Map,Arrays,Utils,Strings;
  Global=window;
  JobApplicationSpam=Global.JobApplicationSpam=Global.JobApplicationSpam||{};
  Types=JobApplicationSpam.Types=JobApplicationSpam.Types||{};
@@ -17,20 +17,20 @@
  Runtime=IntelliFactory&&IntelliFactory.Runtime;
  WebSharper=Global.WebSharper;
  Operators=WebSharper&&WebSharper.Operators;
- Concurrency=WebSharper&&WebSharper.Concurrency;
- Remoting=WebSharper&&WebSharper.Remoting;
- AjaxRemotingProvider=Remoting&&Remoting.AjaxRemotingProvider;
  UI=WebSharper&&WebSharper.UI;
  Next=UI&&UI.Next;
- Var=Next&&Next.Var;
  Doc=Next&&Next.Doc;
  AttrProxy=Next&&Next.AttrProxy;
  AttrModule=Next&&Next.AttrModule;
+ Concurrency=WebSharper&&WebSharper.Concurrency;
+ Var=Next&&Next.Var;
+ View=Next&&Next.View;
+ Remoting=WebSharper&&WebSharper.Remoting;
+ AjaxRemotingProvider=Remoting&&Remoting.AjaxRemotingProvider;
  List=WebSharper&&WebSharper.List;
  Seq=WebSharper&&WebSharper.Seq;
  Numeric=WebSharper&&WebSharper.Numeric;
  Unchecked=WebSharper&&WebSharper.Unchecked;
- Enumerator=WebSharper&&WebSharper.Enumerator;
  Collections=WebSharper&&WebSharper.Collections;
  Map=Collections&&Collections.Map;
  Arrays=WebSharper&&WebSharper.Arrays;
@@ -187,11 +187,305 @@
  };
  Client.templates=function()
  {
-  var saveDocument,b,b$1,varDocument,varUserValues,varUserEmail,varEmployer,varSelectDocumentName,varSelectHtmlPageTemplate,varNewDocument,varPageButtonsDiv,varPageButtons,varCurrentPageIndex,varPageCount,varDisplayedDocument,varAddPage;
+  var varEditUserValuesDiv,varAddEmployerDiv,b,varDocument,varUserValues,varUserEmail,varEmployer,varSelectDocumentName,varSelectHtmlPageTemplate,varNewDocument,varPageButtonsDiv,varPageButtons,varCurrentPageIndex,varPageCount,varDisplayedDocument,varAddPage;
+  function createInput(t,v,updateF)
+  {
+   return Doc.Element("div",[],[Doc.TextNode(t),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("value",v),AttrModule.Handler("input",function(el)
+   {
+    return function()
+    {
+     updateF(el.value);
+     return Concurrency.Start(fillDocumentValues(),null);
+    };
+   })],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[])]);
+  }
+  function updateEditUserValuesDiv()
+  {
+   Var.Set(varEditUserValuesDiv,Doc.Element("div",[],[Doc.TextView(View.Map(function(x)
+   {
+    return x.firstName;
+   },varUserValues.v)),createInput("Degree",varUserValues.c.degree,function(v)
+   {
+    var i;
+    Var.Set(varUserValues,(i=varUserValues.c,{
+     gender:i.gender,
+     degree:v,
+     firstName:i.firstName,
+     lastName:i.lastName,
+     street:i.street,
+     postcode:i.postcode,
+     city:i.city,
+     phone:i.phone,
+     mobilePhone:i.mobilePhone
+    }));
+   }),createInput("First name",varUserValues.c.firstName,function(v)
+   {
+    var i;
+    Var.Set(varUserValues,(i=varUserValues.c,{
+     gender:i.gender,
+     degree:i.degree,
+     firstName:v,
+     lastName:i.lastName,
+     street:i.street,
+     postcode:i.postcode,
+     city:i.city,
+     phone:i.phone,
+     mobilePhone:i.mobilePhone
+    }));
+   }),createInput("Last name",varUserValues.c.lastName,function(v)
+   {
+    var i;
+    Var.Set(varUserValues,(i=varUserValues.c,{
+     gender:i.gender,
+     degree:i.degree,
+     firstName:i.firstName,
+     lastName:v,
+     street:i.street,
+     postcode:i.postcode,
+     city:i.city,
+     phone:i.phone,
+     mobilePhone:i.mobilePhone
+    }));
+   }),createInput("Street",varUserValues.c.street,function(v)
+   {
+    var i;
+    Var.Set(varUserValues,(i=varUserValues.c,{
+     gender:i.gender,
+     degree:i.degree,
+     firstName:i.firstName,
+     lastName:i.lastName,
+     street:v,
+     postcode:i.postcode,
+     city:i.city,
+     phone:i.phone,
+     mobilePhone:i.mobilePhone
+    }));
+   }),createInput("Postcode",varUserValues.c.postcode,function(v)
+   {
+    var i;
+    Var.Set(varUserValues,(i=varUserValues.c,{
+     gender:i.gender,
+     degree:i.degree,
+     firstName:i.firstName,
+     lastName:i.lastName,
+     street:i.street,
+     postcode:v,
+     city:i.city,
+     phone:i.phone,
+     mobilePhone:i.mobilePhone
+    }));
+   }),createInput("City",varUserValues.c.city,function(v)
+   {
+    var i;
+    Var.Set(varUserValues,(i=varUserValues.c,{
+     gender:i.gender,
+     degree:i.degree,
+     firstName:i.firstName,
+     lastName:i.lastName,
+     street:i.street,
+     postcode:i.postcode,
+     city:v,
+     phone:i.phone,
+     mobilePhone:i.mobilePhone
+    }));
+   }),createInput("Phone",varUserValues.c.phone,function(v)
+   {
+    var i;
+    Var.Set(varUserValues,(i=varUserValues.c,{
+     gender:i.gender,
+     degree:i.degree,
+     firstName:i.firstName,
+     lastName:i.lastName,
+     street:i.street,
+     postcode:i.postcode,
+     city:i.city,
+     phone:v,
+     mobilePhone:i.mobilePhone
+    }));
+   }),createInput("Mobile phone",varUserValues.c.mobilePhone,function(v)
+   {
+    var i;
+    Var.Set(varUserValues,(i=varUserValues.c,{
+     gender:i.gender,
+     degree:i.degree,
+     firstName:i.firstName,
+     lastName:i.lastName,
+     street:i.street,
+     postcode:i.postcode,
+     city:i.city,
+     phone:i.phone,
+     mobilePhone:v
+    }));
+   })]));
+  }
+  function updateAddEmployerDiv()
+  {
+   Var.Set(varAddEmployerDiv,Doc.Element("div",[],[createInput("Company",varEmployer.c.company,function(v)
+   {
+    var i;
+    Var.Set(varEmployer,(i=varEmployer.c,{
+     company:v,
+     street:i.street,
+     postcode:i.postcode,
+     city:i.city,
+     gender:i.gender,
+     degree:i.degree,
+     firstName:i.firstName,
+     lastName:i.lastName,
+     email:i.email,
+     phone:i.phone,
+     mobilePhone:i.mobilePhone
+    }));
+   }),createInput("Degree",varEmployer.c.degree,function(v)
+   {
+    var i;
+    Var.Set(varEmployer,(i=varEmployer.c,{
+     company:i.company,
+     street:i.street,
+     postcode:i.postcode,
+     city:i.city,
+     gender:i.gender,
+     degree:v,
+     firstName:i.firstName,
+     lastName:i.lastName,
+     email:i.email,
+     phone:i.phone,
+     mobilePhone:i.mobilePhone
+    }));
+   }),createInput("First name",varEmployer.c.firstName,function(v)
+   {
+    var i;
+    Var.Set(varEmployer,(i=varEmployer.c,{
+     company:i.company,
+     street:i.street,
+     postcode:i.postcode,
+     city:i.city,
+     gender:i.gender,
+     degree:i.degree,
+     firstName:v,
+     lastName:i.lastName,
+     email:i.email,
+     phone:i.phone,
+     mobilePhone:i.mobilePhone
+    }));
+   }),createInput("Last name",varEmployer.c.lastName,function(v)
+   {
+    var i;
+    Var.Set(varEmployer,(i=varEmployer.c,{
+     company:i.company,
+     street:i.street,
+     postcode:i.postcode,
+     city:i.city,
+     gender:i.gender,
+     degree:i.degree,
+     firstName:i.firstName,
+     lastName:v,
+     email:i.email,
+     phone:i.phone,
+     mobilePhone:i.mobilePhone
+    }));
+   }),createInput("Street",varEmployer.c.street,function(v)
+   {
+    var i;
+    Var.Set(varEmployer,(i=varEmployer.c,{
+     company:i.company,
+     street:v,
+     postcode:i.postcode,
+     city:i.city,
+     gender:i.gender,
+     degree:i.degree,
+     firstName:i.firstName,
+     lastName:i.lastName,
+     email:i.email,
+     phone:i.phone,
+     mobilePhone:i.mobilePhone
+    }));
+   }),createInput("Postcode",varEmployer.c.postcode,function(v)
+   {
+    var i;
+    Var.Set(varEmployer,(i=varEmployer.c,{
+     company:i.company,
+     street:i.street,
+     postcode:v,
+     city:i.city,
+     gender:i.gender,
+     degree:i.degree,
+     firstName:i.firstName,
+     lastName:i.lastName,
+     email:i.email,
+     phone:i.phone,
+     mobilePhone:i.mobilePhone
+    }));
+   }),createInput("City",varEmployer.c.city,function(v)
+   {
+    var i;
+    Var.Set(varEmployer,(i=varEmployer.c,{
+     company:i.company,
+     street:i.street,
+     postcode:i.postcode,
+     city:v,
+     gender:i.gender,
+     degree:i.degree,
+     firstName:i.firstName,
+     lastName:i.lastName,
+     email:i.email,
+     phone:i.phone,
+     mobilePhone:i.mobilePhone
+    }));
+   }),createInput("Email",varEmployer.c.email,function(v)
+   {
+    var i;
+    Var.Set(varEmployer,(i=varEmployer.c,{
+     company:i.company,
+     street:i.street,
+     postcode:i.postcode,
+     city:i.city,
+     gender:i.gender,
+     degree:i.degree,
+     firstName:i.firstName,
+     lastName:i.lastName,
+     email:v,
+     phone:i.phone,
+     mobilePhone:i.mobilePhone
+    }));
+   }),createInput("Phone",varEmployer.c.phone,function(v)
+   {
+    var i;
+    Var.Set(varEmployer,(i=varEmployer.c,{
+     company:i.company,
+     street:i.street,
+     postcode:i.postcode,
+     city:i.city,
+     gender:i.gender,
+     degree:i.degree,
+     firstName:i.firstName,
+     lastName:i.lastName,
+     email:i.email,
+     phone:v,
+     mobilePhone:i.mobilePhone
+    }));
+   }),createInput("Mobile phone",varEmployer.c.mobilePhone,function(v)
+   {
+    var i;
+    Var.Set(varEmployer,(i=varEmployer.c,{
+     company:i.company,
+     street:i.street,
+     postcode:i.postcode,
+     city:i.city,
+     gender:i.gender,
+     degree:i.degree,
+     firstName:i.firstName,
+     lastName:i.lastName,
+     email:i.email,
+     phone:i.phone,
+     mobilePhone:v
+    }));
+   })]));
+  }
   function setSelectDocumentName()
   {
-   var b$2;
-   b$2=null;
+   var b$1;
+   b$1=null;
    return Concurrency.Delay(function()
    {
     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getDocumentNames:1994133801",[]),function(a)
@@ -221,6 +515,30 @@
        return Concurrency.Start(setNewDocumentEmpty(),null);
       };
      })],[])]));
+     return Concurrency.Zero();
+    });
+   });
+  }
+  function saveNewDocument()
+  {
+   var b$1;
+   b$1=null;
+   return Concurrency.Delay(function()
+   {
+    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.saveNewDocument:-229128764",[varDocument.c]),function()
+    {
+     return Concurrency.Zero();
+    });
+   });
+  }
+  function overwriteDocument()
+  {
+   var b$1;
+   b$1=null;
+   return Concurrency.Delay(function()
+   {
+    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.overwriteDocument:-229128764",[varDocument.c]),function()
+    {
      return Concurrency.Zero();
     });
    });
@@ -266,8 +584,8 @@
   }
   function setSelectHtmlPageTemplate()
   {
-   var b$2;
-   b$2=null;
+   var b$1;
+   b$1=null;
    return Concurrency.Delay(function()
    {
     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getHtmlPageTemplates:1297380307",[]),function(a)
@@ -291,8 +609,8 @@
   }
   function setPageButtons()
   {
-   var b$2;
-   b$2=null;
+   var b$1;
+   b$1=null;
    return Concurrency.Delay(function()
    {
     function setPageNameDiv()
@@ -300,8 +618,8 @@
      var varPageDiv;
      function addHtmlPage(pageName)
      {
-      var b$3;
-      b$3=null;
+      var b$2;
+      b$2=null;
       return Concurrency.Delay(function()
       {
        return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getDocumentIdOffset:-1214783449",[Numeric.ParseInt32(Global.String(Global.document.getElementById("selectDocumentName").selectedIndex))]),function(a)
@@ -312,8 +630,8 @@
          {
           return function()
           {
-           var b$4;
-           return Concurrency.Start((b$4=null,Concurrency.Delay(function()
+           var b$3;
+           return Concurrency.Start((b$3=null,Concurrency.Delay(function()
            {
             var o;
             Global.document.getElementById("selectHtmlPageTemplate").selectedIndex=(o=null,o==null?1:o.$0)-1;
@@ -401,8 +719,8 @@
       {
        return function()
        {
-        var b$3;
-        return Concurrency.Start((b$3=null,Concurrency.Delay(function()
+        var b$2;
+        return Concurrency.Start((b$2=null,Concurrency.Delay(function()
         {
          var o;
          Global.document.getElementById("selectHtmlPageTemplate").selectedIndex=(o=htmlPage.oTemplateId,o==null?1:o.$0)-1;
@@ -427,8 +745,8 @@
   }
   function setDocument()
   {
-   var b$2;
-   b$2=null;
+   var b$1;
+   b$1=null;
    return Concurrency.Delay(function()
    {
     var documentIndex;
@@ -439,490 +757,466 @@
     });
    });
   }
-  function fillDocumentValues()
+  function setUserValues()
   {
-   var b$2;
-   b$2=null;
+   var b$1;
+   b$1=null;
    return Concurrency.Delay(function()
    {
-    return Concurrency.Combine(Unchecked.Equals(varUserValues.c,null)?Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getCurrentUserValues:-337599557",[]),function(a)
+    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getCurrentUserValues:-337599557",[]),function(a)
     {
      return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getCurrentUserEmail:-834772631",[]),function(a$1)
      {
-      Global.document.getElementById("selectDocumentName").selectedIndex;
       Var.Set(varUserValues,a);
       Var.Set(varUserEmail,a$1);
-      Var.Set(varEmployer,{
-       company:"",
-       street:"",
-       postcode:"",
-       city:"",
-       gender:Gender.Male,
-       degree:"",
-       firstName:"",
-       lastName:"",
-       email:"",
-       phone:"",
-       mobilePhone:""
-      });
+      updateEditUserValuesDiv();
       return Concurrency.Zero();
      });
-    }):Concurrency.Zero(),Concurrency.Delay(function()
+    });
+   });
+  }
+  function fillDocumentValues()
+  {
+   var b$1;
+   b$1=null;
+   return Concurrency.Delay(function()
+   {
+    var pageMapElements,m,htmlPage;
+    pageMapElements=Global.document.querySelectorAll("[data-html-page-key]");
+    return Concurrency.Combine((m=varDocument.c.pages.get_Item(varCurrentPageIndex.c-1),m.$==1?Concurrency.Zero():(htmlPage=m.$0,(Global.jQuery(pageMapElements).each(function($1,el)
     {
-     var m,htmlPage;
-     return Concurrency.Combine((m=varDocument.c.pages.get_Item(varCurrentPageIndex.c-1),m.$==1?Concurrency.Zero():(htmlPage=m.$0,(Global.jQuery(Global.document.querySelectorAll("[data-html-page-key]")).each(function($1,el)
+     var jEl,key;
+     function eventAction()
      {
-      var jEl,key,e;
-      jEl=Global.jQuery(el);
-      key=el.getAttribute("data-html-page-key");
-      htmlPage.map.ContainsKey(key)?jEl.val(htmlPage.map.get_Item(key)):jEl.val(Global.String(el.getAttribute("data-html-page-value")));
-      e=Enumerator.Get(htmlPage.map);
-      try
-      {
-       while(e.MoveNext())
-        (function()
-        {
-         var mapItem;
-         mapItem=e.Current();
-         Global.jQuery(function($2)
-         {
-          return $2("[data-html-page-key!='']");
-         }(Global.id)).each(function($2,el$1)
-         {
-          el$1.addEventListener("input",function()
-          {
-           var p,t,currentAndAfter,p$1,htmlPage$1,htmlPage$2;
-           p=(t=List.splitAt(varCurrentPageIndex.c-1,varDocument.c.pages),(currentAndAfter=t[1],(p$1=currentAndAfter.$==0?Operators.FailWith("pageList was empty"):currentAndAfter.$0.$==1?[new DocumentPage({
-            $:1,
-            $0:currentAndAfter.$0.$0
-           }),List.T.Empty]:currentAndAfter.$1.$==0?(htmlPage$1=currentAndAfter.$0.$0,[new DocumentPage({
-            $:0,
-            $0:{
-             name:htmlPage$1.name,
-             oTemplateId:htmlPage$1.oTemplateId,
-             pageIndex:htmlPage$1.pageIndex,
-             map:htmlPage$1.map.Add(mapItem.K,Global.String(Global.jQuery(el$1).val()))
-            }
-           }),List.T.Empty]):(htmlPage$2=currentAndAfter.$0.$0,[new DocumentPage({
-            $:0,
-            $0:{
-             name:htmlPage$2.name,
-             oTemplateId:htmlPage$2.oTemplateId,
-             pageIndex:htmlPage$2.pageIndex,
-             map:htmlPage$2.map.Add(mapItem.K,Global.String(Global.jQuery(el$1).val()))
-            }
-           }),currentAndAfter.$1]),[t[0],p$1[0],p$1[1]])));
-           return Var.Set(varDocument,{
-            name:varDocument.c.name,
-            pages:List.append(p[0],new List.T({
-             $:1,
-             $0:p[1],
-             $1:p[2]
-            }))
-           });
-          },true);
-         });
-        }());
-      }
-      finally
-      {
-       if("Dispose"in e)
-        e.Dispose();
-      }
-     }),Concurrency.Zero()))),Concurrency.Delay(function()
-     {
-      var map;
-      map=Map.OfArray(Arrays.ofSeq(List.ofArray([["userDegree",[function()
-      {
-       return varUserValues.c.degree;
-      },function(v)
-      {
-       var i;
-       Var.Set(varUserValues,(i=varUserValues.c,{
-        gender:i.gender,
-        degree:v,
-        firstName:i.firstName,
-        lastName:i.lastName,
-        street:i.street,
-        postcode:i.postcode,
-        city:i.city,
-        phone:i.phone,
-        mobilePhone:i.mobilePhone
-       }));
-      }]],["userFirstName",[function()
-      {
-       return varUserValues.c.firstName;
-      },function(v)
-      {
-       var i;
-       Var.Set(varUserValues,(i=varUserValues.c,{
-        gender:i.gender,
-        degree:i.degree,
-        firstName:v,
-        lastName:i.lastName,
-        street:i.street,
-        postcode:i.postcode,
-        city:i.city,
-        phone:i.phone,
-        mobilePhone:i.mobilePhone
-       }));
-      }]],["userLastName",[function()
-      {
-       return varUserValues.c.lastName;
-      },function(v)
-      {
-       var i;
-       Var.Set(varUserValues,(i=varUserValues.c,{
-        gender:i.gender,
-        degree:i.degree,
-        firstName:i.firstName,
-        lastName:v,
-        street:i.street,
-        postcode:i.postcode,
-        city:i.city,
-        phone:i.phone,
-        mobilePhone:i.mobilePhone
-       }));
-      }]],["userStreet",[function()
-      {
-       return varUserValues.c.street;
-      },function(v)
-      {
-       var i;
-       Var.Set(varUserValues,(i=varUserValues.c,{
-        gender:i.gender,
-        degree:i.degree,
-        firstName:i.firstName,
-        lastName:i.lastName,
-        street:v,
-        postcode:i.postcode,
-        city:i.city,
-        phone:i.phone,
-        mobilePhone:i.mobilePhone
-       }));
-      }]],["userPostcode",[function()
-      {
-       return varUserValues.c.postcode;
-      },function(v)
-      {
-       var i;
-       Var.Set(varUserValues,(i=varUserValues.c,{
-        gender:i.gender,
-        degree:i.degree,
-        firstName:i.firstName,
-        lastName:i.lastName,
-        street:i.street,
-        postcode:v,
-        city:i.city,
-        phone:i.phone,
-        mobilePhone:i.mobilePhone
-       }));
-      }]],["userCity",[function()
-      {
-       return varUserValues.c.city;
-      },function(v)
-      {
-       var i;
-       Var.Set(varUserValues,(i=varUserValues.c,{
-        gender:i.gender,
-        degree:i.degree,
-        firstName:i.firstName,
-        lastName:i.lastName,
-        street:i.street,
-        postcode:i.postcode,
-        city:v,
-        phone:i.phone,
-        mobilePhone:i.mobilePhone
-       }));
-      }]],["userEmail",[function()
-      {
-       return varUserEmail.c;
-      },function(v)
-      {
-       Var.Set(varUserEmail,v);
-      }]],["userPhone",[function()
-      {
-       return varUserValues.c.phone;
-      },function(v)
-      {
-       var i;
-       Var.Set(varUserValues,(i=varUserValues.c,{
-        gender:i.gender,
-        degree:i.degree,
-        firstName:i.firstName,
-        lastName:i.lastName,
-        street:i.street,
-        postcode:i.postcode,
-        city:i.city,
-        phone:v,
-        mobilePhone:i.mobilePhone
-       }));
-      }]],["userMobilePhone",[function()
-      {
-       return varUserValues.c.mobilePhone;
-      },function(v)
-      {
-       var i;
-       Var.Set(varUserValues,(i=varUserValues.c,{
-        gender:i.gender,
-        degree:i.degree,
-        firstName:i.firstName,
-        lastName:i.lastName,
-        street:i.street,
-        postcode:i.postcode,
-        city:i.city,
-        phone:i.phone,
-        mobilePhone:v
-       }));
-      }]],["company",[function()
-      {
-       return varEmployer.c.company;
-      },function(v)
-      {
-       var i;
-       Var.Set(varEmployer,(i=varEmployer.c,{
-        company:v,
-        street:i.street,
-        postcode:i.postcode,
-        city:i.city,
-        gender:i.gender,
-        degree:i.degree,
-        firstName:i.firstName,
-        lastName:i.lastName,
-        email:i.email,
-        phone:i.phone,
-        mobilePhone:i.mobilePhone
-       }));
-      }]],["companyStreet",[function()
-      {
-       return varEmployer.c.street;
-      },function(v)
-      {
-       var i;
-       Var.Set(varEmployer,(i=varEmployer.c,{
-        company:i.company,
-        street:v,
-        postcode:i.postcode,
-        city:i.city,
-        gender:i.gender,
-        degree:i.degree,
-        firstName:i.firstName,
-        lastName:i.lastName,
-        email:i.email,
-        phone:i.phone,
-        mobilePhone:i.mobilePhone
-       }));
-      }]],["companyPostcode",[function()
-      {
-       return varEmployer.c.postcode;
-      },function(v)
-      {
-       var i;
-       Var.Set(varEmployer,(i=varEmployer.c,{
-        company:i.company,
-        street:i.street,
-        postcode:v,
-        city:i.city,
-        gender:i.gender,
-        degree:i.degree,
-        firstName:i.firstName,
-        lastName:i.lastName,
-        email:i.email,
-        phone:i.phone,
-        mobilePhone:i.mobilePhone
-       }));
-      }]],["companyCity",[function()
-      {
-       return varEmployer.c.city;
-      },function(v)
-      {
-       var i;
-       Var.Set(varEmployer,(i=varEmployer.c,{
-        company:i.company,
-        street:i.street,
-        postcode:i.postcode,
-        city:v,
-        gender:i.gender,
-        degree:i.degree,
-        firstName:i.firstName,
-        lastName:i.lastName,
-        email:i.email,
-        phone:i.phone,
-        mobilePhone:i.mobilePhone
-       }));
-      }]],["bossGender",[function()
-      {
-       return Global.String(varEmployer.c.gender);
-      },function(v)
-      {
-       var i;
-       Var.Set(varEmployer,(i=varEmployer.c,{
-        company:i.company,
-        street:i.street,
-        postcode:i.postcode,
-        city:i.city,
-        gender:Gender.fromString(v),
-        degree:i.degree,
-        firstName:i.firstName,
-        lastName:i.lastName,
-        email:i.email,
-        phone:i.phone,
-        mobilePhone:i.mobilePhone
-       }));
-      }]],["bossDegree",[function()
-      {
-       return varEmployer.c.degree;
-      },function(v)
-      {
-       var i;
-       Var.Set(varEmployer,(i=varEmployer.c,{
-        company:i.company,
-        street:i.street,
-        postcode:i.postcode,
-        city:i.city,
-        gender:i.gender,
-        degree:v,
-        firstName:i.firstName,
-        lastName:i.lastName,
-        email:i.email,
-        phone:i.phone,
-        mobilePhone:i.mobilePhone
-       }));
-      }]],["bossFirstName",[function()
-      {
-       return varEmployer.c.firstName;
-      },function(v)
-      {
-       var i;
-       Var.Set(varEmployer,(i=varEmployer.c,{
-        company:i.company,
-        street:i.street,
-        postcode:i.postcode,
-        city:i.city,
-        gender:i.gender,
-        degree:i.degree,
-        firstName:v,
-        lastName:i.lastName,
-        email:i.email,
-        phone:i.phone,
-        mobilePhone:i.mobilePhone
-       }));
-      }]],["bossLastName",[function()
-      {
-       return varEmployer.c.lastName;
-      },function(v)
-      {
-       var i;
-       Var.Set(varEmployer,(i=varEmployer.c,{
-        company:i.company,
-        street:i.street,
-        postcode:i.postcode,
-        city:i.city,
-        gender:i.gender,
-        degree:i.degree,
-        firstName:i.firstName,
-        lastName:v,
-        email:i.email,
-        phone:i.phone,
-        mobilePhone:i.mobilePhone
-       }));
-      }]],["bossEmail",[function()
-      {
-       return varEmployer.c.email;
-      },function(v)
-      {
-       var i;
-       Var.Set(varEmployer,(i=varEmployer.c,{
-        company:i.company,
-        street:i.street,
-        postcode:i.postcode,
-        city:i.city,
-        gender:i.gender,
-        degree:i.degree,
-        firstName:i.firstName,
-        lastName:i.lastName,
-        email:v,
-        phone:i.phone,
-        mobilePhone:i.mobilePhone
-       }));
-      }]],["bossPhone",[function()
-      {
-       return varEmployer.c.phone;
-      },function(v)
-      {
-       var i;
-       Var.Set(varEmployer,(i=varEmployer.c,{
-        company:i.company,
-        street:i.street,
-        postcode:i.postcode,
-        city:i.city,
-        gender:i.gender,
-        degree:i.degree,
-        firstName:i.firstName,
-        lastName:i.lastName,
-        email:i.email,
-        phone:v,
-        mobilePhone:i.mobilePhone
-       }));
-      }]],["bossMobilePhone",[function()
-      {
-       return varEmployer.c.mobilePhone;
-      },function(v)
-      {
-       var i;
-       Var.Set(varEmployer,(i=varEmployer.c,{
-        company:i.company,
-        street:i.street,
-        postcode:i.postcode,
-        city:i.city,
-        gender:i.gender,
-        degree:i.degree,
-        firstName:i.firstName,
-        lastName:i.lastName,
-        email:i.email,
-        phone:i.phone,
-        mobilePhone:v
-       }));
-      }]]])));
-      return Concurrency.Combine(Concurrency.For(map,function(a)
-      {
-       Global.jQuery((function($1)
-       {
-        return function($2)
-        {
-         return $1("[data-update-field='"+Utils.toSafe($2)+"']");
-        };
-       }(Global.id))(a.K)).val(a.V[0]());
-       return Concurrency.Zero();
-      }),Concurrency.Delay(function()
-      {
-       Global.jQuery(".field-updating").each(function($1,el)
-       {
-        el.addEventListener("input",function()
-        {
-         var updateFieldValue;
-         updateFieldValue=Global.String(Global.jQuery(el).data("update-field"));
-         Global.jQuery((function($2)
-         {
-          return function($3)
-          {
-           return $2("[data-update-field='"+Utils.toSafe($3)+"']");
-          };
-         }(Global.id))(updateFieldValue)).each(function($2,updateElement)
-         {
-          var elValue;
-          if(!Unchecked.Equals(updateElement,el))
-           {
-            elValue=Global.String(Global.jQuery(el).val());
-            Global.jQuery(updateElement).val(elValue);
-            (map.get_Item(updateFieldValue))[1](elValue);
-           }
-         });
-         return null;
-        },true);
-       });
-       return Concurrency.Zero();
+      var p,t,currentAndAfter,p$1,htmlPage$1,htmlPage$2,i;
+      p=(t=List.splitAt(varCurrentPageIndex.c-1,varDocument.c.pages),(currentAndAfter=t[1],(p$1=currentAndAfter.$==0?Operators.FailWith("pageList was empty"):currentAndAfter.$0.$==1?[new DocumentPage({
+       $:1,
+       $0:currentAndAfter.$0.$0
+      }),List.T.Empty]:currentAndAfter.$1.$==0?(htmlPage$1=currentAndAfter.$0.$0,[new DocumentPage({
+       $:0,
+       $0:{
+        name:htmlPage$1.name,
+        oTemplateId:htmlPage$1.oTemplateId,
+        pageIndex:htmlPage$1.pageIndex,
+        map:htmlPage$1.map.Add(key,Global.String(Global.jQuery(el).val()))
+       }
+      }),List.T.Empty]):(htmlPage$2=currentAndAfter.$0.$0,[new DocumentPage({
+       $:0,
+       $0:{
+        name:htmlPage$2.name,
+        oTemplateId:htmlPage$2.oTemplateId,
+        pageIndex:htmlPage$2.pageIndex,
+        map:htmlPage$2.map.Add(key,Global.String(Global.jQuery(el).val()))
+       }
+      }),currentAndAfter.$1]),[t[0],p$1[0],p$1[1]])));
+      Var.Set(varDocument,(i=varDocument.c,{
+       id:i.id,
+       name:i.name,
+       pages:List.append(p[0],new List.T({
+        $:1,
+        $0:p[1],
+        $1:p[2]
+       })),
+       email:i.email
       }));
+      Concurrency.Start(fillDocumentValues(),null);
+     }
+     jEl=Global.jQuery(el);
+     key=el.getAttribute("data-html-page-key");
+     htmlPage.map.ContainsKey(key)?(jEl.val(htmlPage.map.get_Item(key)),el.removeEventListener("input",eventAction,true),el.addEventListener("input",eventAction,true)):jEl.val(Global.String(el.getAttribute("data-html-page-value")));
+    }),Concurrency.Zero()))),Concurrency.Delay(function()
+    {
+     var map;
+     map=Map.OfArray(Arrays.ofSeq(List.ofArray([["userDegree",[function()
+     {
+      return varUserValues.c.degree;
+     },function(v)
+     {
+      var i;
+      Var.Set(varUserValues,(i=varUserValues.c,{
+       gender:i.gender,
+       degree:v,
+       firstName:i.firstName,
+       lastName:i.lastName,
+       street:i.street,
+       postcode:i.postcode,
+       city:i.city,
+       phone:i.phone,
+       mobilePhone:i.mobilePhone
+      }));
+     }]],["userFirstName",[function()
+     {
+      return varUserValues.c.firstName;
+     },function(v)
+     {
+      var i;
+      Var.Set(varUserValues,(i=varUserValues.c,{
+       gender:i.gender,
+       degree:i.degree,
+       firstName:v,
+       lastName:i.lastName,
+       street:i.street,
+       postcode:i.postcode,
+       city:i.city,
+       phone:i.phone,
+       mobilePhone:i.mobilePhone
+      }));
+     }]],["userLastName",[function()
+     {
+      return varUserValues.c.lastName;
+     },function(v)
+     {
+      var i;
+      Var.Set(varUserValues,(i=varUserValues.c,{
+       gender:i.gender,
+       degree:i.degree,
+       firstName:i.firstName,
+       lastName:v,
+       street:i.street,
+       postcode:i.postcode,
+       city:i.city,
+       phone:i.phone,
+       mobilePhone:i.mobilePhone
+      }));
+     }]],["userStreet",[function()
+     {
+      return varUserValues.c.street;
+     },function(v)
+     {
+      var i;
+      Var.Set(varUserValues,(i=varUserValues.c,{
+       gender:i.gender,
+       degree:i.degree,
+       firstName:i.firstName,
+       lastName:i.lastName,
+       street:v,
+       postcode:i.postcode,
+       city:i.city,
+       phone:i.phone,
+       mobilePhone:i.mobilePhone
+      }));
+     }]],["userPostcode",[function()
+     {
+      return varUserValues.c.postcode;
+     },function(v)
+     {
+      var i;
+      Var.Set(varUserValues,(i=varUserValues.c,{
+       gender:i.gender,
+       degree:i.degree,
+       firstName:i.firstName,
+       lastName:i.lastName,
+       street:i.street,
+       postcode:v,
+       city:i.city,
+       phone:i.phone,
+       mobilePhone:i.mobilePhone
+      }));
+     }]],["userCity",[function()
+     {
+      return varUserValues.c.city;
+     },function(v)
+     {
+      var i;
+      Var.Set(varUserValues,(i=varUserValues.c,{
+       gender:i.gender,
+       degree:i.degree,
+       firstName:i.firstName,
+       lastName:i.lastName,
+       street:i.street,
+       postcode:i.postcode,
+       city:v,
+       phone:i.phone,
+       mobilePhone:i.mobilePhone
+      }));
+     }]],["userEmail",[function()
+     {
+      return varUserEmail.c;
+     },function(v)
+     {
+      Var.Set(varUserEmail,v);
+     }]],["userPhone",[function()
+     {
+      return varUserValues.c.phone;
+     },function(v)
+     {
+      var i;
+      Var.Set(varUserValues,(i=varUserValues.c,{
+       gender:i.gender,
+       degree:i.degree,
+       firstName:i.firstName,
+       lastName:i.lastName,
+       street:i.street,
+       postcode:i.postcode,
+       city:i.city,
+       phone:v,
+       mobilePhone:i.mobilePhone
+      }));
+     }]],["userMobilePhone",[function()
+     {
+      return varUserValues.c.mobilePhone;
+     },function(v)
+     {
+      var i;
+      Var.Set(varUserValues,(i=varUserValues.c,{
+       gender:i.gender,
+       degree:i.degree,
+       firstName:i.firstName,
+       lastName:i.lastName,
+       street:i.street,
+       postcode:i.postcode,
+       city:i.city,
+       phone:i.phone,
+       mobilePhone:v
+      }));
+     }]],["company",[function()
+     {
+      return varEmployer.c.company;
+     },function(v)
+     {
+      var i;
+      Var.Set(varEmployer,(i=varEmployer.c,{
+       company:v,
+       street:i.street,
+       postcode:i.postcode,
+       city:i.city,
+       gender:i.gender,
+       degree:i.degree,
+       firstName:i.firstName,
+       lastName:i.lastName,
+       email:i.email,
+       phone:i.phone,
+       mobilePhone:i.mobilePhone
+      }));
+     }]],["companyStreet",[function()
+     {
+      return varEmployer.c.street;
+     },function(v)
+     {
+      var i;
+      Var.Set(varEmployer,(i=varEmployer.c,{
+       company:i.company,
+       street:v,
+       postcode:i.postcode,
+       city:i.city,
+       gender:i.gender,
+       degree:i.degree,
+       firstName:i.firstName,
+       lastName:i.lastName,
+       email:i.email,
+       phone:i.phone,
+       mobilePhone:i.mobilePhone
+      }));
+     }]],["companyPostcode",[function()
+     {
+      return varEmployer.c.postcode;
+     },function(v)
+     {
+      var i;
+      Var.Set(varEmployer,(i=varEmployer.c,{
+       company:i.company,
+       street:i.street,
+       postcode:v,
+       city:i.city,
+       gender:i.gender,
+       degree:i.degree,
+       firstName:i.firstName,
+       lastName:i.lastName,
+       email:i.email,
+       phone:i.phone,
+       mobilePhone:i.mobilePhone
+      }));
+     }]],["companyCity",[function()
+     {
+      return varEmployer.c.city;
+     },function(v)
+     {
+      var i;
+      Var.Set(varEmployer,(i=varEmployer.c,{
+       company:i.company,
+       street:i.street,
+       postcode:i.postcode,
+       city:v,
+       gender:i.gender,
+       degree:i.degree,
+       firstName:i.firstName,
+       lastName:i.lastName,
+       email:i.email,
+       phone:i.phone,
+       mobilePhone:i.mobilePhone
+      }));
+     }]],["bossGender",[function()
+     {
+      return Global.String(varEmployer.c.gender);
+     },function(v)
+     {
+      var i;
+      Var.Set(varEmployer,(i=varEmployer.c,{
+       company:i.company,
+       street:i.street,
+       postcode:i.postcode,
+       city:i.city,
+       gender:Gender.fromString(v),
+       degree:i.degree,
+       firstName:i.firstName,
+       lastName:i.lastName,
+       email:i.email,
+       phone:i.phone,
+       mobilePhone:i.mobilePhone
+      }));
+     }]],["bossDegree",[function()
+     {
+      return varEmployer.c.degree;
+     },function(v)
+     {
+      var i;
+      Var.Set(varEmployer,(i=varEmployer.c,{
+       company:i.company,
+       street:i.street,
+       postcode:i.postcode,
+       city:i.city,
+       gender:i.gender,
+       degree:v,
+       firstName:i.firstName,
+       lastName:i.lastName,
+       email:i.email,
+       phone:i.phone,
+       mobilePhone:i.mobilePhone
+      }));
+     }]],["bossFirstName",[function()
+     {
+      return varEmployer.c.firstName;
+     },function(v)
+     {
+      var i;
+      Var.Set(varEmployer,(i=varEmployer.c,{
+       company:i.company,
+       street:i.street,
+       postcode:i.postcode,
+       city:i.city,
+       gender:i.gender,
+       degree:i.degree,
+       firstName:v,
+       lastName:i.lastName,
+       email:i.email,
+       phone:i.phone,
+       mobilePhone:i.mobilePhone
+      }));
+     }]],["bossLastName",[function()
+     {
+      return varEmployer.c.lastName;
+     },function(v)
+     {
+      var i;
+      Var.Set(varEmployer,(i=varEmployer.c,{
+       company:i.company,
+       street:i.street,
+       postcode:i.postcode,
+       city:i.city,
+       gender:i.gender,
+       degree:i.degree,
+       firstName:i.firstName,
+       lastName:v,
+       email:i.email,
+       phone:i.phone,
+       mobilePhone:i.mobilePhone
+      }));
+     }]],["bossEmail",[function()
+     {
+      return varEmployer.c.email;
+     },function(v)
+     {
+      var i;
+      Var.Set(varEmployer,(i=varEmployer.c,{
+       company:i.company,
+       street:i.street,
+       postcode:i.postcode,
+       city:i.city,
+       gender:i.gender,
+       degree:i.degree,
+       firstName:i.firstName,
+       lastName:i.lastName,
+       email:v,
+       phone:i.phone,
+       mobilePhone:i.mobilePhone
+      }));
+     }]],["bossPhone",[function()
+     {
+      return varEmployer.c.phone;
+     },function(v)
+     {
+      var i;
+      Var.Set(varEmployer,(i=varEmployer.c,{
+       company:i.company,
+       street:i.street,
+       postcode:i.postcode,
+       city:i.city,
+       gender:i.gender,
+       degree:i.degree,
+       firstName:i.firstName,
+       lastName:i.lastName,
+       email:i.email,
+       phone:v,
+       mobilePhone:i.mobilePhone
+      }));
+     }]],["bossMobilePhone",[function()
+     {
+      return varEmployer.c.mobilePhone;
+     },function(v)
+     {
+      var i;
+      Var.Set(varEmployer,(i=varEmployer.c,{
+       company:i.company,
+       street:i.street,
+       postcode:i.postcode,
+       city:i.city,
+       gender:i.gender,
+       degree:i.degree,
+       firstName:i.firstName,
+       lastName:i.lastName,
+       email:i.email,
+       phone:i.phone,
+       mobilePhone:v
+      }));
+     }]]])));
+     return Concurrency.Combine(Concurrency.For(map,function(a)
+     {
+      Global.jQuery((function($1)
+      {
+       return function($2)
+       {
+        return $1("[data-update-field='"+Utils.toSafe($2)+"']");
+       };
+      }(Global.id))(a.K)).val(a.V[0]());
+      return Concurrency.Zero();
+     }),Concurrency.Delay(function()
+     {
+      Global.jQuery(".field-updating").each(function($1,el)
+      {
+       function eventAction()
+       {
+        var updateFieldValue;
+        updateFieldValue=Global.String(Global.jQuery(el).data("update-field"));
+        Global.jQuery((function($2)
+        {
+         return function($3)
+         {
+          return $2("[data-update-field='"+Utils.toSafe($3)+"']");
+         };
+        }(Global.id))(updateFieldValue)).each(function($2,updateElement)
+        {
+         var elValue;
+         elValue=Global.String(Global.jQuery(el).val());
+         (map.get_Item(updateFieldValue))[1](elValue);
+         !Unchecked.Equals(updateElement,el)||true?Global.jQuery(updateElement).val(elValue):void 0;
+        });
+        updateEditUserValuesDiv();
+        updateAddEmployerDiv();
+       }
+       el.removeEventListener("input",eventAction,true);
+       el.addEventListener("input",eventAction,true);
+      });
+      return Concurrency.Zero();
      }));
     }));
    });
@@ -933,14 +1227,14 @@
    {
     return function()
     {
-     var b$2;
-     return Concurrency.Start((b$2=null,Concurrency.Delay(function()
+     var b$1;
+     return Concurrency.Start((b$1=null,Concurrency.Delay(function()
      {
-      var newDocumentName,newDocumentEmailSubject,newDocumentEmailBody;
+      var newDocumentName;
       newDocumentName=Global.String(Global.document.getElementById("txtNewTemplateName").value);
-      newDocumentEmailSubject=Global.String(Global.document.getElementById("txtNewTemplateEmailSubject").value);
-      newDocumentEmailBody=Global.String(Global.document.getElementById("txtNewTemplateEmailBody").value);
-      return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.addNewDocument:408203192",[newDocumentName,newDocumentEmailSubject,newDocumentEmailBody]),function()
+      Global.String(Global.document.getElementById("txtNewTemplateEmailSubject").value);
+      Global.String(Global.document.getElementById("txtNewTemplateEmailBody").value);
+      return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.addNewDocument:-1276324058",[newDocumentName]),function()
       {
        addSelectDocumentName(newDocumentName);
        return Concurrency.Bind(setNewDocumentEmpty(),function()
@@ -957,8 +1251,8 @@
   }
   function setNewDocumentEmpty()
   {
-   var b$2;
-   b$2=null;
+   var b$1;
+   b$1=null;
    return Concurrency.Delay(function()
    {
     Var.Set(varNewDocument,Doc.Element("div",[],[]));
@@ -973,8 +1267,8 @@
   }
   function indexChanged_selectDocumentName()
   {
-   var b$2;
-   b$2=null;
+   var b$1;
+   b$1=null;
    return Concurrency.Delay(function()
    {
     return Concurrency.Bind(setDocument(),function()
@@ -988,8 +1282,8 @@
   }
   function indexChanged_selectHtmlPageTemplate()
   {
-   var b$2;
-   b$2=null;
+   var b$1;
+   b$1=null;
    return Concurrency.Delay(function()
    {
     return Concurrency.Bind(loadPageTemplate(),function()
@@ -1000,8 +1294,8 @@
   }
   function loadPageTemplate()
   {
-   var b$2;
-   b$2=null;
+   var b$1;
+   b$1=null;
    return Concurrency.Delay(function()
    {
     Global.jQuery("#insertDiv").remove();
@@ -1041,9 +1335,31 @@
    Var.Set(varDisplayedDocument,Doc.Element("form",[AttrProxy.Create("enctype","multipart/form-data"),AttrProxy.Create("method","POST"),AttrProxy.Create("action","")],[Doc.Element("input",[AttrProxy.Create("type","file"),AttrProxy.Create("name","file")],[]),Doc.Element("input",[AttrProxy.Create("type","hidden"),AttrProxy.Create("name","documentId"),AttrProxy.Create("value",(c=Global.document.getElementById("selectDocumentName").selectedIndex+1,Global.String(c)))],[]),Doc.Element("input",[AttrProxy.Create("type","hidden"),AttrProxy.Create("name","pageIndex"),AttrProxy.Create("value",Global.String(varCurrentPageIndex))],[]),Doc.Element("input",[AttrProxy.Create("type","submit")],[])]));
   }
   varDocument=Var.CreateWaiting();
-  varUserValues=Var.CreateWaiting();
+  varUserValues=Var.Create$1({
+   gender:Gender.Male,
+   degree:"",
+   firstName:"",
+   lastName:"",
+   street:"",
+   postcode:"",
+   city:"",
+   phone:"",
+   mobilePhone:""
+  });
   varUserEmail=Var.CreateWaiting();
-  varEmployer=Var.CreateWaiting();
+  varEmployer=Var.Create$1({
+   company:"",
+   street:"",
+   postcode:"",
+   city:"",
+   gender:Gender.Male,
+   degree:"",
+   firstName:"",
+   lastName:"",
+   email:"",
+   phone:"",
+   mobilePhone:""
+  });
   varSelectDocumentName=Var.Create$1(Doc.Element("div",[],[]));
   varSelectHtmlPageTemplate=Var.Create$1(Doc.Element("div",[],[]));
   varNewDocument=Var.Create$1(Doc.Element("div",[],[]));
@@ -1053,13 +1369,284 @@
   varPageCount=Var.Create$1(1);
   varDisplayedDocument=Var.Create$1(Doc.Element("div",[],[]));
   varAddPage=Var.Create$1(Doc.Element("div",[],[]));
-  saveDocument=(b=null,Concurrency.Delay(function()
+  varEditUserValuesDiv=Var.Create$1(Doc.Element("div",[],[Doc.TextView(View.Map(function(x)
   {
-   Global.alert(Global.String(Global.jQuery("#selectDocumentName").val()));
-   Global.String(Global.jQuery("#selectDocumentName").val());
-   return Concurrency.Zero();
-  }));
-  Concurrency.Start((b$1=null,Concurrency.Delay(function()
+   return x.firstName;
+  },varUserValues.v)),createInput("Degree",varUserValues.c.degree,function(v)
+  {
+   var i;
+   Var.Set(varUserValues,(i=varUserValues.c,{
+    gender:i.gender,
+    degree:v,
+    firstName:i.firstName,
+    lastName:i.lastName,
+    street:i.street,
+    postcode:i.postcode,
+    city:i.city,
+    phone:i.phone,
+    mobilePhone:i.mobilePhone
+   }));
+  }),createInput("First name",varUserValues.c.firstName,function(v)
+  {
+   var i;
+   Var.Set(varUserValues,(i=varUserValues.c,{
+    gender:i.gender,
+    degree:i.degree,
+    firstName:v,
+    lastName:i.lastName,
+    street:i.street,
+    postcode:i.postcode,
+    city:i.city,
+    phone:i.phone,
+    mobilePhone:i.mobilePhone
+   }));
+  }),createInput("Last name",varUserValues.c.lastName,function(v)
+  {
+   var i;
+   Var.Set(varUserValues,(i=varUserValues.c,{
+    gender:i.gender,
+    degree:i.degree,
+    firstName:i.firstName,
+    lastName:v,
+    street:i.street,
+    postcode:i.postcode,
+    city:i.city,
+    phone:i.phone,
+    mobilePhone:i.mobilePhone
+   }));
+  }),createInput("Street",varUserValues.c.street,function(v)
+  {
+   var i;
+   Var.Set(varUserValues,(i=varUserValues.c,{
+    gender:i.gender,
+    degree:i.degree,
+    firstName:i.firstName,
+    lastName:i.lastName,
+    street:v,
+    postcode:i.postcode,
+    city:i.city,
+    phone:i.phone,
+    mobilePhone:i.mobilePhone
+   }));
+  }),createInput("Postcode",varUserValues.c.postcode,function(v)
+  {
+   var i;
+   Var.Set(varUserValues,(i=varUserValues.c,{
+    gender:i.gender,
+    degree:i.degree,
+    firstName:i.firstName,
+    lastName:i.lastName,
+    street:i.street,
+    postcode:v,
+    city:i.city,
+    phone:i.phone,
+    mobilePhone:i.mobilePhone
+   }));
+  }),createInput("City",varUserValues.c.city,function(v)
+  {
+   var i;
+   Var.Set(varUserValues,(i=varUserValues.c,{
+    gender:i.gender,
+    degree:i.degree,
+    firstName:i.firstName,
+    lastName:i.lastName,
+    street:i.street,
+    postcode:i.postcode,
+    city:v,
+    phone:i.phone,
+    mobilePhone:i.mobilePhone
+   }));
+  }),createInput("Phone",varUserValues.c.phone,function(v)
+  {
+   var i;
+   Var.Set(varUserValues,(i=varUserValues.c,{
+    gender:i.gender,
+    degree:i.degree,
+    firstName:i.firstName,
+    lastName:i.lastName,
+    street:i.street,
+    postcode:i.postcode,
+    city:i.city,
+    phone:v,
+    mobilePhone:i.mobilePhone
+   }));
+  }),createInput("Mobile phone",varUserValues.c.mobilePhone,function(v)
+  {
+   var i;
+   Var.Set(varUserValues,(i=varUserValues.c,{
+    gender:i.gender,
+    degree:i.degree,
+    firstName:i.firstName,
+    lastName:i.lastName,
+    street:i.street,
+    postcode:i.postcode,
+    city:i.city,
+    phone:i.phone,
+    mobilePhone:v
+   }));
+  })]));
+  varAddEmployerDiv=Var.Create$1(Doc.Element("div",[],[createInput("Company",varEmployer.c.company,function(v)
+  {
+   var i;
+   Var.Set(varEmployer,(i=varEmployer.c,{
+    company:v,
+    street:i.street,
+    postcode:i.postcode,
+    city:i.city,
+    gender:i.gender,
+    degree:i.degree,
+    firstName:i.firstName,
+    lastName:i.lastName,
+    email:i.email,
+    phone:i.phone,
+    mobilePhone:i.mobilePhone
+   }));
+  }),createInput("Degree",varEmployer.c.degree,function(v)
+  {
+   var i;
+   Var.Set(varEmployer,(i=varEmployer.c,{
+    company:i.company,
+    street:i.street,
+    postcode:i.postcode,
+    city:i.city,
+    gender:i.gender,
+    degree:v,
+    firstName:i.firstName,
+    lastName:i.lastName,
+    email:i.email,
+    phone:i.phone,
+    mobilePhone:i.mobilePhone
+   }));
+  }),createInput("First name",varEmployer.c.firstName,function(v)
+  {
+   var i;
+   Var.Set(varEmployer,(i=varEmployer.c,{
+    company:i.company,
+    street:i.street,
+    postcode:i.postcode,
+    city:i.city,
+    gender:i.gender,
+    degree:i.degree,
+    firstName:v,
+    lastName:i.lastName,
+    email:i.email,
+    phone:i.phone,
+    mobilePhone:i.mobilePhone
+   }));
+  }),createInput("Last name",varEmployer.c.lastName,function(v)
+  {
+   var i;
+   Var.Set(varEmployer,(i=varEmployer.c,{
+    company:i.company,
+    street:i.street,
+    postcode:i.postcode,
+    city:i.city,
+    gender:i.gender,
+    degree:i.degree,
+    firstName:i.firstName,
+    lastName:v,
+    email:i.email,
+    phone:i.phone,
+    mobilePhone:i.mobilePhone
+   }));
+  }),createInput("Street",varEmployer.c.street,function(v)
+  {
+   var i;
+   Var.Set(varEmployer,(i=varEmployer.c,{
+    company:i.company,
+    street:v,
+    postcode:i.postcode,
+    city:i.city,
+    gender:i.gender,
+    degree:i.degree,
+    firstName:i.firstName,
+    lastName:i.lastName,
+    email:i.email,
+    phone:i.phone,
+    mobilePhone:i.mobilePhone
+   }));
+  }),createInput("Postcode",varEmployer.c.postcode,function(v)
+  {
+   var i;
+   Var.Set(varEmployer,(i=varEmployer.c,{
+    company:i.company,
+    street:i.street,
+    postcode:v,
+    city:i.city,
+    gender:i.gender,
+    degree:i.degree,
+    firstName:i.firstName,
+    lastName:i.lastName,
+    email:i.email,
+    phone:i.phone,
+    mobilePhone:i.mobilePhone
+   }));
+  }),createInput("City",varEmployer.c.city,function(v)
+  {
+   var i;
+   Var.Set(varEmployer,(i=varEmployer.c,{
+    company:i.company,
+    street:i.street,
+    postcode:i.postcode,
+    city:v,
+    gender:i.gender,
+    degree:i.degree,
+    firstName:i.firstName,
+    lastName:i.lastName,
+    email:i.email,
+    phone:i.phone,
+    mobilePhone:i.mobilePhone
+   }));
+  }),createInput("Email",varEmployer.c.email,function(v)
+  {
+   var i;
+   Var.Set(varEmployer,(i=varEmployer.c,{
+    company:i.company,
+    street:i.street,
+    postcode:i.postcode,
+    city:i.city,
+    gender:i.gender,
+    degree:i.degree,
+    firstName:i.firstName,
+    lastName:i.lastName,
+    email:v,
+    phone:i.phone,
+    mobilePhone:i.mobilePhone
+   }));
+  }),createInput("Phone",varEmployer.c.phone,function(v)
+  {
+   var i;
+   Var.Set(varEmployer,(i=varEmployer.c,{
+    company:i.company,
+    street:i.street,
+    postcode:i.postcode,
+    city:i.city,
+    gender:i.gender,
+    degree:i.degree,
+    firstName:i.firstName,
+    lastName:i.lastName,
+    email:i.email,
+    phone:v,
+    mobilePhone:i.mobilePhone
+   }));
+  }),createInput("Mobile phone",varEmployer.c.mobilePhone,function(v)
+  {
+   var i;
+   Var.Set(varEmployer,(i=varEmployer.c,{
+    company:i.company,
+    street:i.street,
+    postcode:i.postcode,
+    city:i.city,
+    gender:i.gender,
+    degree:i.degree,
+    firstName:i.firstName,
+    lastName:i.lastName,
+    email:i.email,
+    phone:i.phone,
+    mobilePhone:v
+   }));
+  })]));
+  Concurrency.Start((b=null,Concurrency.Delay(function()
   {
    return Concurrency.Bind(setSelectDocumentName(),function()
    {
@@ -1095,9 +1682,12 @@
            });
           })),Concurrency.Delay(function()
           {
-           return Concurrency.Bind(fillDocumentValues(),function()
+           return Concurrency.Bind(setUserValues(),function()
            {
-            return Concurrency.Return(null);
+            return Concurrency.Bind(fillDocumentValues(),function()
+            {
+             return Concurrency.Return(null);
+            });
            });
           }));
          });
@@ -1108,7 +1698,19 @@
     }));
    });
   })),null);
-  return Doc.Element("div",[],[Doc.EmbedView(varSelectDocumentName.v),Doc.EmbedView(varNewDocument.v),Doc.EmbedView(varPageButtonsDiv.v),Doc.EmbedView(varAddPage.v),Doc.EmbedView(varSelectHtmlPageTemplate.v),Doc.EmbedView(varDisplayedDocument.v)]);
+  return Doc.Element("div",[],[Doc.EmbedView(varSelectDocumentName.v),Doc.EmbedView(varNewDocument.v),Doc.EmbedView(varPageButtonsDiv.v),Doc.EmbedView(varAddPage.v),Doc.EmbedView(varSelectHtmlPageTemplate.v),Doc.EmbedView(varDisplayedDocument.v),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.EmbedView(varEditUserValuesDiv.v),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.EmbedView(varAddEmployerDiv.v),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("value","Save as new document"),AttrModule.Handler("click",function()
+  {
+   return function()
+   {
+    return Concurrency.Start(saveNewDocument(),null);
+   };
+  })],[]),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("value","Overwrite document"),AttrModule.Handler("click",function()
+  {
+   return function()
+   {
+    return Concurrency.Start(overwriteDocument(),null);
+   };
+  })],[])]);
  };
  Client.showSentJobApplications=function()
  {

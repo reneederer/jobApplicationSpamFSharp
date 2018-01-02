@@ -99,11 +99,16 @@ module Database =
 
     let addUserValues (dbConn : NpgsqlConnection) (userValues : UserValues) (userId : int) =
         log.Debug(sprintf "%A %i" userValues userId)
-        use command = new NpgsqlCommand("""
-            insert into userValues
+        use command =
+            new NpgsqlCommand(
+                "insert into userValues
                 (userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone)
-                values (:userId, :gender, :degree, :firstName, :lastName, :street, :postcode, :city, :phone, :mobilePhone) returning id"""
-            , dbConn)
+                values (:userId, :gender, :degree, :firstName, :lastName, :street, :postcode, :city, :phone, :mobilePhone)
+                where userId = :userId
+                on conflict(userId) do
+                update set (gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone)
+                        = (:gender, :degree, :firstName, :lastName, :street, :postcode, :city, :phone, :mobilePhone)"
+                , dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("gender", userValues.gender.ToString())) |> ignore
         command.Parameters.Add(new NpgsqlParameter("degree", userValues.degree)) |> ignore
@@ -114,9 +119,9 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("city", userValues.city)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("phone", userValues.phone)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("mobilePhone", userValues.mobilePhone)) |> ignore
-        let addedUserValuesId = command.ExecuteScalar() |> string |> Int32.Parse
-        log.Debug(sprintf "%A %i = %i" userValues userId addedUserValuesId)
-        addedUserValuesId
+        let affectedRowCount = command.ExecuteNonQuery()
+        log.Debug(sprintf "%A %i = %i" userValues userId affectedRowCount)
+        affectedRowCount
     
     let userEmailExists (dbConn : NpgsqlConnection) (email : string) =
         log.Debug(sprintf "%s" email)
@@ -182,7 +187,7 @@ module Database =
             failwith <| "Email does not exist or guid was already null: " + email
         log.Debug(sprintf "%s = ()" email)
 
-    let insertSentApplication (dbConn : NpgsqlConnection) (userId : int) (employerId : int) (documentId : int) =
+    let insertSentApplication (dbConn : NpgsqlConnection) (userId : int) (employerId : int) (documentId : int) = //TODO
         log.Debug(sprintf "%i %i %i" userId employerId documentId)
         use command = new NpgsqlCommand("insert into sentApplication(userId, employerId, documentId) values(:userId, :employerId, :documentId) returning id", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
@@ -200,22 +205,85 @@ module Database =
         log.Debug(sprintf "%i %i %i = ()" userId employerId documentId)
 
 
+    let overwriteDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) =
+        log.Debug(sprintf "%A %i" document userId)
+        use command = new NpgsqlCommand("update document set name = :name where documentId = :documentId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("name", document.name)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter(":documentId", document.id)) |> ignore
+        command.ExecuteNonQuery() |> ignore
+        command.Dispose()
+        use command = new NpgsqlCommand("update documentEmail set (subject, body) = (:subject, :body) where documentId = :documentId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("subject", document.email.subject)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter(":body", document.email.body)) |> ignore
+        command.ExecuteNonQuery() |> ignore
+        command.Dispose()
+        for page in document.pages do
+            match page with
+            | HtmlPage htmlPage ->
+                use command = new NpgsqlCommand("update htmlPage set (templateId, pageIndex, name) = (:templateId, :pageIndex, :name) where documentId = :documentId and pageIndex = :pageIndex", dbConn)
+                command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("templateId", htmlPage.oTemplateId |> Option.get)) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("pageIndex", htmlPage.pageIndex)) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("name", htmlPage.name)) |> ignore
+                command.ExecuteNonQuery() |> ignore
+                command.Dispose()
+                for mapItem in htmlPage.map do
+                    use command = new NpgsqlCommand("update pageMap set (pageIndex, key, value) = (:pageIndex, :key, :value) where documentId = :documentId and pageIndex = :pageIndex", dbConn)
+                    command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
+                    command.Parameters.Add(new NpgsqlParameter("pageIndex", htmlPage.pageIndex)) |> ignore
+                    command.Parameters.Add(new NpgsqlParameter("key", mapItem.Key)) |> ignore
+                    command.Parameters.Add(new NpgsqlParameter("value", mapItem.Value)) |> ignore
+                    command.ExecuteNonQuery() |> ignore
+                    command.Dispose()
+            | FilePage filePage ->
+                use command = new NpgsqlCommand("update FilePage set (path, pageIndex, name) values (:path, :pageIndex, :name) where documentId = :documentId and pageIndex = :pageIndex", dbConn)
+                command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("path", filePage.path)) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("pageIndex", filePage.pageIndex)) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("name", filePage.name)) |> ignore
+                let pageId = command.ExecuteScalar() |> string |> Int32.Parse
+                command.Dispose()
+        log.Debug(sprintf "%A %i = %i" document userId document.id)
+        document.id
     
-    let saveDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) =
+    let saveNewDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) =
         log.Debug(sprintf "%A %i" document userId)
         use command = new NpgsqlCommand("insert into document (userId, name, emailSubject, emailBody) values (:userId, :name, '', '') returning id", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("name", document.name)) |> ignore
         let documentId = command.ExecuteScalar() |> string |> Int32.Parse
         command.Dispose()
+        use command = new NpgsqlCommand("insert into documentEmail (subject, body) values (:subject, :body)", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("subject", document.email.subject)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter(":body", document.email.body)) |> ignore
+        command.ExecuteNonQuery() |> ignore
+        command.Dispose()
         for page in document.pages do
             match page with
             | HtmlPage htmlPage ->
-                use command = new NpgsqlCommand("insert into htmlPage(documentId, templateId, name) values (2, 1, 'Anschreiben') returning id", dbConn)
-                command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+                use command = new NpgsqlCommand("insert into htmlPage(documentId, templateId, pageIndex, name) values (:documentId, :templateId, :pageIndex, :name) returning id", dbConn)
+                command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("templateId", htmlPage.oTemplateId |> Option.get)) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("pageIndex", htmlPage.pageIndex)) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("name", htmlPage.name)) |> ignore
                 let pageId = command.ExecuteScalar() |> string |> Int32.Parse
                 command.Dispose()
-            | FilePage _ -> ()
+                for mapItem in htmlPage.map do
+                    use command = new NpgsqlCommand("insert into pageMap(documentId, pageIndex, key, value) values (:documentId, :pageIndex, :key, :value)", dbConn)
+                    command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+                    command.Parameters.Add(new NpgsqlParameter("pageIndex", htmlPage.pageIndex)) |> ignore
+                    command.Parameters.Add(new NpgsqlParameter("key", mapItem.Key)) |> ignore
+                    command.Parameters.Add(new NpgsqlParameter("value", mapItem.Value)) |> ignore
+                    command.ExecuteNonQuery() |> ignore
+                    command.Dispose()
+            | FilePage filePage ->
+                use command = new NpgsqlCommand("insert into FilePage(documentId, path, pageIndex, name) values (:documentId, :path, :pageIndex, :name) returning id", dbConn)
+                command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("path", filePage.path)) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("pageIndex", filePage.pageIndex)) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("name", filePage.name)) |> ignore
+                let pageId = command.ExecuteScalar() |> string |> Int32.Parse
+                command.Dispose()
         log.Debug(sprintf "%A %i = %i" document userId documentId)
         documentId
        
@@ -227,6 +295,15 @@ module Database =
         let documentName = reader.GetString(0)
         reader.Dispose()
         command.Dispose()
+
+        use command = new NpgsqlCommand("select subject, body from documentEmail where id = :documentId limit 1", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        use reader = command.ExecuteReader()
+        reader.Read() |> ignore
+        let emailSubject, emailBody = reader.GetString(0), reader.GetString(1)
+        reader.Dispose()
+        command.Dispose()
+
 
         use command = new NpgsqlCommand("select id, templateId, pageIndex, name from htmlPage where documentId = :documentId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
@@ -274,8 +351,10 @@ module Database =
                 )
 
 
-        { name = documentName
+        { id = documentId
+          name = documentName
           pages = htmlPages @ filePages
+          email = {subject = emailSubject; body = emailBody}
         }
     
     let getDocumentOffset (dbConn : NpgsqlConnection) (userId : int) (documentOffset : int) =
@@ -332,27 +411,6 @@ module Database =
         [ while reader.Read() do
             yield { name = reader.GetString(0); oTemplateId = if reader.IsDBNull(0) then None else Some <| reader.GetInt32(1) } ]
 
-    (*let getPageMapOffset (dbConn : NpgsqlConnection) (userId : int) (documentIndex : int) =
-        use command = new NpgsqlCommand("select pageIndex, key, value from pageMap where userId = :userId and documentId = (select documentId from document where userId = :userId offset :documentIndex limit 1) order by pageIndex", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("documentIndex", documentIndex)) |> ignore
-        use reader = command.ExecuteReader()
-        let mutable lastPageIndex = 1
-        let mutable (l:array<array<string*string>>) = [| [||] |]
-        let mutable currentPageIndex = reader.GetInt32(0)
-        while reader.Read() do
-            if currentPageIndex <> lastPageIndex && currentPageIndex <> lastPageIndex + 1
-            then
-                failwith "Something was wrong with the page indices"
-            elif currentPageIndex = lastPageIndex + 1
-            then
-                l <- Array.append l [||]
-                currentPageIndex <- lastPageIndex
-            let last = Array.append (Array.last l) [| reader.GetString 1, reader.GetString 2 |]
-            let init = Array.take (currentPageIndex - 1) l
-            l <- Array.append init [|last|]
-        l
-        *)
     
     let getLastEditedDocumentId (dbConn : NpgsqlConnection) (userId : int) =
         use command = new NpgsqlCommand("select documentId from lastEditedDocumentId where userId = :userId limit 1", dbConn)
@@ -368,6 +426,10 @@ module Database =
         oDocumentId
 
     let setLastEditedDocumentId (dbConn : NpgsqlConnection) (userId : int) (documentId : int)=
+        use command = new NpgsqlCommand("delete from lastEditedDocumentId where userId = :userId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        command.ExecuteNonQuery() |> ignore
+        command.Dispose()
         use command = new NpgsqlCommand("insert into lastEditedDocumentId (documentId, userId) values (:documentId, :userId)", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
@@ -402,12 +464,10 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("name", Path.GetFileName(path))) |> ignore
         command.ExecuteNonQuery() |> ignore
 
-    let addNewDocument (dbConn : NpgsqlConnection) (userId : int) (name : string) (emailSubject : string) (emailBody : string) =
+    let addNewDocument (dbConn : NpgsqlConnection) (userId : int) (name : string) =
         use command = new NpgsqlCommand("insert into document (userId, name, emailSubject, emailBody) values (:userId, :name, :emailSubject, :emailBody)", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("name", name)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("emailSubject", emailSubject)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("emailBody", emailBody)) |> ignore
         command.ExecuteNonQuery() |> ignore
 
     let addHtmlPage dbConn (documentId : int) (oTemplateId : option<int>) (pageIndex : int) (name : string) =

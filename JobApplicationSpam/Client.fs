@@ -27,8 +27,11 @@ module Client =
     open WebSharper.UI.Next.Html.Tags
     open System.Collections
     open WebSharper.UI.Next.CSharp.Client.Html.SvgElements
-    open Hopac.Stream
-    open Hopac.Stream.Src
+    open Hopac.Hopac
+
+    let myField = "abc"
+
+    type internal Marker = interface end
 
     [<JavaScript>]
     type Language =
@@ -222,10 +225,10 @@ module Client =
     [<JavaScript>]
     let templates () = 
         let varDocument = Var.CreateWaiting()
-        let varUserValues = Var.CreateWaiting()
-        let varUserEmail = Var.CreateWaiting()
-        let varEmployer = Var.CreateWaiting()
-        let varSelectDocumentName = Var.Create(div [])
+        let varUserValues : Var<UserValues> = Var.Create<UserValues>({gender=Gender.Male;degree="";firstName="";lastName="";street="";postcode="";city="";phone="";mobilePhone=""})
+        let varUserEmail = Var.CreateWaiting<string>()
+        let varEmployer = Var.Create<Employer>({company="";gender=Gender.Male;degree="";firstName="";lastName="";street="";postcode="";city="";email="";phone="";mobilePhone=""})
+        let varSelectDocumentName = Var.Create<Doc>(div [])
         let varSelectHtmlPageTemplate = Var.Create(div [])
         let varNewDocument = Var.Create(div [])
         let varPageButtonsDiv = Var.Create(div [])
@@ -234,9 +237,81 @@ module Client =
         let varPageCount = Var.Create(1)
         let varDisplayedDocument = Var.Create(div [] :> Doc)
         let varAddPage = Var.Create (div [] :> Doc)
+
+        let rec createInput t v updateF =
+          div
+            [ text t
+              br []
+              inputAttr [attr.value v; on.input (fun el _ -> updateF el?value; fillDocumentValues() |> Async.Start)] []
+              br[]
+              br[]
+            ]
+          :> Doc
+
+        and varEditUserValuesDiv =
+            Var.Create(
+                div
+                  [ textView (varUserValues.View.Map (fun x -> x.firstName))
+                    createInput "Degree" varUserValues.Value.degree (fun v -> varUserValues.Value <- { varUserValues.Value with degree = v })
+                    createInput "First name" varUserValues.Value.firstName (fun v -> varUserValues.Value <- { varUserValues.Value with firstName = v })
+                    createInput "Last name" varUserValues.Value.lastName (fun v -> varUserValues.Value <- { varUserValues.Value with lastName = v })
+                    createInput "Street" varUserValues.Value.street (fun v -> varUserValues.Value <- { varUserValues.Value with street = v })
+                    createInput "Postcode" varUserValues.Value.postcode (fun v -> varUserValues.Value <- { varUserValues.Value with postcode = v })
+                    createInput "City" varUserValues.Value.city (fun v -> varUserValues.Value <- { varUserValues.Value with city = v })
+                    createInput "Phone" varUserValues.Value.phone (fun v -> varUserValues.Value <- { varUserValues.Value with phone = v })
+                    createInput "Mobile phone" varUserValues.Value.mobilePhone (fun v -> varUserValues.Value <- { varUserValues.Value with mobilePhone = v })
+                  ]
+            )
+        and updateEditUserValuesDiv() =
+            varEditUserValuesDiv.Value <-
+                div
+                  [ textView (varUserValues.View.Map (fun x -> x.firstName))
+                    createInput "Degree" varUserValues.Value.degree (fun v -> varUserValues.Value <- { varUserValues.Value with degree = v })
+                    createInput "First name" varUserValues.Value.firstName (fun v -> varUserValues.Value <- { varUserValues.Value with firstName = v })
+                    createInput "Last name" varUserValues.Value.lastName (fun v -> varUserValues.Value <- { varUserValues.Value with lastName = v })
+                    createInput "Street" varUserValues.Value.street (fun v -> varUserValues.Value <- { varUserValues.Value with street = v })
+                    createInput "Postcode" varUserValues.Value.postcode (fun v -> varUserValues.Value <- { varUserValues.Value with postcode = v })
+                    createInput "City" varUserValues.Value.city (fun v -> varUserValues.Value <- { varUserValues.Value with city = v })
+                    createInput "Phone" varUserValues.Value.phone (fun v -> varUserValues.Value <- { varUserValues.Value with phone = v })
+                    createInput "Mobile phone" varUserValues.Value.mobilePhone (fun v -> varUserValues.Value <- { varUserValues.Value with mobilePhone = v })
+                  ]
+
+        and varAddEmployerDiv =
+            Var.Create(
+                div
+                  [ createInput "Company" varEmployer.Value.company (fun v -> varEmployer.Value <- { varEmployer.Value with company = v })
+                    createInput "Degree" varEmployer.Value.degree (fun v -> varEmployer.Value <- { varEmployer.Value with degree = v })
+                    createInput "First name" varEmployer.Value.firstName (fun v -> varEmployer.Value <- { varEmployer.Value with firstName = v })
+                    createInput "Last name" varEmployer.Value.lastName (fun v -> varEmployer.Value <- { varEmployer.Value with lastName = v })
+                    createInput "Street" varEmployer.Value.street (fun v -> varEmployer.Value <- { varEmployer.Value with street = v })
+                    createInput "Postcode" varEmployer.Value.postcode (fun v -> varEmployer.Value <- { varEmployer.Value with postcode = v })
+                    createInput "City" varEmployer.Value.city (fun v -> varEmployer.Value <- { varEmployer.Value with city = v })
+                    createInput "Email"varEmployer.Value.email  (fun v -> varEmployer.Value <- { varEmployer.Value with email = v })
+                    createInput "Phone" varEmployer.Value.phone (fun v -> varEmployer.Value <- { varEmployer.Value with phone = v })
+                    createInput "Mobile phone" varEmployer.Value.mobilePhone (fun v -> varEmployer.Value <- { varEmployer.Value with mobilePhone = v })
+                  ]
+            )
+        and updateAddEmployerDiv () =
+            varAddEmployerDiv.Value <-
+                div
+                  [ createInput "Company" varEmployer.Value.company (fun v -> varEmployer.Value <- { varEmployer.Value with company = v })
+                    createInput "Degree" varEmployer.Value.degree (fun v -> varEmployer.Value <- { varEmployer.Value with degree = v })
+                    createInput "First name" varEmployer.Value.firstName (fun v -> varEmployer.Value <- { varEmployer.Value with firstName = v })
+                    createInput "Last name" varEmployer.Value.lastName (fun v -> varEmployer.Value <- { varEmployer.Value with lastName = v })
+                    createInput "Street" varEmployer.Value.street (fun v -> varEmployer.Value <- { varEmployer.Value with street = v })
+                    createInput "Postcode" varEmployer.Value.postcode (fun v -> varEmployer.Value <- { varEmployer.Value with postcode = v })
+                    createInput "City" varEmployer.Value.city (fun v -> varEmployer.Value <- { varEmployer.Value with city = v })
+                    createInput "Email"varEmployer.Value.email  (fun v -> varEmployer.Value <- { varEmployer.Value with email = v })
+                    createInput "Phone" varEmployer.Value.phone (fun v -> varEmployer.Value <- { varEmployer.Value with phone = v })
+                    createInput "Mobile phone" varEmployer.Value.mobilePhone (fun v -> varEmployer.Value <- { varEmployer.Value with mobilePhone = v })
+                  ]
+
+
+
+
         
 
-        let rec setSelectDocumentName() =
+        and setSelectDocumentName() =
             async {
                 let! documentNames = Server.getDocumentNames()
                 varSelectDocumentName.Value <-
@@ -263,13 +338,15 @@ module Client =
                           []
                       ]
             }
-        and saveDocument =
+        and saveNewDocument () =
             async {
-                JS.Alert(JQuery("#selectDocumentName").Val() |> string)
-                let document : Document =
-                    { name = JQuery("#selectDocumentName").Val() |> string
-                    ; pages = []
-                    }
+                let! _ =  Server.saveNewDocument varDocument.Value
+                ()
+            }
+
+        and overwriteDocument () =
+            async {
+                let! _ =  Server.overwriteDocument varDocument.Value
                 ()
             }
         
@@ -449,32 +526,21 @@ module Client =
                     ()
             }
         
+        and setUserValues() =
+            async {
+                let! userValues = Server.getCurrentUserValues()
+                let! userEmail = Server.getCurrentUserEmail()
+                varUserValues.Value <- userValues
+                varUserEmail.Value <- userEmail
+                updateEditUserValuesDiv()
+            }
+
         and fillDocumentValues() =
             async {
-                if varUserValues.Value.JS = null
-                then
-                    let! userValues = Server.getCurrentUserValues()
-                    let! userEmail = Server.getCurrentUserEmail()
-                    let documentIndex = JS.Document.GetElementById("selectDocumentName")?selectedIndex
-                    varUserValues.Value <- userValues
-                    varUserEmail.Value <- userEmail
-                    varEmployer.Value <-
-                        { company = ""
-                          street = ""
-                          postcode = ""
-                          city = ""
-                          gender = Gender.Male
-                          degree = ""
-                          firstName = ""
-                          lastName = ""
-                          email = ""
-                          phone = ""
-                          mobilePhone = ""
-                        }
                    
+                let pageMapElements = JS.Document.QuerySelectorAll("[data-html-page-key]")
                 match varDocument.Value.pages.[varCurrentPageIndex.Value - 1] with
                 | HtmlPage htmlPage ->
-                    let pageMapElements = JS.Document.QuerySelectorAll("[data-html-page-key]")
                     JQuery(pageMapElements).Each
                         (fun (n, (el : Dom.Element)) ->
                             let jEl = JQuery(el)
@@ -482,37 +548,34 @@ module Client =
                             if htmlPage.map.ContainsKey key
                             then
                                 jEl.Val(htmlPage.map.[key]) |> ignore
+                                let eventAction = 
+                                    (fun () ->
+                                          let beforePages, currentPage, afterPages =
+                                              (List.splitAt (varCurrentPageIndex.Value - 1) varDocument.Value.pages)
+                                              |> (fun (before, currentAndAfter) ->
+                                                     let current, after =
+                                                          match currentAndAfter with
+                                                          | [HtmlPage htmlPage] ->
+                                                                HtmlPage { htmlPage with map = Map.add key (JQuery(el).Val() |> string) htmlPage.map }, []
+                                                          | (HtmlPage htmlPage)::xs ->
+                                                                HtmlPage { htmlPage with map = Map.add key (JQuery(el).Val() |> string) htmlPage.map }, xs
+                                                          | [] -> failwith "pageList was empty"
+                                                          | (FilePage filePage)::_ -> FilePage filePage, []
+                                                     before, current, after
+                                                 )
+                                          varDocument.Value <- { varDocument.Value with pages = beforePages @ (currentPage :: afterPages) }
+                                          fillDocumentValues() |> Async.Start
+                                    )
+                                el.RemoveEventListener("input", eventAction, true)
+                                el.AddEventListener( "input", eventAction, true)
+
                             else
                                 jEl.Val(el.GetAttribute("data-html-page-value") |> string) |> ignore
 
-
-
-                            for mapItem in htmlPage.map do
-                                let pageMapElements = JQuery(sprintf "[data-html-page-key!='']")
-                                pageMapElements.Each (fun (n, (el : Dom.Element)) ->
-                                    el.AddEventListener
-                                        ( "input"
-                                        , (fun () ->
-                                              let beforePages, currentPage, afterPages =
-                                                  (List.splitAt (varCurrentPageIndex.Value - 1) varDocument.Value.pages)
-                                                  |> (fun (before, currentAndAfter) ->
-                                                         let current, after =
-                                                              match currentAndAfter with
-                                                              | [HtmlPage htmlPage] ->
-                                                                    HtmlPage { htmlPage with map = Map.add mapItem.Key (JQuery(el).Val() |> string) htmlPage.map }, []
-                                                              | (HtmlPage htmlPage)::xs ->
-                                                                    HtmlPage { htmlPage with map = Map.add mapItem.Key (JQuery(el).Val() |> string) htmlPage.map }, xs
-                                                              | [] -> failwith "pageList was empty"
-                                                              | (FilePage filePage)::_ -> FilePage filePage, []
-                                                         before, current, after
-                                                     )
-                                              varDocument.Value <- { varDocument.Value with pages = beforePages @ (currentPage :: afterPages) }
-                                          ), true
-                                        )
-                                ) |> ignore
-                        ) |> ignore
+                    ) |> ignore
                 | FilePage filePage ->
                     ()
+
 
 
                 let map =
@@ -544,26 +607,27 @@ module Client =
                     JQuery(sprintf "[data-update-field='%s']" item.Key).Val(fst item.Value ()) |> ignore
 
                 JQuery(".field-updating")
-                    .Each (fun (n, (el : Dom.Element)) ->
-                        el.AddEventListener
-                            ( "input"
-                            , (fun () ->
-                                let updateFieldValue = JQuery(el).Data("update-field").ToString()
-                                let updateElements = JQuery(sprintf "[data-update-field='%s']" updateFieldValue)
-                                updateElements.Each
-                                    (fun (n, updateElement) ->
-                                        if updateElement <> el
-                                        then
+                    .Each
+                        (fun (n, (el : Dom.Element)) ->
+                            let eventAction =
+                                (fun () ->
+                                    let updateFieldValue = JQuery(el).Data("update-field").ToString()
+                                    let updateElements = JQuery(sprintf "[data-update-field='%s']" updateFieldValue)
+                                    updateElements.Each
+                                        (fun (n, updateElement) ->
                                             let elValue = JQuery(el).Val() |> string
-                                            JQuery(updateElement).Val(elValue) |> ignore
-                                            (snd map.[updateFieldValue]) elValue
-                          //                  resize updateElement 150
+                                            snd map.[updateFieldValue] elValue
+                                            if updateElement <> el || true
+                                            then JQuery(updateElement).Val(elValue) |> ignore
+                              //                  resize updateElement 150
                                             ()
-                                    ) |> ignore
-                                ()
-                              ), true
-                            )
-                    ) |> ignore
+                                        ) |> ignore
+                                    updateEditUserValuesDiv ()
+                                    updateAddEmployerDiv ()
+                                )
+                            el.RemoveEventListener("input", eventAction, true)
+                            el.AddEventListener("input", eventAction, true)
+                        ) |> ignore
             }
 
         and setNewDocument() =
@@ -592,7 +656,7 @@ module Client =
                                 let newDocumentName = JS.Document.GetElementById("txtNewTemplateName")?value |> string
                                 let newDocumentEmailSubject = JS.Document.GetElementById("txtNewTemplateEmailSubject")?value |> string
                                 let newDocumentEmailBody = JS.Document.GetElementById("txtNewTemplateEmailBody")?value |> string
-                                do! Server.addNewDocument newDocumentName newDocumentEmailSubject newDocumentEmailBody
+                                do! Server.addNewDocument newDocumentName
                                 addSelectDocumentName newDocumentName
                                 do! setNewDocumentEmpty()
                             } |> Async.Start
@@ -659,6 +723,7 @@ module Client =
             do! setSelectHtmlPageTemplate()
             while JS.Document.GetElementById("selectHtmlPageTemplate") = null do
                  do! Async.Sleep 10
+            do! setUserValues()
             do! fillDocumentValues()
         } |> Async.Start
 
@@ -669,5 +734,14 @@ module Client =
             Doc.EmbedView varAddPage.View
             Doc.EmbedView varSelectHtmlPageTemplate.View
             Doc.EmbedView varDisplayedDocument.View
+            br []
+            br []
+            varEditUserValuesDiv.View |> Doc.EmbedView
+            br []
+            br []
+            br []
+            varAddEmployerDiv.View |> Doc.EmbedView
+            inputAttr [attr.``type`` "button"; attr.value "Save as new document"; on.click (fun _ _ -> saveNewDocument() |> Async.Start)] []
+            br []
+            inputAttr [attr.``type`` "button"; attr.value "Overwrite document"; on.click (fun _ _ -> overwriteDocument() |> Async.Start)] []
           ]
-

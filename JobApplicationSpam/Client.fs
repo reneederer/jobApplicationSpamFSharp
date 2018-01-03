@@ -11,27 +11,9 @@ open WebSharper.JavaScript
 module Client =
     open Chessie.ErrorHandling
     open JobApplicationSpam.Types
-    open System.Web
-    open System.IO
-    open WebSharper.Sitelets
-    open HtmlAgilityPack
     open WebSharper.JQuery
     open System
-    open Database
-    open WebSharper.JavaScript
-    open WebSharper.UI.Next.CSharp.Html.SvgAttributes
-    open System.Data.SqlTypes
-    open WebSharper.Html.Client.Operators
     open WebSharper.UI.Next.Client.HtmlExtensions
-    open WebSharper.JavaScript
-    open WebSharper.UI.Next.Html.Tags
-    open System.Collections
-    open WebSharper.UI.Next.CSharp.Client.Html.SvgElements
-    open Hopac.Hopac
-
-    let myField = "abc"
-
-    type internal Marker = interface end
 
     [<JavaScript>]
     type Language =
@@ -155,12 +137,18 @@ module Client =
         let varTxtLoginEmail = Var.Create ""
         let varTxtLoginPassword = Var.Create ""
         formAttr
-          [ on.submit (fun _ _ ->
-              let loginResult = Server.login (varTxtLoginEmail.Value) (varTxtLoginPassword.Value)
-              match loginResult with
-              | Ok (v, _) ->
-                ()
-              | Bad xs -> JS.Alert(String.concat ", " xs)
+          [ on.submit (fun _ ev ->
+                async {
+                  let! loginResult = Server.login (varTxtLoginEmail.Value) (varTxtLoginPassword.Value)
+                  match loginResult with
+                  | Ok (v, _) ->
+                    JS.Window.Location.Href <- "/templates"
+                    ()
+                  | Bad xs -> JS.Alert(String.concat ", " xs)
+                } |> Async.Start
+                ev.PreventDefault()
+                ev.StopImmediatePropagation()
+                ev.StopPropagation()
           )
           ]
           [ divAttr
@@ -222,329 +210,31 @@ module Client =
         h1 [text "hallo"]
 
 
+
+          
     [<JavaScript>]
     let templates () = 
         let varDocument = Var.CreateWaiting()
         let varUserValues : Var<UserValues> = Var.Create<UserValues>({gender=Gender.Male;degree="";firstName="";lastName="";street="";postcode="";city="";phone="";mobilePhone=""})
         let varUserEmail = Var.CreateWaiting<string>()
         let varEmployer = Var.Create<Employer>({company="";gender=Gender.Male;degree="";firstName="";lastName="";street="";postcode="";city="";email="";phone="";mobilePhone=""})
-        let varSelectDocumentName = Var.Create<Doc>(div [])
-        let varSelectHtmlPageTemplate = Var.Create(div [])
-        let varNewDocument = Var.Create(div [])
-        let varPageButtonsDiv = Var.Create(div [])
-        let varPageButtons = Var.Create(div [])
         let varCurrentPageIndex = Var.Create(1)
-        let varPageCount = Var.Create(1)
         let varDisplayedDocument = Var.Create(div [] :> Doc)
         let varAddPage = Var.Create (div [] :> Doc)
 
-        let rec createInput t v updateF =
+        let createInput t d =
           div
             [ text t
               br []
-              inputAttr [attr.value v; on.input (fun el _ -> updateF el?value; fillDocumentValues() |> Async.Start)] []
+              inputAttr [attr.``data-`` "update-field" d ] []
               br[]
               br[]
             ]
           :> Doc
 
-        and varEditUserValuesDiv =
-            Var.Create(
-                div
-                  [ textView (varUserValues.View.Map (fun x -> x.firstName))
-                    createInput "Degree" varUserValues.Value.degree (fun v -> varUserValues.Value <- { varUserValues.Value with degree = v })
-                    createInput "First name" varUserValues.Value.firstName (fun v -> varUserValues.Value <- { varUserValues.Value with firstName = v })
-                    createInput "Last name" varUserValues.Value.lastName (fun v -> varUserValues.Value <- { varUserValues.Value with lastName = v })
-                    createInput "Street" varUserValues.Value.street (fun v -> varUserValues.Value <- { varUserValues.Value with street = v })
-                    createInput "Postcode" varUserValues.Value.postcode (fun v -> varUserValues.Value <- { varUserValues.Value with postcode = v })
-                    createInput "City" varUserValues.Value.city (fun v -> varUserValues.Value <- { varUserValues.Value with city = v })
-                    createInput "Phone" varUserValues.Value.phone (fun v -> varUserValues.Value <- { varUserValues.Value with phone = v })
-                    createInput "Mobile phone" varUserValues.Value.mobilePhone (fun v -> varUserValues.Value <- { varUserValues.Value with mobilePhone = v })
-                  ]
-                :> Doc
-            )
-        and updateEditUserValuesDiv() =
-            varEditUserValuesDiv.Value <-
-                div
-                  [ textView (varUserValues.View.Map (fun x -> x.firstName))
-                    createInput "Degree" varUserValues.Value.degree (fun v -> varUserValues.Value <- { varUserValues.Value with degree = v })
-                    createInput "First name" varUserValues.Value.firstName (fun v -> varUserValues.Value <- { varUserValues.Value with firstName = v })
-                    createInput "Last name" varUserValues.Value.lastName (fun v -> varUserValues.Value <- { varUserValues.Value with lastName = v })
-                    createInput "Street" varUserValues.Value.street (fun v -> varUserValues.Value <- { varUserValues.Value with street = v })
-                    createInput "Postcode" varUserValues.Value.postcode (fun v -> varUserValues.Value <- { varUserValues.Value with postcode = v })
-                    createInput "City" varUserValues.Value.city (fun v -> varUserValues.Value <- { varUserValues.Value with city = v })
-                    createInput "Phone" varUserValues.Value.phone (fun v -> varUserValues.Value <- { varUserValues.Value with phone = v })
-                    createInput "Mobile phone" varUserValues.Value.mobilePhone (fun v -> varUserValues.Value <- { varUserValues.Value with mobilePhone = v })
-                  ]
-
-        and varAddEmployerDiv =
-            Var.Create(
-                div
-                  [ createInput "Company" varEmployer.Value.company (fun v -> varEmployer.Value <- { varEmployer.Value with company = v })
-                    createInput "Degree" varEmployer.Value.degree (fun v -> varEmployer.Value <- { varEmployer.Value with degree = v })
-                    createInput "First name" varEmployer.Value.firstName (fun v -> varEmployer.Value <- { varEmployer.Value with firstName = v })
-                    createInput "Last name" varEmployer.Value.lastName (fun v -> varEmployer.Value <- { varEmployer.Value with lastName = v })
-                    createInput "Street" varEmployer.Value.street (fun v -> varEmployer.Value <- { varEmployer.Value with street = v })
-                    createInput "Postcode" varEmployer.Value.postcode (fun v -> varEmployer.Value <- { varEmployer.Value with postcode = v })
-                    createInput "City" varEmployer.Value.city (fun v -> varEmployer.Value <- { varEmployer.Value with city = v })
-                    createInput "Email"varEmployer.Value.email  (fun v -> varEmployer.Value <- { varEmployer.Value with email = v })
-                    createInput "Phone" varEmployer.Value.phone (fun v -> varEmployer.Value <- { varEmployer.Value with phone = v })
-                    createInput "Mobile phone" varEmployer.Value.mobilePhone (fun v -> varEmployer.Value <- { varEmployer.Value with mobilePhone = v })
-                  ]
-            )
-        and updateAddEmployerDiv () =
-            varAddEmployerDiv.Value <-
-                div
-                  [ createInput "Company" varEmployer.Value.company (fun v -> varEmployer.Value <- { varEmployer.Value with company = v })
-                    createInput "Degree" varEmployer.Value.degree (fun v -> varEmployer.Value <- { varEmployer.Value with degree = v })
-                    createInput "First name" varEmployer.Value.firstName (fun v -> varEmployer.Value <- { varEmployer.Value with firstName = v })
-                    createInput "Last name" varEmployer.Value.lastName (fun v -> varEmployer.Value <- { varEmployer.Value with lastName = v })
-                    createInput "Street" varEmployer.Value.street (fun v -> varEmployer.Value <- { varEmployer.Value with street = v })
-                    createInput "Postcode" varEmployer.Value.postcode (fun v -> varEmployer.Value <- { varEmployer.Value with postcode = v })
-                    createInput "City" varEmployer.Value.city (fun v -> varEmployer.Value <- { varEmployer.Value with city = v })
-                    createInput "Email"varEmployer.Value.email  (fun v -> varEmployer.Value <- { varEmployer.Value with email = v })
-                    createInput "Phone" varEmployer.Value.phone (fun v -> varEmployer.Value <- { varEmployer.Value with phone = v })
-                    createInput "Mobile phone" varEmployer.Value.mobilePhone (fun v -> varEmployer.Value <- { varEmployer.Value with mobilePhone = v })
-                  ]
-        and varEmailDiv = Var.Create(div [])
-        and updateEmailDiv () =
-            varEmailDiv.Value <-
-                div
-                  [ createInput "Email-Subject" varDocument.Value.email.subject (fun v -> varDocument.Value <- { varDocument.Value with email = {varDocument.Value.email with subject = v }})
-                    createInput "Email-Body" varDocument.Value.email.body (fun v -> varDocument.Value <- { varDocument.Value with email = {varDocument.Value.email with body = v }})
-                  ]
-
-
-
-
-        
-
-        and setSelectDocumentName() =
-            async {
-                let! documentNames = Server.getDocumentNames()
-                varSelectDocumentName.Value <-
-                    div
-                      [ text "Your application documents: "
-                        selectAttr
-                          [attr.id "selectDocumentName"; on.change (fun _ _ -> indexChanged_selectDocumentName() |> Async.Start)]
-                          [ for documentName in documentNames do
-                                yield optionAttr [] [text documentName] :> Doc
-                          ]
-                        inputAttr
-                          [ attr.``type`` "button"
-                            attr.style "margin-left: 20px"
-                            attr.value "+"
-                            on.click(fun _ _ -> setNewDocument())
-                          ]
-                          []
-                        inputAttr
-                          [ attr.``type`` "button"
-                            attr.style "margin-left: 20px"
-                            attr.value "-"
-                            on.click(fun _ _ -> setNewDocumentEmpty() |> Async.Start)
-                          ]
-                          []
-                      ]
-            }
-        and saveNewDocument () =
-            async {
-                let! _ =  Server.saveNewDocument varDocument.Value
-                ()
-            }
-
-        and overwriteDocument () =
-            async {
-                let! _ =  Server.overwriteDocument varDocument.Value
-                ()
-            }
-        
-        and addSelectDocumentName value =
-            let mutable documentNames : list<string> = []
-            JQuery("#selectDocumentName option").Each (fun i el -> documentNames <- (el?text |> string) :: documentNames) |> ignore
-            documentNames <- documentNames @ [value]
-
-            varSelectDocumentName.Value <-
-                div
-                  [ text "Your application documents: "
-                    selectAttr
-                      [attr.id "selectDocumentName"; on.change (fun _ _ -> indexChanged_selectDocumentName() |> Async.Start)]
-                      [ for documentName in documentNames do
-                            yield optionAttr [] [text documentName] :> Doc
-                      ]
-                    inputAttr
-                      [ attr.``type`` "button"
-                        attr.style "margin-left: 20px"
-                        attr.value "+"
-                        on.click(fun _ _ -> setNewDocument())
-                      ]
-                      []
-                    inputAttr
-                      [ attr.``type`` "button"
-                        attr.style "margin-left: 20px"
-                        attr.value "-"
-                        on.click(fun _ _ -> setNewDocumentEmpty() |> Async.Start)
-                      ]
-                      []
-                  ]
-
-        and setSelectHtmlPageTemplate() =
-            async {
-                let! htmlPageTemplates = Server.getHtmlPageTemplates()
-                varSelectHtmlPageTemplate.Value <-
-                    selectAttr
-                      [ attr.id "selectHtmlPageTemplate"; on.change (fun _ _ -> indexChanged_selectHtmlPageTemplate() |> Async.Start) ]
-                      [ for htmlPageTemplate in htmlPageTemplates do
-                          yield optionAttr [] [text htmlPageTemplate.name] :> Doc
-                      ]
-            }
-
-
-
-
-
-
-        
-        and setPageButtons () =
-            async {
-                let rec setPageNameDiv () =
-                    let addHtmlPage (pageName : string) =
-                        async {
-                            let! documentId = Server.getDocumentIdOffset (JS.Document.GetElementById("selectDocumentName")?selectedIndex |> string |> Int32.Parse) 
-                            do! Server.addHtmlPage documentId None (varPageCount.Value + 1) pageName
-                            varPageButtons.Value <-
-                                 div
-                                   (
-                                   [ varPageButtons.Value ]
-                                   @
-                                   [ buttonAttr [on.click (fun _ _ ->
-                                       async {
-                                           JS.Document.GetElementById("selectHtmlPageTemplate")?selectedIndex <- (Option.defaultValue 1 None) - 1
-                                           varCurrentPageIndex.Value <- varPageCount.Value
-                                           do! loadPageTemplate()
-                                           do! fillDocumentValues()
-                                       } |> Async.Start)] [text (pageName)] :> Doc
-                                   ])
-                        }
-                    let htmlPageDiv ()=
-                        div
-                          [
-                            text "Page name: "
-                            br []
-                            inputAttr [ attr.id "txtAddPageName" ] []
-                            br []
-                            br []
-                            buttonAttr [ on.click (fun _ _ -> addHtmlPage (JS.Document.GetElementById("txtAddPageName")?value |> string) |> Async.Start; varAddPage.Value <- div [] )] [text "Add page"]
-                            buttonAttr [ attr.style "margin-left: 20px"; on.click (fun _ _ -> varAddPage.Value <- div []) ] [text "Abort"]
-                          ]
-                    let filePageDiv () =
-                        div
-                          [ formAttr [attr.enctype "multipart/form-data"; attr.method "POST"; attr.action ""]
-                              [ text "Please choose a file: "
-                                br []
-                                inputAttr
-                                  [ attr.``type`` "file"
-                                    attr.name "file"
-                                  ]
-                                  []
-                                inputAttr [ attr.``type`` "hidden"; attr.name "documentId"; attr.value ((JS.Document.GetElementById("selectDocumentName")?selectedIndex + 1).ToString()); ] []
-                                inputAttr [ attr.``type`` "hidden"; attr.name "pageIndex"; attr.value ((varPageCount.Value + 1) |> string); ] []
-                                br []
-                                br []
-                                buttonAttr [attr.``type`` "submit" ] [text "Add page"]
-                                buttonAttr [ attr.style "margin-left: 20px"; on.click (fun _ _ -> varAddPage.Value <- div []) ] [text "Abort"]
-                              ]
-                          ]
-                    let varPageDiv = Var.Create(div [])
-                    div
-                      [
-                        inputAttr
-                          [ attr.``type`` "radio"; attr.name "rbgrpPageType"; attr.id "rbHtmlPage"; on.click (fun _ _ -> varPageDiv.Value <- htmlPageDiv ()) ]
-                          []
-                        labelAttr
-                          [ attr.``for`` "rbHtmlPage" ]
-                          [ text "Create online" ]
-                        br []
-                        inputAttr
-                          [ attr.``type`` "radio"; attr.id "rbFilePage"; attr.name "rbgrpPageType"; on.click (fun _ _ -> varPageDiv.Value <- filePageDiv ()) ]
-                          []
-                        labelAttr
-                          [ attr.``for`` "rbFilePage" ]
-                          [ text "Upload" ]
-                        br []
-                        br []
-                        Doc.EmbedView varPageDiv.View
-                      ]
-
-                varAddPage.Value <- div []
-                varPageCount.Value <- varDocument.Value.pages.Length
-                varPageButtonsDiv.Value <-
-                    divAttr
-                      [attr.id "ulPageButtons"]
-                      ([ Doc.EmbedView varPageButtons.View
-                      ]
-                      @
-                      [ div
-                          [ buttonAttr
-                              [ on.click
-                                  (fun el _ ->
-                                      varAddPage.Value <- setPageNameDiv ()
-                                  )
-                              ]
-                              [ text "+"]
-                          ]
-                      ])
-                varPageButtons.Value <-
-                    div
-                      [
-                        for page in varDocument.Value.pages |> List.sortBy (fun x -> x.PageIndex()) do
-                           match page with
-                           | HtmlPage htmlPage ->
-                               yield
-                                 div
-                                   [ buttonAttr [on.click (fun _ _ ->
-                                       async {
-                                           JS.Document.GetElementById("selectHtmlPageTemplate")?selectedIndex <- (Option.defaultValue 1 htmlPage.oTemplateId) - 1
-                                           varCurrentPageIndex.Value <- htmlPage.pageIndex
-                                           do! loadPageTemplate()
-                                           do! fillDocumentValues()
-                                       } |> Async.Start)] [text (page.Name())] :> Doc
-                                   ]
-                                 :> Doc
-                           | FilePage filePage ->
-                               yield
-                                 div
-                                   [ buttonAttr [on.click (fun _ _ -> varCurrentPageIndex.Value <- filePage.pageIndex; loadFileUploadTemplate();)] [text (page.Name())]
-                                   ]
-                                 :> Doc
-                      ]
-            }
             
-        and setDocument () =
-            async {
-                let selectDocumentNameEl = JS.Document.GetElementById("selectDocumentName")
-                let documentIndex =
-                    if selectDocumentNameEl <> null
-                    then JS.Document.GetElementById("selectDocumentName")?selectedIndex
-                    else 0
-                let! oDocument = Server.getDocumentOffset documentIndex
-                match oDocument with
-                | Some document ->
-                    varDocument.Value <- document
-                    updateEmailDiv()
-                | None ->
-                    ()
-            }
-        
-        and setUserValues() =
-            async {
-                let! userValues = Server.getCurrentUserValues()
-                let! userEmail = Server.getCurrentUserEmail()
-                varUserValues.Value <- userValues
-                varUserEmail.Value <- userEmail
-                updateEditUserValuesDiv()
-            }
 
-        and fillDocumentValues() =
+        let fillDocumentValues() =
             async {
                    
                 let pageMapElements = JS.Document.QuerySelectorAll("[data-html-page-key]")
@@ -610,72 +300,15 @@ module Client =
                               //                  resize updateElement 150
                                             ()
                                         ) |> ignore
-                                    updateEditUserValuesDiv ()
-                                    updateAddEmployerDiv ()
-                                    updateEmailDiv ()
                                 )
                             el.RemoveEventListener("input", eventAction, true)
                             el.AddEventListener("input", eventAction, true)
                         ) |> ignore
             }
 
-        and setNewDocument() =
-            varNewDocument.Value <-
-                div
-                  [ text "Name: "
-                    br []
-                    inputAttr [attr.id "txtNewTemplateName"] []
-                    br []
-                    br []
-                    text "Email-Subject: "
-                    br []
-                    inputAttr [attr.id "txtNewTemplateEmailSubject"] []
-                    br []
-                    br []
-                    text "Email-Body: "
-                    br []
-                    textareaAttr [attr.id "txtNewTemplateEmailBody"; attr.style "min-height: 300px; min-width: 100%"] []
-                    br []
-                    br []
-                    inputAttr
-                      [ attr.``type`` "button"
-                        attr.value "Add"
-                        on.click (fun _ _ ->
-                            async {
-                                let newDocumentName = JS.Document.GetElementById("txtNewTemplateName")?value |> string
-                                let newDocumentEmailSubject = JS.Document.GetElementById("txtNewTemplateEmailSubject")?value |> string
-                                let newDocumentEmailBody = JS.Document.GetElementById("txtNewTemplateEmailBody")?value |> string
-                                do! Server.addNewDocument newDocumentName
-                                addSelectDocumentName newDocumentName
-                                do! setNewDocumentEmpty()
-                            } |> Async.Start
-                          )
-                      ]
-                      []
-                  ]
-            varPageButtonsDiv.Value <- div []
-            varSelectHtmlPageTemplate.Value <- div []
-            varDisplayedDocument.Value <- div []
 
-        and setNewDocumentEmpty() =
-            async {
-                varNewDocument.Value <- div []
-                do! setPageButtons()
-                do! setSelectHtmlPageTemplate()
-            }
 
-        and indexChanged_selectDocumentName() =
-            async {
-                do! setDocument()
-                do! setPageButtons()
-            }
-
-        and indexChanged_selectHtmlPageTemplate() =
-            async {
-                do! loadPageTemplate()
-            }
-
-        and loadPageTemplate() : Async<unit> =
+        let loadPageTemplate() : Async<unit> =
             async {
                 JQuery("#insertDiv").Remove() |> ignore
                 while JS.Document.GetElementById("insertDiv") <> null do
@@ -714,61 +347,314 @@ module Client =
                     ) |> ignore
             }
         
-        and applyNow () =
-            async { 
-                do! Server.applyNowWithHtmlTemplate varEmployer.Value varDocument.Value varUserValues.Value
-                ()
+        
+        let fillValues elId =
+            JS.Document.QuerySelectorAll("[data-update-values]")
+            ()
+
+
+         
+        let showHideMutualElements =
+            [ "createFilePageDiv"
+              "createHtmlPageDiv"
+              "choosePageTypeDiv"
+              "emailDiv"
+              "newDocumentDiv"
+              "editUserValuesDiv"
+              "editEmployerDiv"
+            ]
+        
+        
+        let hide elId =
+            JS.Document.GetElementById(elId)?style?display <- "none"
+            match elId with
+            | "createFilePageDiv" ->()
+            | "createHtmlPageDiv" ->()
+            | "choosePageTypeDiv" -> ()
+            | "emailDiv" ->()
+            | "newDocumentDiv" -> ()
+            | "editUserValuesDiv" -> ()
+            | "editEmployerDiv" -> ()
+            | _ ->
+                failwith ("element not found:" + elId)
+              
+        let show elId =
+            JS.Document.GetElementById(elId)?style?display <- "block"
+            for currentElId in showHideMutualElements do
+                if currentElId <> elId
+                then hide currentElId
+            match elId with
+            | "createFilePageDiv" ->
+                JS.Document.GetElementById("choosePageTypeDiv")?style?display <- "block"
+            | "createHtmlPageDiv" ->
+                JS.Document.GetElementById("choosePageTypeDiv")?style?display <- "block"
+            | "selectDocumentName" ->()
+            | "emailDiv" ->()
+            | "newDocumentDiv" -> ()
+            | "choosePageTypeDiv" -> ()
+            | "editEmployerDiv" ->
+                fillValues "addEmployerDiv"
+            | "editUserValuesDiv" -> ()
+            | "editEmployer" -> ()
+            | _ ->
+                failwith ("element not found: " + elId)
+
+
+        let setDocument () =
+            async {
+                let selectDocumentNameEl = JS.Document.GetElementById("selectDocumentName")
+                let documentIndex =
+                    if selectDocumentNameEl <> null
+                    then JS.Document.GetElementById("selectDocumentName")?selectedIndex
+                    else 0
+                let! oDocument = Server.getDocumentOffset documentIndex
+                match oDocument with
+                | Some document ->
+                    varDocument.Value <- document
+                | None ->
+                    ()
             }
         
-        and loadFileUploadTemplate() =
-            varDisplayedDocument.Value <-
-                formAttr [attr.enctype "multipart/form-data"; attr.method "POST"; attr.action ""]
-                  [ inputAttr [ attr.``type`` "file"; attr.name "file" ] []
-                    inputAttr [ attr.``type`` "hidden"; attr.name "documentId"; attr.value ((JS.Document.GetElementById("selectDocumentName")?selectedIndex + 1).ToString()); ] []
-                    inputAttr [ attr.``type`` "hidden"; attr.name "pageIndex"; attr.value (varCurrentPageIndex |> string); ] []
-                    inputAttr [ attr.``type`` "submit" ] []
-                  ]
+
+        let setPageButtons () =
+            async {
+                JQuery("#pageButtonsUl li:not(:last-child)").Remove() |> ignore
+                for page in varDocument.Value.pages do
+                    JQuery(sprintf """<li><button id="pageButton%i">%s</button</li>""" (page.PageIndex()) (page.Name())).InsertBefore("#addPageButton").On(
+                          "click"
+                        , (fun el ev ->
+                                match page with
+                                | HtmlPage htmlPage ->
+                                    async {
+                                        JQuery("#insertDiv").Remove() |> ignore
+                                        while JS.Document.GetElementById("insertDiv") <> null do
+                                            do! Async.Sleep 10
+                                        let pageTemplateIndex = htmlPage.oTemplateId |> Option.defaultValue 1
+                                        let! template = Server.getHtmlPageTemplate pageTemplateIndex
+                                        varDisplayedDocument.Value <- template |> Doc.Verbatim
+                                        while JS.Document.GetElementById("insertDiv") = null do
+                                            do! Async.Sleep 10
+                                    } |> Async.Start
+                                | FilePage filePage -> 
+                                    () 
+                        )
+                    ) |> ignore
+            }
         
+        let addSelectOption el value =
+            let optionEl = JS.Document.CreateElement("option")
+            optionEl.TextContent <- value
+            el?add(optionEl)
+
             
         async {
-            do! setSelectDocumentName()
-            while JS.Document.GetElementById("selectDocumentName") = null do
-                do! Async.Sleep 10
+            let! documentNames = Server.getDocumentNames()
+
+            let selectDocumentNameEl = JS.Document.GetElementById("selectDocumentName")
+            for documentName in documentNames do
+                addSelectOption selectDocumentNameEl documentName
+
             let! oLastEditedDocumentId = Server.getLastEditedDocumentId()
             match oLastEditedDocumentId with
             | None ->
-                JS.Document.GetElementById("selectDocumentName")?selectedIndex <- 0
+                selectDocumentNameEl?selectedIndex <- 0
             | Some lastEditedDocumentId ->
-                JS.Document.GetElementById("selectDocumentName")?selectedIndex <- lastEditedDocumentId - 1
+                selectDocumentNameEl?selectedIndex <- lastEditedDocumentId - 1
             do! setDocument()
             do! setPageButtons()
-            do! setSelectHtmlPageTemplate()
-            while JS.Document.GetElementById("selectHtmlPageTemplate") = null do
-                 do! Async.Sleep 10
-            do! setUserValues()
+
+            //Set selectHtmlPageTemplate
+            let! htmlPageTemplates = Server.getHtmlPageTemplates()
+            let selectHtmlPageTemplateEl = JS.Document.GetElementById("selectHtmlPageTemplate")
+            for htmlPageTemplate in htmlPageTemplates do
+                addSelectOption selectHtmlPageTemplateEl htmlPageTemplate.name
+
             do! fillDocumentValues()
+            show "createHtmlPageDiv"
         } |> Async.Start
 
+
         div
-          [ Doc.EmbedView varSelectDocumentName.View
-            Doc.EmbedView varNewDocument.View
-            Doc.EmbedView varPageButtonsDiv.View
-            Doc.EmbedView varAddPage.View
-            Doc.EmbedView varSelectHtmlPageTemplate.View
+          [ text "Your application documents: "
+            selectAttr
+              [ attr.id "selectDocumentName";
+                on.change
+                  (fun _ _ ->
+                      async {
+                        do! setDocument()
+                        do! setPageButtons()
+                      } |> Async.Start)
+              ]
+              []
+            inputAttr
+              [ attr.``type`` "button"
+                attr.style "margin-left: 20px"
+                attr.value "+"
+                on.click(fun _ _ -> show "newDocumentDiv")
+              ]
+              []
+            inputAttr
+              [ attr.``type`` "button"
+                attr.style "margin-left: 20px"
+                attr.value "-"
+                on.click(fun _ _ ->())
+              ]
+              []
+            divAttr
+              [ attr.id "newDocumentDiv" ]
+              [ text "Document name: "
+                br []
+                inputAttr [attr.id "txtNewTemplateName"] []
+                br []
+                br []
+                inputAttr
+                  [ attr.``type`` "button"
+                    attr.value "Add document"
+                    on.click (fun _ _ ->
+                        async {
+                            let newDocumentName = JS.Document.GetElementById("txtNewDocumentName")?value |> string
+                            do! Server.addNewDocument newDocumentName
+                            addSelectOption "selectDocumentName" newDocumentName
+                        } |> Async.Start
+                      )
+                  ]
+                  []
+              ]
+            div
+              [ ulAttr
+                  [ attr.id "pageButtonsUl" ]
+                  [ li
+                      [ buttonAttr
+                          [ attr.id "addPageButton"
+                            on.click
+                              (fun el _ ->
+                                  ()//varAddPage.Value <- showAddPageDiv()
+                              )
+                          ]
+                          [ text "+"]
+                      ]
+                  ]
+              ]
+            selectAttr
+              [ attr.id "selectHtmlPageTemplate"; on.change (fun _ _ -> async {do! loadPageTemplate()} |> Async.Start) ]
+              []
             Doc.EmbedView varDisplayedDocument.View
             br []
             br []
-            varEmailDiv.View |> Doc.EmbedView
+            divAttr
+              [attr.id "emailDiv"]
+              [ text "Email subject:"
+                br []
+                inputAttr
+                  [ on.input (fun el _ -> varDocument.Value <- { varDocument.Value with email = {varDocument.Value.email with subject = el?value }})]
+                  []
+                br []
+                br []
+                text "Email body:"
+                br []
+                inputAttr
+                  [ on.input (fun el _ -> varDocument.Value <- { varDocument.Value with email = {varDocument.Value.email with body = el?value }})]
+                  []
+              ]
             br []
             br []
-            varEditUserValuesDiv.View |> Doc.EmbedView
+            divAttr
+              [ attr.id "choosePageTypeDiv" ]
+              [
+                inputAttr
+                  [ attr.``type`` "radio"; attr.name "rbgrpPageType"; attr.id "rbHtmlPage"; on.click (fun _ _ -> ()) ]
+                  []
+                labelAttr
+                  [ attr.``for`` "rbHtmlPage" ]
+                  [ text "Create online" ]
+                br []
+                inputAttr
+                  [ attr.``type`` "radio"; attr.id "rbFilePage"; attr.name "rbgrpPageType"; on.click (fun _ _ -> ()) ]
+                  []
+                labelAttr
+                  [ attr.``for`` "rbFilePage" ]
+                  [ text "Upload" ]
+                br []
+                br []
+              ]
+            divAttr
+              [ attr.id "createHtmlPageDiv" ]
+              [ inputAttr [attr.id ""] []
+                br []
+                br []
+                buttonAttr [attr.``type`` "submit" ] [text "Add html page"]
+                buttonAttr [ attr.style "margin-left: 20px"; on.click (fun _ _ -> varAddPage.Value <- div []) ] [text "Abort"]
+              ]
+            divAttr
+              [ attr.id "createFilePageDiv"; ]
+              [ formAttr [attr.enctype "multipart/form-data"; attr.method "POST"; attr.action ""]
+                  [ text "Please choose a file: "
+                    br []
+                    inputAttr
+                      [ attr.``type`` "file"
+                        attr.name "file"
+                      ]
+                      []
+                    //inputAttr [ attr.``type`` "hidden"; attr.id "hiddenDocumentId"; attr.name "documentId"; attr.value ((JS.Document.GetElementById("selectDocumentName")?selectedIndex + 1).ToString()); ] []
+                    //inputAttr [ attr.``type`` "hidden"; attr.id "hiddenPageIndex"; attr.name "pageIndex"; attr.value ((varPageCount.Value + 1) |> string); ] []
+                    br []
+                    br []
+                    buttonAttr [attr.``type`` "submit" ] [text "Upload"]
+                    buttonAttr [ attr.style "margin-left: 20px"; on.click (fun _ _ -> varAddPage.Value <- div []) ] [text "Abort"]
+                  ]
+              ]
             br []
             br []
             br []
-            varAddEmployerDiv.View |> Doc.EmbedView
-            inputAttr [attr.``type`` "button"; attr.value "Save as new document"; on.click (fun _ _ -> saveNewDocument() |> Async.Start)] []
+            divAttr
+              [ attr.id "editUserValuesDiv" ]
+              [ createInput "Degree" "userDegree"
+                createInput "First name" "userFirstName"
+                createInput "Last name" "userLastName"
+                createInput "Street" "userStreet"
+                createInput "Postcode" "userPostcode"
+                createInput "City" "userCity"
+                createInput "Phone" "userPhone"
+                createInput "Mobile phone" "userMobilePhone"
+              ]
+            divAttr
+              [ attr.id "editEmployerDiv" ]
+              [ createInput "Company name" "company"
+                createInput "Street" "companyStreet"
+                createInput "Postcode" "companyPostcode"
+                createInput "City" "companyCity"
+                createInput "Degree" "bossDegree"
+                createInput "First name" "bossFirstName"
+                createInput "Last name" "bossLastName"
+                createInput "Phone" "bossPhone"
+                createInput "Mobile phone" "bossMobilePhone"
+              ]
+            inputAttr
+              [ attr.``type`` "button"
+                attr.value "Save as new document"
+                on.click
+                  (fun _ _ ->
+                    async {
+                        let! newDocumentId = Server.saveNewDocument varDocument.Value
+                        () //TODO
+                    }
+                    |> Async.Start
+                  )
+              ]
+              []
             br []
-            inputAttr [attr.``type`` "button"; attr.value "Overwrite document"; on.click (fun _ _ -> overwriteDocument() |> Async.Start)] []
+            inputAttr
+              [ attr.``type`` "button"
+                attr.value "Overwrite document"
+                on.click
+                  (fun _ _ ->
+                    async {
+                        let!_ = Server.overwriteDocument varDocument.Value
+                        ()
+                    } |> Async.Start
+                  )
+              ]
+              []
             br []
-            inputAttr [attr.``type`` "button"; attr.value "Apply now"; on.click (fun _ _ -> applyNow() |> Async.Start)] []
+            inputAttr [attr.``type`` "button"; attr.value "Apply now"; on.click (fun _ _ -> Server.applyNowWithHtmlTemplate varEmployer.Value varDocument.Value varUserValues.Value |> Async.Start)] []
           ]

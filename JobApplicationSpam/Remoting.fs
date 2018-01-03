@@ -140,13 +140,21 @@ module Server =
             if generateHash password salt 1000 64 = hashedPassword
             then
                 GetContext().UserSession.LoginUser(string userId) |> Async.RunSynchronously
-                ok <| string userId
+                async {
+                    return ok <| string userId
+                }
             else
-                fail "Email or password wrong."
+                async {
+                    return fail "Email or password wrong."
+                }
         |  Some (_, _, _, Some guid) ->
-            fail "Please confirm your email"
+            async {
+                return fail "Please confirm your email"
+            }
         | None ->
-            fail "Email is unknown"
+            async {
+            return fail "Email is unknown"
+            }
 
 
     [<Remote>]
@@ -282,7 +290,7 @@ module Server =
                 dbConn.Open()
                 use transaction = dbConn.BeginTransaction()
                 try
-                    let documentId = Database.saveNewDocument dbConn document userId
+                    let documentId = Database.overwriteDocument dbConn document userId
                     let employerId = Database.addEmployer dbConn employer userId
                     Database.insertSentApplication dbConn userId employerId documentId
                     let userEmail = Database.getEmailByUserId dbConn userId |> Option.defaultValue ""

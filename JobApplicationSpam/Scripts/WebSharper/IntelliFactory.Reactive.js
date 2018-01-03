@@ -1,18 +1,19 @@
 (function()
 {
  "use strict";
- var Global,IntelliFactory,Reactive,Disposable,Observer,HotStream,Reactive$1,Reactive$2,SC$1,Runtime,WebSharper,Control,FSharpEvent,Util,List,Collections,Dictionary,Seq;
+ var Global,IntelliFactory,Reactive,Disposable,Observer,HotStream,WebSharper,Obj,Reactive$1,Reactive$2,SC$1,Runtime,Control,FSharpEvent,Util,List,Collections,Dictionary,Seq;
  Global=window;
  IntelliFactory=Global.IntelliFactory=Global.IntelliFactory||{};
  Reactive=IntelliFactory.Reactive=IntelliFactory.Reactive||{};
  Disposable=Reactive.Disposable=Reactive.Disposable||{};
  Observer=Reactive.Observer=Reactive.Observer||{};
  HotStream=Reactive.HotStream=Reactive.HotStream||{};
+ WebSharper=Global.WebSharper;
+ Obj=WebSharper&&WebSharper.Obj;
  Reactive$1=Reactive.Reactive=Reactive.Reactive||{};
  Reactive$2=Reactive$1.Reactive=Reactive$1.Reactive||{};
  SC$1=Global.StartupCode$IntelliFactory_Reactive$Reactive=Global.StartupCode$IntelliFactory_Reactive$Reactive||{};
  Runtime=IntelliFactory&&IntelliFactory.Runtime;
- WebSharper=Global.WebSharper;
  Control=WebSharper&&WebSharper.Control;
  FSharpEvent=Control&&Control.FSharpEvent;
  Util=WebSharper&&WebSharper.Util;
@@ -143,7 +144,7 @@
   {
    return Reactive$1.Return(x);
   }
- },WebSharper.Obj,Reactive$2);
+ },Obj,Reactive$2);
  Reactive$2.New=Runtime.Ctor(function()
  {
  },Reactive$2);

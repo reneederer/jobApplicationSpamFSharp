@@ -1,7 +1,7 @@
 (function()
 {
  "use strict";
- var Global,IntelliFactory,Formlets,Base,Tree,Tree$1,Edit,D,LayoutUtils,Result,Form,Formlet,FormletProvider,FormletBuilder,Validator,Runtime,WebSharper,Seq,Enumerator,List,Util,Unchecked;
+ var Global,IntelliFactory,Formlets,Base,Tree,Tree$1,Edit,WebSharper,Obj,D,LayoutUtils,Result,Form,Formlet,FormletProvider,FormletBuilder,Validator,Runtime,Seq,Enumerator,List,Util,Unchecked;
  Global=window;
  IntelliFactory=Global.IntelliFactory=Global.IntelliFactory||{};
  Formlets=IntelliFactory.Formlets=IntelliFactory.Formlets||{};
@@ -9,6 +9,8 @@
  Tree=Base.Tree=Base.Tree||{};
  Tree$1=Tree.Tree=Tree.Tree||{};
  Edit=Tree.Edit=Tree.Edit||{};
+ WebSharper=Global.WebSharper;
+ Obj=WebSharper&&WebSharper.Obj;
  D=Base.D=Base.D||{};
  LayoutUtils=Base.LayoutUtils=Base.LayoutUtils||{};
  Result=Base.Result=Base.Result||{};
@@ -18,7 +20,6 @@
  FormletBuilder=Base.FormletBuilder=Base.FormletBuilder||{};
  Validator=Base.Validator=Base.Validator||{};
  Runtime=IntelliFactory&&IntelliFactory.Runtime;
- WebSharper=Global.WebSharper;
  Seq=WebSharper&&WebSharper.Seq;
  Enumerator=WebSharper&&WebSharper.Enumerator;
  List=WebSharper&&WebSharper.List;
@@ -310,7 +311,7 @@
  };
  D=Base.D=Runtime.Class({
   Dispose:Global.ignore
- },WebSharper.Obj,D);
+ },Obj,D);
  D.New=Runtime.Ctor(function()
  {
  },D);
@@ -359,7 +360,7 @@
     }
    };
   }
- },WebSharper.Obj,LayoutUtils);
+ },Obj,LayoutUtils);
  LayoutUtils.New=Runtime.Ctor(function(R)
  {
  },LayoutUtils);
@@ -993,7 +994,7 @@
     d.Dispose();
    },form.Notify,form.State)):form;
   }
- },WebSharper.Obj,FormletProvider);
+ },Obj,FormletProvider);
  FormletProvider.New=Runtime.Ctor(function(U)
  {
   this.U=U;
@@ -1015,7 +1016,7 @@
   {
    return this.F.Return(x);
   }
- },WebSharper.Obj,FormletBuilder);
+ },Obj,FormletBuilder);
  FormletBuilder.New=Runtime.Ctor(function(F)
  {
   this.F=F;
@@ -1117,7 +1118,7 @@
     });
    });
   }
- },WebSharper.Obj,Validator);
+ },Obj,Validator);
  Validator.New=Runtime.Ctor(function(VP)
  {
   this.VP=VP;

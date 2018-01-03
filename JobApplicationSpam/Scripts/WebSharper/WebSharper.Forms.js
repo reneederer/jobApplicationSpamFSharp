@@ -1,9 +1,10 @@
 (function()
 {
  "use strict";
- var Global,WebSharper,Forms,ErrorMessage,Fresh,Result,Form,Utils,Dependent,Many,ItemOperations,Fresh$1,Collection,CollectionWithDefault,Builder,Validation,Pervasives,Attr,Doc,View,SC$1,IntelliFactory,Runtime,List,Collections,Dictionary,UI,Next,Doc$1,View$1,Var,Seq,Submitter,Arrays,Array,Concurrency,Unchecked,AttrProxy,AttrModule;
+ var Global,WebSharper,Obj,Forms,ErrorMessage,Fresh,Result,Form,Utils,Dependent,Many,ItemOperations,Fresh$1,Collection,CollectionWithDefault,Builder,Validation,Pervasives,Attr,Doc,View,SC$1,IntelliFactory,Runtime,List,Collections,Dictionary,UI,Doc$1,View$1,Var,Seq,Submitter,Arrays,Array,Concurrency,Unchecked,AttrProxy,AttrModule;
  Global=window;
- WebSharper=Global.WebSharper=Global.WebSharper||{};
+ WebSharper=Global.WebSharper;
+ Obj=WebSharper&&WebSharper.Obj;
  Forms=WebSharper.Forms=WebSharper.Forms||{};
  ErrorMessage=Forms.ErrorMessage=Forms.ErrorMessage||{};
  Fresh=Forms.Fresh=Forms.Fresh||{};
@@ -29,19 +30,18 @@
  Collections=WebSharper&&WebSharper.Collections;
  Dictionary=Collections&&Collections.Dictionary;
  UI=WebSharper&&WebSharper.UI;
- Next=UI&&UI.Next;
- Doc$1=Next&&Next.Doc;
- View$1=Next&&Next.View;
- Var=Next&&Next.Var;
+ Doc$1=UI&&UI.Doc;
+ View$1=UI&&UI.View;
+ Var=UI&&UI.Var;
  Seq=WebSharper&&WebSharper.Seq;
- Submitter=Next&&Next.Submitter;
+ Submitter=UI&&UI.Submitter;
  Arrays=WebSharper&&WebSharper.Arrays;
- Array=Next&&Next.Array;
+ Array=UI&&UI.Array;
  Concurrency=WebSharper&&WebSharper.Concurrency;
  Unchecked=WebSharper&&WebSharper.Unchecked;
- AttrProxy=Next&&Next.AttrProxy;
- AttrModule=Next&&Next.AttrModule;
- ErrorMessage=Forms.ErrorMessage=Runtime.Class({},WebSharper.Obj,ErrorMessage);
+ AttrProxy=UI&&UI.AttrProxy;
+ AttrModule=UI&&UI.AttrModule;
+ ErrorMessage=Forms.ErrorMessage=Runtime.Class({},Obj,ErrorMessage);
  ErrorMessage.Create=function(p,text)
  {
   return new ErrorMessage.New(p.id,text);
@@ -82,11 +82,11 @@
    $0:List.append(r1.$0,r2.$0)
   };
  };
- Result.Bind=function(f,rx)
+ Result.Bind=function(f,r)
  {
-  return rx.$==0?f(rx.$0):{
+  return r.$==0?f(r.$0):{
    $:1,
-   $0:rx.$0
+   $0:r.$0
   };
  };
  Result.ApJoin=function(rf,rx)
@@ -166,7 +166,7 @@
     return a.$==1?Doc$1.Empty():a.$0.render(f);
    },this.pOut);
   }
- },WebSharper.Obj,Dependent);
+ },Obj,Dependent);
  Dependent.New=Runtime.Ctor(function(renderPrimary,pOut)
  {
   this.renderPrimary=renderPrimary;
@@ -192,7 +192,7 @@
    return Result.Map(a,a$1);
   }),primary.view));
  };
- ItemOperations=Many.ItemOperations=Runtime.Class({},WebSharper.Obj,ItemOperations);
+ ItemOperations=Many.ItemOperations=Runtime.Class({},Obj,ItemOperations);
  ItemOperations.New=Runtime.Ctor(function(_delete,moveUp,moveDown)
  {
   this["delete"]=_delete;
@@ -231,7 +231,7 @@
      return p$1($1[0],$1[1],$1[2]);
     },s);
    };
-   vIndex=View$1.Map(getThisIndexIn,this["var"].v);
+   vIndex=View$1.Map(getThisIndexIn,this["var"].get_View());
    sMoveUp=new Submitter.New(View$1.Map(function(i)
    {
     return i===0?{
@@ -324,7 +324,7 @@
     return a$1($1[0],$1[1],$1[2]);
    },this.changesView);
   }
- },WebSharper.Obj,Collection);
+ },Obj,Collection);
  Collection.New=Runtime.Ctor(function(p,inits,adder)
  {
   var $this,g,o;
@@ -364,7 +364,7 @@
    {
     return View$1.Map2(Seq.append,a,a$1);
    },x);
-  },this["var"].v);
+  },this["var"].get_View());
   this.out=View$1.Bind(function(s)
   {
    var x,d,r;
@@ -396,7 +396,7 @@
    {
     return(r($1))($2);
    },x);
-  },this["var"].v);
+  },this["var"].get_View());
  },Collection);
  CollectionWithDefault=Many.CollectionWithDefault=Runtime.Class({
   AddOne:function()
@@ -419,28 +419,28 @@
  Builder.Do={
   $:0
  };
- Form.Dependent$1=function(input,output)
+ Form.Dependent$1=function(primary,dependent)
  {
   var d;
-  d=Dependent.Make(input,output);
+  d=Dependent.Make(primary,dependent);
   return Form.New(Fresh.Id(),d.out,function(f)
   {
    return f(d);
   });
  };
- Form.Many$1=function(inits,init,p)
+ Form.Many$1=function(init,addValue,itemForm)
  {
   var m;
-  m=new CollectionWithDefault.New(p,inits,p(init),init);
+  m=new CollectionWithDefault.New(itemForm,init,itemForm(addValue),addValue);
   return Form.New(Fresh.Id(),m.out,function(f)
   {
    return f(m);
   });
  };
- Form.ManyForm=function(inits,create,p)
+ Form.ManyForm=function(init,addForm,itemForm)
  {
   var m;
-  m=new Collection.New(p,inits,create);
+  m=new Collection.New(itemForm,init,addForm);
   return Form.New(Fresh.Id(),m.out,function(f)
   {
    return f(m);
@@ -594,7 +594,7 @@
  {
   var _var;
   _var=Var.Create$1(init==null?noneValue:init.$0);
-  return Form.New(_var.RId(),View$1.Map(function(x)
+  return Form.New(_var.get_Id(),View$1.Map(function(x)
   {
    return{
     $:0,
@@ -603,7 +603,7 @@
      $0:x
     }
    };
-  },_var.RView()),function(r)
+  },_var.get_View()),function(r)
   {
    return r(_var);
   });
@@ -612,8 +612,8 @@
  {
   var _var,view;
   _var=Var.Create$1(void 0);
-  view=_var.RView();
-  return Form.New(_var.RId(),View$1.SnapshotOn({
+  view=_var.get_View();
+  return Form.New(_var.get_Id(),View$1.SnapshotOn({
    $:1,
    $0:List.T.Empty
   },view,View$1.Map(function(a)
@@ -627,19 +627,19 @@
    return r(_var);
   });
  };
- Form.Yield=function(value)
+ Form.Yield=function(init)
  {
-  return Form.YieldVar(Var.Create$1(value));
+  return Form.YieldVar(Var.Create$1(init));
  };
  Form.YieldVar=function(_var)
  {
-  return Form.New(_var.RId(),View$1.Map(function(a)
+  return Form.New(_var.get_Id(),View$1.Map(function(a)
   {
    return{
     $:0,
     $0:a
    };
-  },_var.RView()),function(r)
+  },_var.get_View()),function(r)
   {
    return r(_var);
   });
@@ -687,10 +687,10 @@
    };
   },p);
  };
- Validation.IsMatch=function(re,msg,p)
+ Validation.IsMatch=function(regexp,msg,p)
  {
   var o;
-  return Validation.Is((o=new Global.RegExp(re),function(a)
+  return Validation.Is((o=new Global.RegExp(regexp),function(a)
   {
    return o.test(a);
   }),msg,p);
@@ -723,11 +723,15 @@
  Attr.SubmitterValidate=function(submitter)
  {
   var view;
-  return AttrProxy.Append(AttrModule.Handler("click",function()
+  function a(a$1,a$2)
   {
-   return function()
+   return submitter.Trigger();
+  }
+  return AttrProxy.Append(AttrProxy.HandlerImpl("click",function($1)
+  {
+   return function($2)
    {
-    return submitter.Trigger();
+    return a($1,$2);
    };
   }),(view=View$1.Const("disabled"),AttrModule.DynamicPred("disabled",View$1.Map(Result.IsFailure,submitter.input),view)));
  };
@@ -749,7 +753,7 @@
  {
   return Doc$1.Element("button",Seq.append([Attr.SubmitterValidate(submitter)],attrs),[Doc$1.TextNode(caption)]);
  };
- View.Through=function(_this,p)
+ View.Through=function(input,p)
  {
   return View$1.Map(function(x)
   {
@@ -760,9 +764,9 @@
      return m.id===p.id;
     },x.$0)
    }:x;
-  },_this);
+  },input);
  };
- View.Through$1=function(_this,v)
+ View.Through$1=function(input,v)
  {
   return View$1.Map(function(x)
   {
@@ -770,10 +774,10 @@
     $:1,
     $0:List.filter(function(m)
     {
-     return m.id===v.RId();
+     return m.id===v.get_Id();
     },x.$0)
    }:x;
-  },_this);
+  },input);
  };
  SC$1.$cctor=function()
  {

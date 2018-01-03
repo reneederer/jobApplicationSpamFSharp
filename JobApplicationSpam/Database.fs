@@ -220,7 +220,7 @@ module Database =
         for page in document.pages do
             match page with
             | HtmlPage htmlPage ->
-                use command = new NpgsqlCommand("insert into htmlPage(documentId, templateId, pageIndex, name) values (:documentId, :templateId, :pageIndex, :name) on conflict on constraint htmlPage_unique do update set (templateId, pageIndex, name) = (:templateId, :pageIndex, :name)", dbConn)
+                use command = new NpgsqlCommand("insert into htmlPage(documentId, templateId, pageIndex, name) values (:documentId, :templateId, :pageIndex, :name) on conflict on constraint htmlPage_unique do update set (templateId, name) = (:templateId, :name)", dbConn)
                 command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("templateId", htmlPage.oTemplateId |> Option.get)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("pageIndex", htmlPage.pageIndex)) |> ignore
@@ -228,11 +228,11 @@ module Database =
                 command.ExecuteNonQuery() |> ignore
                 command.Dispose()
                 for mapItem in htmlPage.map do
-                    use command = new NpgsqlCommand("insert into pageMap(documentId, pageIndex, key, value) values (:documentId, :pageIndex, :key, :value) on conflict on constraint pageMap_unique do update set (pageIndex, key, value) = (:pageIndex, :key, :value)", dbConn)
+                    use command = new NpgsqlCommand("insert into pageMap(documentId, pageIndex, key, value) values (:documentId, :pageIndex, :key, :value) on conflict on constraint pageMap_unique do update set value = :value", dbConn)
                     command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
                     command.Parameters.Add(new NpgsqlParameter("pageIndex", htmlPage.pageIndex)) |> ignore
-                    command.Parameters.Add(new NpgsqlParameter("key", mapItem.Key)) |> ignore
-                    command.Parameters.Add(new NpgsqlParameter("value", mapItem.Value)) |> ignore
+                    command.Parameters.Add(new NpgsqlParameter("key", fst mapItem)) |> ignore
+                    command.Parameters.Add(new NpgsqlParameter("value", snd mapItem)) |> ignore
                     command.ExecuteNonQuery() |> ignore
                     command.Dispose()
             | FilePage filePage ->
@@ -243,7 +243,7 @@ module Database =
                             values (:documentId, :path, :pageIndex, :name)
                          on conflict on constraint filePage_unique do
                          update set
-                            (path, pageIndex, name) = (:path, :pageIndex, :name)", dbConn)
+                            (path, name) = (:path, :name)", dbConn)
                 command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("path", filePage.path)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("pageIndex", filePage.pageIndex)) |> ignore
@@ -280,8 +280,8 @@ module Database =
                     use command = new NpgsqlCommand("insert into pageMap(documentId, pageIndex, key, value) values (:documentId, :pageIndex, :key, :value)", dbConn)
                     command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
                     command.Parameters.Add(new NpgsqlParameter("pageIndex", htmlPage.pageIndex)) |> ignore
-                    command.Parameters.Add(new NpgsqlParameter("key", mapItem.Key)) |> ignore
-                    command.Parameters.Add(new NpgsqlParameter("value", mapItem.Value)) |> ignore
+                    command.Parameters.Add(new NpgsqlParameter("key", fst mapItem)) |> ignore
+                    command.Parameters.Add(new NpgsqlParameter("value", snd mapItem)) |> ignore
                     command.ExecuteNonQuery() |> ignore
                     command.Dispose()
             | FilePage filePage ->
@@ -354,7 +354,6 @@ module Database =
                             [ while reader.Read() do
                                 yield reader.GetString(0), reader.GetString(1)
                             ]
-                            |> Map.ofList
                       }
                 )
 

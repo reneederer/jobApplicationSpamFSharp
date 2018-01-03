@@ -1,7 +1,7 @@
 (function()
 {
  "use strict";
- var Global,WebSharper,Formlets,Utils,CssConstants,SC$1,Body,ElementStore,Layout,Padding,LabelConfiguration,FormRowConfiguration,LayoutProvider,Data,Formlet,ValidatorProvidor,FormletBuilder,Formlet$1,SC$2,Controls,Enhance,FormButtonConfiguration,ValidationIconConfiguration,ValidationFrameConfiguration,Padding$1,FormContainerConfiguration,ManyConfiguration,List,Html,Client,Tags,IntelliFactory,Runtime,Collections,Dictionary,Enumerator,Seq,Attr,Operators,Util,Formlets$1,Base,Result,Form,Pagelet,Tree,FormletProvider,Reactive,Reactive$1,LayoutUtils,Validator,HotStream,EventsPervasives,Math,Arrays,JSON;
+ var Global,WebSharper,Formlets,Utils,CssConstants,SC$1,Body,Obj,ElementStore,Layout,Padding,LabelConfiguration,FormRowConfiguration,LayoutProvider,Html,Client,Pagelet,Data,Formlet,ValidatorProvidor,FormletBuilder,Formlet$1,SC$2,Controls,Enhance,FormButtonConfiguration,ValidationIconConfiguration,ValidationFrameConfiguration,Padding$1,FormContainerConfiguration,ManyConfiguration,List,Tags,IntelliFactory,Runtime,Collections,Dictionary,Enumerator,Seq,Attr,Operators,Util,Formlets$1,Base,Result,Form,Tree,FormletProvider,Reactive,Reactive$1,LayoutUtils,Validator,HotStream,EventsPervasives,Math,Arrays,JSON;
  Global=window;
  WebSharper=Global.WebSharper=Global.WebSharper||{};
  Formlets=WebSharper.Formlets=WebSharper.Formlets||{};
@@ -9,12 +9,16 @@
  CssConstants=Formlets.CssConstants=Formlets.CssConstants||{};
  SC$1=Global.StartupCode$WebSharper_Formlets$CssConstants=Global.StartupCode$WebSharper_Formlets$CssConstants||{};
  Body=Formlets.Body=Formlets.Body||{};
+ Obj=WebSharper&&WebSharper.Obj;
  ElementStore=Formlets.ElementStore=Formlets.ElementStore||{};
  Layout=Formlets.Layout=Formlets.Layout||{};
  Padding=Layout.Padding=Layout.Padding||{};
  LabelConfiguration=Layout.LabelConfiguration=Layout.LabelConfiguration||{};
  FormRowConfiguration=Layout.FormRowConfiguration=Layout.FormRowConfiguration||{};
  LayoutProvider=Formlets.LayoutProvider=Formlets.LayoutProvider||{};
+ Html=WebSharper&&WebSharper.Html;
+ Client=Html&&Html.Client;
+ Pagelet=Client&&Client.Pagelet;
  Data=Formlets.Data=Formlets.Data||{};
  Formlet=Data.Formlet=Data.Formlet||{};
  ValidatorProvidor=Data.ValidatorProvidor=Data.ValidatorProvidor||{};
@@ -30,8 +34,6 @@
  FormContainerConfiguration=Enhance.FormContainerConfiguration=Enhance.FormContainerConfiguration||{};
  ManyConfiguration=Enhance.ManyConfiguration=Enhance.ManyConfiguration||{};
  List=WebSharper&&WebSharper.List;
- Html=WebSharper&&WebSharper.Html;
- Client=Html&&Html.Client;
  Tags=Client&&Client.Tags;
  IntelliFactory=Global.IntelliFactory;
  Runtime=IntelliFactory&&IntelliFactory.Runtime;
@@ -46,7 +48,6 @@
  Base=Formlets$1&&Formlets$1.Base;
  Result=Base&&Base.Result;
  Form=Base&&Base.Form;
- Pagelet=Client&&Client.Pagelet;
  Tree=Base&&Base.Tree;
  FormletProvider=Base&&Base.FormletProvider;
  Reactive=IntelliFactory&&IntelliFactory.Reactive;
@@ -122,7 +123,7 @@
   {
    this.store=new Dictionary.New$5();
   }
- },WebSharper.Obj,ElementStore);
+ },Obj,ElementStore);
  ElementStore.NewElementStore=function()
  {
   var store;
@@ -469,7 +470,7 @@
    var a;
    return Operators.add((a=[Attr.Attr().NewAttr("style","float:"+(align.$==0?"left":"right")+";")],Tags.Tags().NewTag("div",a)),[el]);
   }
- },WebSharper.Obj,LayoutProvider);
+ },Obj,LayoutProvider);
  LayoutProvider.New=Runtime.Ctor(function(LayoutUtils$1)
  {
   this.LayoutUtils=LayoutUtils$1;
@@ -522,7 +523,7 @@
   {
    return this.buildInternal();
   }
- },Client.Pagelet,Formlet);
+ },Pagelet,Formlet);
  Formlet.New=Runtime.Ctor(function(buildInternal,layoutInternal,formletBase,utils)
  {
   Pagelet.New.call(this);
@@ -537,7 +538,7 @@
   {
    return text.match(new Global.RegExp(regex));
   }
- },WebSharper.Obj,ValidatorProvidor);
+ },Obj,ValidatorProvidor);
  ValidatorProvidor.New=Runtime.Ctor(function()
  {
  },ValidatorProvidor);
@@ -627,7 +628,7 @@
   {
    return Data.OfIFormlet(Data.BaseFormlet().Return(x));
   }
- },WebSharper.Obj,FormletBuilder);
+ },Obj,FormletBuilder);
  FormletBuilder.New=Runtime.Ctor(function()
  {
  },FormletBuilder);

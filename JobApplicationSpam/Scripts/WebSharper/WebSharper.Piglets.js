@@ -1,11 +1,12 @@
 (function()
 {
  "use strict";
- var Global,WebSharper,Piglets,Id,ErrorMessage,Result,Reader,Stream,Disposable,ConstReader,ConcreteWriter,ConcreteReader,Submitter,Piglet,Validation,Pervasives,_Writer1,Many,Operations,Stream$1,UnitStream,Choose,Stream$2,Builder,SC$1,Controls,HtmlContainer,SC$2,IntelliFactory,Runtime,List,Util,Reactive,HotStream,Concurrency,Arrays,Seq,Collections,Dictionary,Enumerator,Operators,Unchecked,Html,Client,Operators$1,Attr,Tags,EventsPervasives;
+ var Global,WebSharper,Piglets,Id,Obj,ErrorMessage,Result,Reader,Stream,Disposable,ConstReader,ConcreteWriter,ConcreteReader,Submitter,Piglet,Validation,Pervasives,_Writer1,Many,Operations,Stream$1,UnitStream,Choose,Stream$2,Builder,SC$1,Controls,HtmlContainer,SC$2,IntelliFactory,Runtime,List,Util,Reactive,HotStream,Concurrency,Arrays,Seq,Collections,Dictionary,Enumerator,Operators,Unchecked,Html,Client,Operators$1,Attr,Tags,EventsPervasives;
  Global=window;
  WebSharper=Global.WebSharper=Global.WebSharper||{};
  Piglets=WebSharper.Piglets=WebSharper.Piglets||{};
  Id=Piglets.Id=Piglets.Id||{};
+ Obj=WebSharper&&WebSharper.Obj;
  ErrorMessage=Piglets.ErrorMessage=Piglets.ErrorMessage||{};
  Result=Piglets.Result=Piglets.Result||{};
  Reader=Piglets.Reader=Piglets.Reader||{};
@@ -64,7 +65,7 @@
   {
    return this.message;
   }
- },WebSharper.Obj,ErrorMessage);
+ },Obj,ErrorMessage);
  ErrorMessage.Create=function(msg,reader)
  {
   return new ErrorMessage.New(msg,reader.get_Id());
@@ -215,7 +216,7 @@
   {
    return this.Subscribe(f);
   }
- },WebSharper.Obj,Reader);
+ },Obj,Reader);
  Reader.ConstResult=function(x)
  {
   return new ConstReader.New(x);
@@ -327,7 +328,7 @@
   {
    this.dispose();
   }
- },WebSharper.Obj,Disposable);
+ },Obj,Disposable);
  Disposable.New=Runtime.Ctor(function(dispose)
  {
   this.dispose=dispose;
@@ -352,7 +353,7 @@
   {
    this.trigger(x);
   }
- },WebSharper.Obj,ConcreteWriter);
+ },Obj,ConcreteWriter);
  ConcreteWriter.New=function(trigger)
  {
   return new ConcreteWriter.New$1(function(a)
@@ -705,7 +706,7 @@
   {
    return ConcreteWriter.New(this["delete"]);
   }
- },WebSharper.Obj,Operations);
+ },Obj,Operations);
  Operations.New=Runtime.Ctor(function(_delete,moveUp,moveDown)
  {
   this["delete"]=_delete;
@@ -1419,7 +1420,7 @@
   {
    this.container.AppendI(elt);
   }
- },WebSharper.Obj,HtmlContainer);
+ },Obj,HtmlContainer);
  HtmlContainer.New=Runtime.Ctor(function(container)
  {
   this.container=container;

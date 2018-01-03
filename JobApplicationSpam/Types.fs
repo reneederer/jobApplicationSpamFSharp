@@ -76,7 +76,7 @@ module Types =
         { name : string
           oTemplateId : option<int>
           pageIndex : int
-          map : Map<string, string>
+          map : list<string * string>
         }
     
     [<WebSharper.JavaScript>]

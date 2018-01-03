@@ -1,9 +1,10 @@
 (function()
 {
  "use strict";
- var Global,WebSharper,Html,Client,Pagelet,Text,Attribute,Element,DeprecatedTagBuilder,TagBuilder,DeprecatedAttributeBuilder,AttributeBuilder,Operators,Implementation,JQueryHtmlProvider,Default,Tags,Attr,SC$1,Events,JQueryEventSupport,EventsPervasives,SC$2,IntelliFactory,Runtime,Math,Enumerator;
+ var Global,WebSharper,Obj,Html,Client,Pagelet,Text,Attribute,Element,DeprecatedTagBuilder,TagBuilder,DeprecatedAttributeBuilder,AttributeBuilder,Operators,Implementation,JQueryHtmlProvider,Default,Tags,Attr,SC$1,Events,JQueryEventSupport,EventsPervasives,SC$2,IntelliFactory,Runtime,Math,Enumerator;
  Global=window;
- WebSharper=Global.WebSharper=Global.WebSharper||{};
+ WebSharper=Global.WebSharper;
+ Obj=WebSharper&&WebSharper.Obj;
  Html=WebSharper.Html=WebSharper.Html||{};
  Client=Html.Client=Html.Client||{};
  Pagelet=Client.Pagelet=Client.Pagelet||{};
@@ -41,7 +42,7 @@
    node.parentNode.replaceChild(this.get_Body(),node);
    this.Render();
   }
- },WebSharper.Obj,Pagelet);
+ },Obj,Pagelet);
  Pagelet.New=Runtime.Ctor(function()
  {
  },Pagelet);
@@ -187,7 +188,7 @@
    }
    return el;
   }
- },WebSharper.Obj,DeprecatedTagBuilder);
+ },Obj,DeprecatedTagBuilder);
  DeprecatedTagBuilder.New=Runtime.Ctor(function(HtmlProvider)
  {
   this.HtmlProvider=HtmlProvider;
@@ -214,7 +215,7 @@
    }
    return el;
   }
- },WebSharper.Obj,TagBuilder);
+ },Obj,TagBuilder);
  TagBuilder.New=Runtime.Ctor(function(HtmlProvider)
  {
   this.HtmlProvider=HtmlProvider;
@@ -224,7 +225,7 @@
   {
    return Attribute.New(this.HtmlProvider,name,value);
   }
- },WebSharper.Obj,DeprecatedAttributeBuilder);
+ },Obj,DeprecatedAttributeBuilder);
  DeprecatedAttributeBuilder.New=Runtime.Ctor(function(HtmlProvider)
  {
   this.HtmlProvider=HtmlProvider;
@@ -234,7 +235,7 @@
   {
    return Attribute.New(this.HtmlProvider,name,value);
   }
- },WebSharper.Obj,AttributeBuilder);
+ },Obj,AttributeBuilder);
  AttributeBuilder.New=Runtime.Ctor(function(HtmlProvider)
  {
   this.HtmlProvider=HtmlProvider;
@@ -385,7 +386,7 @@
   {
    return Global.document.createTextNode(str);
   }
- },WebSharper.Obj,JQueryHtmlProvider);
+ },Obj,JQueryHtmlProvider);
  JQueryHtmlProvider.New=Runtime.Ctor(function()
  {
  },JQueryHtmlProvider);
@@ -614,7 +615,7 @@
     return(f(el))(ev$1);
    });
   }
- },WebSharper.Obj,JQueryEventSupport);
+ },Obj,JQueryEventSupport);
  JQueryEventSupport.New=Runtime.Ctor(function()
  {
  },JQueryEventSupport);

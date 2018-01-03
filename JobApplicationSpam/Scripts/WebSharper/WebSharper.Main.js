@@ -149,7 +149,7 @@
  };
  Json.Activate=function(json)
  {
-  var types,i,$1;
+  var $1,types,i,$2;
   function decode(x)
   {
    var o,ti,t,r,k;
@@ -164,7 +164,7 @@
       {
        o=Json.shallowMap(decode,x.$V);
        ti=x.$T;
-       if(Unchecked.Equals(typeof ti,"undefined"))
+       if(ti===void 0)
         return o;
        else
         {
@@ -188,9 +188,15 @@
     else
      return x;
   }
-  types=json.$TYPES;
-  for(i=0,$1=Arrays.length(types)-1;i<=$1;i++)Arrays.set(types,i,Json.lookup(Arrays.get(types,i)));
-  return decode(json.$DATA);
+  types=json?json.$TYPES:void 0;
+  if(types===void 0)
+   $1=json;
+  else
+   {
+    for(i=0,$2=Arrays.length(types)-1;i<=$2;i++)Arrays.set(types,i,Json.lookup(Arrays.get(types,i)));
+    $1=json.$DATA;
+   }
+  return decode($1);
  };
  Json.shallowMap=function(f,x)
  {
@@ -438,21 +444,22 @@
  {
   this.node=node;
  },SingleNode);
- Activator.hasDocument=function()
+ Activator.hasDocumentAndJQuery=function()
  {
-  return typeof Global.document!=="undefined";
+  return typeof Global.document!=="undefined"&&typeof Global.jQuery!=="undefined";
  };
  Activator.Activate=function()
  {
   var meta;
-  if(Activator.hasDocument())
+  if(Activator.hasDocumentAndJQuery())
    {
     meta=Global.document.getElementById("websharper-data");
     meta?Global.jQuery(Global.document).ready(function()
     {
      function a(k,v)
      {
-      v.Body().ReplaceInDom(Global.document.getElementById(k));
+      if("Body"in v)
+       v.Body().ReplaceInDom(Global.document.getElementById(k));
      }
      return Arrays.iter(function($1)
      {

@@ -550,13 +550,14 @@ module Client =
                 let pageMapElements = JS.Document.QuerySelectorAll("[data-html-page-key]")
                 match varDocument.Value.pages.[varCurrentPageIndex.Value - 1] with
                 | HtmlPage htmlPage ->
+                    let myMap = htmlPage.map |> Map.ofList
                     JQuery(pageMapElements).Each
                         (fun (n, (el : Dom.Element)) ->
                             let jEl = JQuery(el)
                             let key = el.GetAttribute("data-html-page-key")
-                            if htmlPage.map.ContainsKey key
+                            if myMap.ContainsKey key
                             then
-                                jEl.Val(htmlPage.map.[key]) |> ignore
+                                jEl.Val(myMap.[key]) |> ignore
                             else
                                 jEl.Val(el.GetAttribute("data-html-page-value") |> string) |> ignore
                     ) |> ignore
@@ -696,9 +697,11 @@ module Client =
                                              let current, after =
                                                   match currentAndAfter with
                                                   | [HtmlPage htmlPage] ->
-                                                        HtmlPage { htmlPage with map = Map.add key (JQuery(el).Val() |> string) htmlPage.map }, []
+                                                        let myMap = htmlPage.map |> Map.ofList
+                                                        HtmlPage { htmlPage with map =  Map.add key (JQuery(el).Val() |> string) myMap |> Map.toList }, []
                                                   | (HtmlPage htmlPage)::xs ->
-                                                        HtmlPage { htmlPage with map = Map.add key (JQuery(el).Val() |> string) htmlPage.map }, xs
+                                                        let myMap = htmlPage.map |> Map.ofList
+                                                        HtmlPage { htmlPage with map = Map.add key (JQuery(el).Val() |> string) myMap |> Map.toList }, xs
                                                   | [] -> failwith "pageList was empty"
                                                   | (FilePage filePage)::_ -> FilePage filePage, []
                                              before, current, after

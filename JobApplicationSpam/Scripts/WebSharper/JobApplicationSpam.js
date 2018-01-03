@@ -694,14 +694,14 @@
    b$1=null;
    return Concurrency.Delay(function()
    {
-    var pageMapElements,m,htmlPage;
+    var pageMapElements,m,myMap;
     pageMapElements=Global.document.querySelectorAll("[data-html-page-key]");
-    return Concurrency.Combine((m=varDocument.c.pages.get_Item(varCurrentPageIndex.c-1),m.$==1?Concurrency.Zero():(htmlPage=m.$0,(Global.jQuery(pageMapElements).each(function($1,el)
+    return Concurrency.Combine((m=varDocument.c.pages.get_Item(varCurrentPageIndex.c-1),m.$==1?Concurrency.Zero():(myMap=Map.OfArray(Arrays.ofSeq(m.$0.map)),(Global.jQuery(pageMapElements).each(function($1,el)
     {
      var jEl,key;
      jEl=Global.jQuery(el);
      key=el.getAttribute("data-html-page-key");
-     htmlPage.map.ContainsKey(key)?jEl.val(htmlPage.map.get_Item(key)):jEl.val(Global.String(el.getAttribute("data-html-page-value")));
+     myMap.ContainsKey(key)?jEl.val(myMap.get_Item(key)):jEl.val(Global.String(el.getAttribute("data-html-page-value")));
     }),Concurrency.Zero()))),Concurrency.Delay(function()
     {
      var map;
@@ -1004,10 +1004,10 @@
           $0:currentAndAfter.$0.$0
          }),List.T.Empty]:currentAndAfter.$1.$==0?(htmlPage=currentAndAfter.$0.$0,[new DocumentPage({
           $:0,
-          $0:HtmlPage.New(htmlPage.name,htmlPage.oTemplateId,htmlPage.pageIndex,htmlPage.map.Add(key,Global.String(Global.jQuery(el).val())))
+          $0:HtmlPage.New(htmlPage.name,htmlPage.oTemplateId,htmlPage.pageIndex,List.ofSeq(Map.ToSeq(Map.OfArray(Arrays.ofSeq(htmlPage.map)).Add(key,Global.String(Global.jQuery(el).val())))))
          }),List.T.Empty]):(htmlPage$1=currentAndAfter.$0.$0,[new DocumentPage({
           $:0,
-          $0:HtmlPage.New(htmlPage$1.name,htmlPage$1.oTemplateId,htmlPage$1.pageIndex,htmlPage$1.map.Add(key,Global.String(Global.jQuery(el).val())))
+          $0:HtmlPage.New(htmlPage$1.name,htmlPage$1.oTemplateId,htmlPage$1.pageIndex,List.ofSeq(Map.ToSeq(Map.OfArray(Arrays.ofSeq(htmlPage$1.map)).Add(key,Global.String(Global.jQuery(el).val())))))
          }),currentAndAfter.$1]),[t[0],p$1[0],p$1[1]])));
          Var.Set(varDocument,(i$1=varDocument.c,Document.New(i$1.id,i$1.name,List.append(p[0],new List.T({
           $:1,

@@ -1,5 +1,4 @@
-﻿
-namespace JobApplicationSpam
+﻿namespace JobApplicationSpam
 
 open WebSharper
 open WebSharper.UI.Next
@@ -14,7 +13,6 @@ module Client =
     open WebSharper.JQuery
     open System
     open WebSharper.UI.Next.Client.HtmlExtensions
-    open WebSharper.UI.Html.Tags
 
     [<JavaScript>]
     type Language =
@@ -143,7 +141,7 @@ module Client =
                   let! loginResult = Server.login (varTxtLoginEmail.Value) (varTxtLoginPassword.Value)
                   match loginResult with
                   | Ok (v, _) ->
-                    JS.Window.Location.Href <- "/templates"
+                    JS.Window.Location.Href <- ""
                     ()
                   | Bad xs -> JS.Alert(String.concat ", " xs)
                 } |> Async.Start
@@ -214,26 +212,56 @@ module Client =
     [<JavaScript>]
     let templates () = 
         let varDocument = Var.CreateWaiting()
-        let varUserValues : Var<UserValues> = Var.Create<UserValues>({gender=Gender.Male;degree="";firstName="";lastName="";street="";postcode="";city="";phone="";mobilePhone=""})
+        let varUserValues : Var<UserValues> = Var.Create<UserValues>({gender=Gender.Female;degree="";firstName="";lastName="";street="";postcode="";city="";phone="";mobilePhone=""})
         let varUserEmail = Var.CreateWaiting<string>()
-        let varEmployer = Var.Create<Employer>({company="";gender=Gender.Male;degree="";firstName="";lastName="";street="";postcode="";city="";email="";phone="";mobilePhone=""})
+        let varEmployer = Var.Create<Employer>({company="";gender=Gender.Unknown;degree="";firstName="";lastName="";street="";postcode="";city="";email="";phone="";mobilePhone=""})
         let varCurrentPageIndex = Var.Create(1)
         let varDisplayedDocument = Var.Create(div [] :> Doc)
 
         let createInput t d =
-          let guid = Guid.NewGuid().ToString()
           divAttr
             [attr.``class`` "form-group row"]
             [ labelAttr
-                [attr.``class`` "col-sm-3 col-form-label"; attr.``for`` guid]
+                [attr.``class`` "col-sm-3 col-form-label"; attr.``for`` d]
                 [text t]
               divAttr
                 [attr.``class`` "col-sm-9"]
-                [ inputAttr [attr.id guid; attr.``data-`` "bind" d; attr.``class`` "form-control"; attr.placeholder t ] []
+                [ inputAttr [attr.id d; attr.``data-`` "bind" d; attr.``class`` "form-control" ] []
                 ]
             ]
-          :> Doc
+        let createRadio (header : string) (rs : list<string * string * string>) =
+          let radioGroup = Guid.NewGuid().ToString()    
+          div
+            [ for i = 0 to rs.Length - 1 do
+                  match rs.[i] with
+                  | radioText, bind, value ->
+                      let id = Guid.NewGuid().ToString()
+                      yield
+                        divAttr
+                          [attr.``class`` "form-group row"]
+                          [ labelAttr
+                               [attr.``class`` "col-sm-3 col-form-label"]
+                               [text (if i = 0 then header else "")]
+                            divAttr
+                              [ attr.``class`` "col-sm-9"
+                              ]
+                              [ inputAttr
+                                  [ attr.id id
+                                    attr.``type`` "radio"
+                                    attr.name radioGroup
+                                    attr.value value
+                                    attr.``data-`` "bind" bind
+                                  ]
+                                  []
+                                labelAttr
+                                  [ attr.``for`` id]
+                                  [ text radioText ]
 
+                              ]
+                            :> Doc
+                          ] :> Doc
+              ]
+  
             
 
         let fillDocumentValues() =
@@ -254,61 +282,78 @@ module Client =
                     ) |> ignore
                 | FilePage filePage ->
                     ()
+                do! Async.Sleep 2000
 
                 let map =
-                    [ "userDegree", ((fun () -> varUserValues.Value.degree), (fun v -> varUserValues.Value <- { varUserValues.Value with degree = v }))
-                      "userFirstName", ((fun () -> varUserValues.Value.firstName), (fun v -> varUserValues.Value <- { varUserValues.Value with firstName = v }))
-                      "userLastName", ((fun () -> varUserValues.Value.lastName), (fun v -> varUserValues.Value <- { varUserValues.Value with lastName = v }))
-                      "userStreet", ((fun () -> varUserValues.Value.street), (fun v -> varUserValues.Value <- { varUserValues.Value with street= v }))
-                      "userPostcode", ((fun () -> varUserValues.Value.postcode), (fun v -> varUserValues.Value <- { varUserValues.Value with postcode = v }))
-                      "userCity", ((fun () -> varUserValues.Value.city), (fun v -> varUserValues.Value <- { varUserValues.Value with city = v }))
-                      "userEmail", ((fun () -> varUserEmail.Value), (fun v -> varUserEmail.Value <- v))
-                      "userPhone", ((fun () -> varUserValues.Value.phone), (fun v -> varUserValues.Value <- { varUserValues.Value with phone = v }))
-                      "userMobilePhone", ((fun () -> varUserValues.Value.mobilePhone), (fun v -> varUserValues.Value <- { varUserValues.Value with mobilePhone = v }))
-                      "company", ((fun () -> varEmployer.Value.company), (fun v -> varEmployer.Value <- { varEmployer.Value with company = v }))
-                      "companyStreet", ((fun () -> varEmployer.Value.street), (fun v -> varEmployer.Value <- { varEmployer.Value with street = v }))
-                      "companyPostcode", ((fun () -> varEmployer.Value.postcode), (fun v -> varEmployer.Value <- { varEmployer.Value with postcode = v }))
-                      "companyCity", ((fun () -> varEmployer.Value.city), (fun v -> varEmployer.Value <- { varEmployer.Value with city = v }))
-                      "bossGender", ((fun () -> varEmployer.Value.gender.ToString()), (fun v -> varEmployer.Value <- { varEmployer.Value with gender = Gender.fromString(v) }))
-                      "bossDegree", ((fun () -> varEmployer.Value.degree), (fun v -> varEmployer.Value <- { varEmployer.Value with degree = v }))
-                      "bossFirstName", ((fun () -> varEmployer.Value.firstName), (fun v -> varEmployer.Value <- { varEmployer.Value with firstName = v }))
-                      "bossLastName", ((fun () -> varEmployer.Value.lastName), (fun v -> varEmployer.Value <- { varEmployer.Value with lastName = v }))
-                      "bossEmail", ((fun () -> varEmployer.Value.email), (fun v -> varEmployer.Value <- { varEmployer.Value with email = v }))
-                      "bossPhone", ((fun () -> varEmployer.Value.phone), (fun v -> varEmployer.Value <- { varEmployer.Value with phone = v }))
-                      "bossMobilePhone", ((fun () -> varEmployer.Value.mobilePhone), (fun v -> varEmployer.Value <- { varEmployer.Value with mobilePhone = v }))
-                      "emailSubject", ((fun () -> varDocument.Value.email.subject), (fun v -> varDocument.Value <- { varDocument.Value with email = { varDocument.Value.email with subject = v} }))
-                      "emailBody", ((fun () -> varDocument.Value.email.body), (fun v -> varDocument.Value <- { varDocument.Value with email = {varDocument.Value.email with body  = v } }))
+                    [ "userGender", ("radio", (fun () -> varUserValues.Value.gender.ToString()), (fun v -> varUserValues.Value <- { varUserValues.Value with gender = Gender.fromString v }))
+                      "userDegree", ("text", (fun () -> varUserValues.Value.degree), (fun v -> varUserValues.Value <- { varUserValues.Value with degree = v }))
+                      "userFirstName", ("text", (fun () -> varUserValues.Value.firstName), (fun v -> varUserValues.Value <- { varUserValues.Value with firstName = v }))
+                      "userLastName", ("text", (fun () -> varUserValues.Value.lastName), (fun v -> varUserValues.Value <- { varUserValues.Value with lastName = v }))
+                      "userStreet", ("text", (fun () -> varUserValues.Value.street), (fun v -> varUserValues.Value <- { varUserValues.Value with street= v }))
+                      "userPostcode", ("text", (fun () -> varUserValues.Value.postcode), (fun v -> varUserValues.Value <- { varUserValues.Value with postcode = v }))
+                      "userCity", ("text", (fun () -> varUserValues.Value.city), (fun v -> varUserValues.Value <- { varUserValues.Value with city = v }))
+                      "userEmail", ("text", (fun () -> varUserEmail.Value), (fun v -> varUserEmail.Value <- v))
+                      "userPhone", ("text", (fun () -> varUserValues.Value.phone), (fun v -> varUserValues.Value <- { varUserValues.Value with phone = v }))
+                      "userMobilePhone", ("text", (fun () -> varUserValues.Value.mobilePhone), (fun v -> varUserValues.Value <- { varUserValues.Value with mobilePhone = v }))
+                      "company", ("text", (fun () -> varEmployer.Value.company), (fun v -> varEmployer.Value <- { varEmployer.Value with company = v }))
+                      "companyStreet", ("text", (fun () -> varEmployer.Value.street), (fun v -> varEmployer.Value <- { varEmployer.Value with street = v }))
+                      "companyPostcode", ("text", (fun () -> varEmployer.Value.postcode), (fun v -> varEmployer.Value <- { varEmployer.Value with postcode = v }))
+                      "companyCity", ("text", (fun () -> varEmployer.Value.city), (fun v -> varEmployer.Value <- { varEmployer.Value with city = v }))
+                      "bossGender", ("radio", (fun () -> varEmployer.Value.gender.ToString()), (fun v -> varEmployer.Value <- { varEmployer.Value with gender = Gender.fromString(v) }))
+                      "bossDegree", ("text", (fun () -> varEmployer.Value.degree), (fun v -> varEmployer.Value <- { varEmployer.Value with degree = v }))
+                      "bossFirstName", ("text", (fun () -> varEmployer.Value.firstName), (fun v -> varEmployer.Value <- { varEmployer.Value with firstName = v }))
+                      "bossLastName", ("text", (fun () -> varEmployer.Value.lastName), (fun v -> varEmployer.Value <- { varEmployer.Value with lastName = v }))
+                      "bossEmail", ("text", (fun () -> varEmployer.Value.email), (fun v -> varEmployer.Value <- { varEmployer.Value with email = v }))
+                      "bossPhone", ("text", (fun () -> varEmployer.Value.phone), (fun v -> varEmployer.Value <- { varEmployer.Value with phone = v }))
+                      "bossMobilePhone", ("text", (fun () -> varEmployer.Value.mobilePhone), (fun v -> varEmployer.Value <- { varEmployer.Value with mobilePhone = v }))
+                      "emailSubject", ("text", (fun () -> varDocument.Value.email.subject), (fun v -> varDocument.Value <- { varDocument.Value with email = { varDocument.Value.email with subject = v} }))
+                      "emailBody", ("text", (fun () -> varDocument.Value.email.body), (fun v -> varDocument.Value <- { varDocument.Value with email = {varDocument.Value.email with body  = v } }))
                       //"today", sprintf "%i-%i-%i" DateTime.Now.Year DateTime.Now.Month DateTime.Now.Day
                     ]
                     |> Map.ofList
                 
                 for item in map do
-                    JQuery(sprintf "[data-bind='%s']" item.Key).Val(fst item.Value ()) |> ignore
+                    match item.Value with
+                    | "radio", get, set ->
+                            JQuery(sprintf "[data-bind='%s']" item.Key).Each
+                               (fun i el -> if get() = el?value then el?checked <- true) |> ignore
+                    | "text", get, set ->
+                            JQuery(sprintf "[data-bind='%s']" item.Key).Each
+                                (fun i el -> el?value <- get ()) |> ignore
+                    | s, _, _ -> failwith ("Unknown input type: " + s)
+                        
 
                 JQuery(JS.Document.QuerySelectorAll("[data-bind]"))
                     .Each
                         (fun (n, (el : Dom.Element)) ->
                             let eventAction =
                                 (fun () ->
+                                    let elValue = JQuery(el).Val() |> string
                                     let bindValue = JQuery(el).Data("bind").ToString()
+                                    map.[bindValue] |> fun (_, _, set) -> set elValue |> ignore
                                     let updateElements = JQuery(sprintf "[data-bind='%s']" bindValue)
                                     updateElements.Each
                                         (fun (n, updateElement) ->
-                                            let elValue = JQuery(el).Val() |> string
-                                            snd map.[bindValue] elValue
                                             if updateElement <> el
-                                            then JQuery(updateElement).Val(elValue) |> ignore
-                                            ()
+                                            then
+                                                match map.[bindValue] with
+                                                | "radio", get, set ->
+                                                    updateElement?checked <- (elValue = updateElement?value)
+                                                | "text", get, set ->
+                                                    updateElement?value <- elValue
+                                                | s, get, set ->
+                                                    failwith ("Unknown input type: " + s) 
                                         ) |> ignore
                                 )
                             el.RemoveEventListener("input", eventAction, true)
                             el.AddEventListener("input", eventAction, true)
+                            el.RemoveEventListener("click", eventAction, true)
+                            el.AddEventListener("click", eventAction, true)
                         ) |> ignore
             }
 
         let loadPageTemplate() : Async<unit> =
             async {
-                JS.Alert("hallo")
                 JQuery("#insertDiv").Remove() |> ignore
                 while JS.Document.GetElementById("insertDiv") <> null do
                     do! Async.Sleep 10
@@ -365,6 +410,7 @@ module Client =
             for hideElId in showHideMutualElements do
                 if not <| List.contains hideElId elIds
                 then JS.Document.GetElementById(hideElId)?style?display <- "none"
+            
 
 
         let setDocument () =
@@ -378,6 +424,7 @@ module Client =
                 match oDocument with
                 | Some document ->
                     varDocument.Value <- document
+                    JS.Document.GetElementById("hiddenDocumentId")?value <- (JS.Document.GetElementById("selectDocumentName")?selectedIndex + 1).ToString()
                 | None ->
                     ()
             }
@@ -466,7 +513,6 @@ module Client =
                         do! setDocument()
                         do! setPageButtons()
                         do! fillDocumentValues()
-                        show ["addEmployerDiv"]
                       } |> Async.Start)
               ]
               []
@@ -508,7 +554,7 @@ module Client =
                             on.click
                               (fun el _ ->
                                   show ["choosePageTypeDiv"; "attachmentsDiv"; "createFilePageDiv"]
-                                  JS.Document.GetElementById("rbFilePage")?checked <- "checked";
+                                  JS.Document.GetElementById("rbFilePage")?checked <- true;
                               )
                           ]
                           [ text "+"]
@@ -621,6 +667,11 @@ module Client =
               [ attr.id "editUserValuesDiv" ]
               [ h4 [ text "Your values" ]
                 createInput "Degree" "userDegree"
+                createRadio
+                  "Gender"
+                  [ "male", "userGender", "m"
+                    "female", "userGender", "f"
+                  ]
                 createInput "First name" "userFirstName"
                 createInput "Last name" "userLastName"
                 createInput "Street" "userStreet"
@@ -633,6 +684,26 @@ module Client =
               [ attr.id "addEmployerDiv" ]
               [ inputAttr
                   [ attr.``type`` "button"
+                    attr.value "Load from website"
+                    on.click (fun el _ ->
+                        async {
+                            let! employer = Server.readWebsite (JS.Document.GetElementById("txtReadEmployerFromWebsite")?value)
+                            varEmployer.Value <- employer
+                            JS.Alert(varEmployer.Value.company)
+                            do! fillDocumentValues()
+                            JS.Alert(varEmployer.Value.company)
+                        } |> Async.Start
+                    )
+                  ]
+                  []
+                inputAttr
+                  [ attr.id "txtReadEmployerFromWebsite"
+                    attr.``type`` "text"
+                    attr.value "https://jobboerse.arbeitsagentur.de/vamJB/stellenangeboteFinden.html?execution=e4s1&_eventId_detailView&bencs=ECCL4bGU%2BoeU3dXfDx34zLzb40uikic%2B2KKQU5eGJmbIR%2B7U88EatZPz4c6thxWn&bencs=m4%2BYgQaq%2BX3rqfQIFvibQOfuTdWSRPhHFObxFs%2BMsVl5i8Ha2yIwL1W5WT0iPA4PxFEqmlYn%2F%2BS1r%2FuIRfNrBw%3D%3D&bencs=6PQaRUFDQLZ%2BGNPAPRG8v%2BzbdKHav8zjyetSZpAojmXOPuJQd%2F4O3ojlMh1kXaLryb44mxmmwUNC%2F0m3Nq0xAXci%2FOEbKO0KpeEsoXm%2BGVaRIDnp67LAL434DTMOym9f&bencs=ScHZtBeeBMNt7ILR4tjstoAti5XHVScqFoc6%2FRQffzYt%2FJrTwlVXtA8Y77YD%2Fth0"
+                  ]
+                  []
+                inputAttr
+                  [ attr.``type`` "button"
                     attr.``class`` "btnLikeLink"
                     attr.value "Apply now"
                     on.click (fun _ _ -> Server.applyNowWithHtmlTemplate varEmployer.Value varDocument.Value varUserValues.Value |> Async.Start)
@@ -643,9 +714,15 @@ module Client =
                 createInput "Street" "companyStreet"
                 createInput "Postcode" "companyPostcode"
                 createInput "City" "companyCity"
+                createRadio
+                    "Gender"
+                    [ "male", "bossGender", "m"
+                      "female", "bossGender", "f"
+                    ]
                 createInput "Degree" "bossDegree"
                 createInput "First name" "bossFirstName"
                 createInput "Last name" "bossLastName"
+                createInput "Email" "bossEmail"
                 createInput "Phone" "bossPhone"
                 createInput "Mobile phone" "bossMobilePhone"
                 inputAttr

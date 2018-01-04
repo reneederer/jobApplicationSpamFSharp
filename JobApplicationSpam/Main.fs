@@ -155,7 +155,7 @@ module Site =
     let main =
         Application.MultiPage (fun (ctx : Context<EndPoint>) endpoint ->
             match (ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously, endpoint) with
-            | Some _, EndPoint.Home -> homePage ctx
+            | Some _, EndPoint.Home -> templatesPage ctx
             | Some _, EndPoint.Login -> loginPage ctx
             | Some _, EndPoint.ShowSentJobApplications -> showSentJobApplications ctx
             | Some _, EndPoint.Register -> registerPage ctx

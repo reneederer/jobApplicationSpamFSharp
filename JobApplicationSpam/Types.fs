@@ -10,15 +10,18 @@ module Types =
     type Gender =
     | Male
     | Female
+    | Unknown
     with
         override this.ToString() =
             match this with
             | Gender.Male -> "m"
             | Gender.Female -> "f"
+            | Gender.Unknown -> "u"
         static member fromString(v) =
             match v with
             | "m" -> Gender.Male
             | "f" -> Gender.Female
+            | "u" -> Gender.Unknown
             | x -> failwith ("Failed to convert string to gender: " + x)
 
     [<WebSharper.JavaScript>]

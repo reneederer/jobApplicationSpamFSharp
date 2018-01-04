@@ -7,6 +7,7 @@ open Chessie.ErrorHandling
 open System
 open JobApplicationSpam.Types
 open System.Configuration
+open Website
 
 
 module Server =
@@ -300,9 +301,9 @@ module Server =
                           ("$firmaStrasse", employer.street)
                           ("$firmaPlz", employer.postcode)
                           ("$firmaStadt", employer.city)
-                          ("$chefAnredeBriefkopf", match employer.gender with Gender.Male -> "Herrn" | Gender.Female -> "Frau")
+                          ("$chefAnredeBriefkopf", match employer.gender with Gender.Male -> "Herrn" | Gender.Female -> "Frau" | Gender.Unknown -> "")
                           ("$chefAnrede", employer.gender.ToString())
-                          ("$geehrter", match employer.gender with Gender.Male -> "geehrter" | Gender.Female -> "geehrte")
+                          ("$geehrter", match employer.gender with Gender.Male -> "geehrter" | Gender.Female -> "geehrte" | Gender.Unknown -> "")
                           ("$chefTitel", employer.degree)
                           ("$chefVorname", employer.firstName)
                           ("$chefNachname", employer.lastName)
@@ -443,9 +444,9 @@ module Server =
                     "$firmaStrasse", employer.street
                     "$firmaPlz", employer.postcode
                     "$firmaStadt", employer.city
-                    "$chefAnredeBriefkopf", match employer.gender with Gender.Male -> "Herrn" | Gender.Female -> "Frau"
+                    "$chefAnredeBriefkopf", match employer.gender with Gender.Male -> "Herrn" | Gender.Female -> "Frau" | Gender.Unknown -> ""
                     "$chefAnrede", employer.gender.ToString()
-                    "$geehrter", match employer.gender with Gender.Male -> "geehrter" | Gender.Female -> "geehrte"
+                    "$geehrter", match employer.gender with Gender.Male -> "geehrter" | Gender.Female -> "geehrte" | Gender.Unknown -> ""
                     "$chefTitel", employer.degree
                     "$chefVorname", employer.firstName
                     "$chefNachname", employer.lastName
@@ -502,3 +503,9 @@ module Server =
                 dbConn.Open()
                 return Database.getDocumentIdOffset dbConn userId documentIndex
             }
+    
+    [<Remote>]
+    let readWebsite url =
+        async {
+            return Website.read url
+        }

@@ -45,40 +45,40 @@ insert into htmlPageTemplate(name, odtPath, html) values('Anschreiben nach DIN 5
 '<div id="insertDiv">
 <div id="divTemplate" class="page1">
     <div style="width: 100%; background-color: white">
-        <input class="resizing field-updating" autofocus "autofocus" style="font-family: Arial; font-size: 12pt; font-weight: normal" data-update-field="userDegree" data-variable-value="userDegree" placeholder="Dein Titel" />
-        <input class="resizing field-updating" value="test" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-variable-value="userFirstName" data-update-field="userFirstName" placeholder="Dein Vorname" />
-        <input class="resizing field-updating" style="border:none; outline: none; letter-spacing: 0px; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userLastName" data-variable-value="userLasssstName" placeholder="Dein Nachname" />
+        <input class="resizing" autofocus "autofocus" style="font-family: Arial; font-size: 12pt; font-weight: normal" data-bind="userDegree" data-variable-value="userDegree" placeholder="Dein Titel" />
+        <input class="resizing" value="test" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-variable-value="userFirstName" data-bind="userFirstName" placeholder="Dein Vorname" />
+        <input class="resizing" style="border:none; outline: none; letter-spacing: 0px; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind="userLastName" data-variable-value="userLasssstName" placeholder="Dein Nachname" />
         <br />
-        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userStreet" style= "width:150px" data-variable-value="userStreet" placeholder="Deine Straße" />
+        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind="userStreet" style= "width:150px" data-variable-value="userStreet" placeholder="Deine Straße" />
         <br />
-        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userPostcode" data-variable-value="userPostcode" placeholder="Deine Postleitzahl" />
-        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="userCity" data-variable-value="userCity" placeholder="Deine Stadt" />
-        <br />
-        <br />
+        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind="userPostcode" data-variable-value="userPostcode" placeholder="Deine Postleitzahl" />
+        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind="userCity" data-variable-value="userCity" placeholder="Deine Stadt" />
         <br />
         <br />
-        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="bossDegree" placeholder="Chef-Titel" />
-        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="bossFirstName" placeholder="Chef-Vorname" />
-        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="bossLastName" placeholder="Chef-Nachname" />
         <br />
-        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="companyStreet" placeholder="Firma-Strasse" />
         <br />
-        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="companyPostcode" placeholder="Firma-Postleitzahl" />
-        <input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-update-field="companyCity" placeholder="Firma-Stadt" />
+        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind="bossDegree" placeholder="Chef-Titel" />
+        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind="bossFirstName" placeholder="Chef-Vorname" />
+        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind="bossLastName" placeholder="Chef-Nachname" />
+        <br />
+        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind="companyStreet" placeholder="Firma-Strasse" />
+        <br />
+        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind="companyPostcode" placeholder="Firma-Postleitzahl" />
+        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind="companyCity" placeholder="Firma-Stadt" />
         <br />
 <span style= "float:right">
-<input type="text" readonly="readonly" class="resizing field-updating" style="font-family: Arial; font-size: 12pt; font-weight: normal; border: none; outline: none;padding:0px; margin:0px" data-update-field="userCity" />,&nbsp
+<input type="text" readonly="readonly" class="resizing" style="font-family: Arial; font-size: 12pt; font-weight: normal; border: none; outline: none;padding:0px; margin:0px" data-bind="userCity" />,&nbsp
 <input type="text" readonly="readonly" class="resizing" style="font-family: Arial; font-size: 12pt; font-weight: normal" data-variable-value="today" />
 </span>
         <br />
         <br />
-        <input class="resizing field-updating" data-update-field="subject" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: bold" placeholder="Betreff" />
+        <input class="resizing" data-bind="subject" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: bold" placeholder="Betreff" />
         <br />
         <br />
     </div>
     <div style="width: 100%;">
-        <textarea rows="7" data-html-page-key="mainText" data-html-page-value="Sehr geehrte Damen und Herren" style="wrap: soft; border: solid 2px red; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; overflow: hidden; min-height: 100%; min-width: 100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block"></textarea>
-        <textarea rows="7" data-html-page-key="mainText1" data-html-page-value="Sehr geehrte Damen und Herren" style="wrap: soft; border: solid 2px red; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; overflow: hidden; min-height: 100%; min-width: 100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block"></textarea>
+        <textarea rows="7" data-page-key="mainText" data-page-value="ehr geehrte Damen und Herren" style="wrap: soft; border: solid 2px red; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; overflow: hidden; min-height: 100%; min-width: 100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block"></textarea>
+        <textarea rows="7" data-page-key="mainText1" data-page-value="Sehr geehrte Damen und Herren" style="wrap: soft; border: solid 2px red; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; overflow: hidden; min-height: 100%; min-width: 100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block"></textarea>
     </div>
     <div style="width: 100%">
         <br />
@@ -86,21 +86,21 @@ insert into htmlPageTemplate(name, odtPath, html) values('Anschreiben nach DIN 5
         <br />
         <br />
         <br />
-<input type="text" readonly="readonly" class="resizing field-updating" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-update-field="userDegree" />&nbsp;
-<input type="text" readonly="readonly" class="resizing field-updating" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-update-field="userFirstName" />&nbsp;
-<input type="text" readonly="readonly" class="resizing field-updating" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-update-field="userLastName" />
+<input type="text" readonly="readonly" class="resizing" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-bind="userDegree" />&nbsp;
+<input type="text" readonly="readonly" class="resizing" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-bind="userFirstName" />&nbsp;
+<input type="text" readonly="readonly" class="resizing" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-bind="userLastName" />
 </div>
 </div>
 </div>');
 insert into htmlPageTemplate(name, odtPath, html) values('Deckblatt', 'c:/users/rene/desktop/bewerbung_deckblatt.odt',
 '<div id="insertDiv">
 <h1>Deckblatt</h1>
-<input class="resizing field-updating" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal" data-update-field="bossFirstName" placeholder="Chef-Vorname" />
+<input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal" data-bind="bossFirstName" placeholder="Chef-Vorname" />
 <image src="null" width="400" height="100" />
-<input type="text" class="resizing field-updating" data-update-field="userFirstName"></input>
-<input type="text" data-html-page-mainText="xainText"></input>
+<input type="text" class="resizing" data-bind="userFirstName"></input>
+<input type="text" data-page-mainText="xainText"></input>
 <br />
-<input type="text" class="resizing field-updating" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-update-field="userLastName" placeholder="Dein Name" />
+<input type="text" class="resizing" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-bind="userLastName" placeholder="Dein Name" />
 hallo div!</div>
 ');
 insert into htmlPageTemplate(name, odtPath, html) values('Lebenslauf', 'c:/users/rene/desktop/bewerbung_lebenslauf.odt', '<div id="insertDiv"><b>Lebenslauf...</b></div>');
@@ -110,7 +110,7 @@ insert into documentEmail(documentId, subject, body) values(1, 'titel1', 'body1'
 insert into documentEmail(documentId, subject, body) values(2, 'titel2', 'body2');
 insert into filePage(documentId, path, pageIndex, name) values(1, 'C:/Users/rene/Downloads/labenwolf_zeugnis_small.pdf', 3, 'Labenwolf Zeugnis');
 insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 1, 1, 'mein zweites Anschreiben');
-insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 2, 2, 'mein zweites Deckblatt');
+insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 1, 2, 'mein zweites Deckblatt');
 insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 2, 3, 'mein drittes Deckblatt');
 insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 3, 4, 'mein dritter Lebenslauf');
 insert into filePage(documentId, path, pageIndex, name) values(2, 'C:/Users/rene/Downloads/labenwolf_zeugnis_small.pdf', 5, 'LabenwolfZeugnis');

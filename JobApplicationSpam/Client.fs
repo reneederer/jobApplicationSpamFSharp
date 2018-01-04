@@ -14,6 +14,7 @@ module Client =
     open WebSharper.JQuery
     open System
     open WebSharper.UI.Next.Client.HtmlExtensions
+    open WebSharper.UI.Html.Tags
 
     [<JavaScript>]
     type Language =
@@ -215,9 +216,9 @@ module Client =
     [<JavaScript>]
     let templates () = 
         let varDocument = Var.CreateWaiting()
-        let varUserValues : Var<UserValues> = Var.Create<UserValues>({gender=Gender.Male;degree="";firstName="";lastName="";street="";postcode="";city="";phone="";mobilePhone=""})
+        let varUserValues : Var<UserValues> = Var.Create<UserValues>({gender=Gender.Male;degree="dr l";firstName="ren";lastName="ederer";street="";postcode="";city="";phone="";mobilePhone=""})
         let varUserEmail = Var.CreateWaiting<string>()
-        let varEmployer = Var.Create<Employer>({company="";gender=Gender.Male;degree="";firstName="";lastName="";street="";postcode="";city="";email="";phone="";mobilePhone=""})
+        let varEmployer = Var.Create<Employer>({company="";gender=Gender.Male;degree="";firstName="empfirstl";lastName="";street="";postcode="";city="";email="";phone="";mobilePhone=""})
         let varCurrentPageIndex = Var.Create(1)
         let varDisplayedDocument = Var.Create(div [] :> Doc)
         let varAddPage = Var.Create (div [] :> Doc)
@@ -226,7 +227,7 @@ module Client =
           div
             [ text t
               br []
-              inputAttr [attr.``data-`` "update-field" d ] []
+              inputAttr [attr.``data-`` "bind" d ] []
               br[]
               br[]
             ]
@@ -236,25 +237,22 @@ module Client =
 
         let fillDocumentValues() =
             async {
-                   
-                let pageMapElements = JS.Document.QuerySelectorAll("[data-html-page-key]")
+                let pageMapElements = JS.Document.QuerySelectorAll("[data-page-key]")
                 match varDocument.Value.pages.[varCurrentPageIndex.Value - 1] with
                 | HtmlPage htmlPage ->
                     let myMap = htmlPage.map |> Map.ofList
                     JQuery(pageMapElements).Each
                         (fun (n, (el : Dom.Element)) ->
                             let jEl = JQuery(el)
-                            let key = el.GetAttribute("data-html-page-key")
+                            let key = el.GetAttribute("data-page-key")
                             if myMap.ContainsKey key
                             then
                                 jEl.Val(myMap.[key]) |> ignore
                             else
-                                jEl.Val(el.GetAttribute("data-html-page-value") |> string) |> ignore
+                                jEl.Val(el.GetAttribute("data-page-value") |> string) |> ignore
                     ) |> ignore
                 | FilePage filePage ->
                     ()
-
-
 
                 let map =
                     [ "userDegree", ((fun () -> varUserValues.Value.degree), (fun v -> varUserValues.Value <- { varUserValues.Value with degree = v }))
@@ -282,22 +280,21 @@ module Client =
                     |> Map.ofList
                 
                 for item in map do
-                    JQuery(sprintf "[data-update-field='%s']" item.Key).Val(fst item.Value ()) |> ignore
+                    JQuery(sprintf "[data-bind='%s']" item.Key).Val(fst item.Value ()) |> ignore
 
-                JQuery(".field-updating")
+                JQuery(JS.Document.QuerySelectorAll("[data-bind]"))
                     .Each
                         (fun (n, (el : Dom.Element)) ->
                             let eventAction =
                                 (fun () ->
-                                    let updateFieldValue = JQuery(el).Data("update-field").ToString()
-                                    let updateElements = JQuery(sprintf "[data-update-field='%s']" updateFieldValue)
+                                    let bindValue = JQuery(el).Data("bind").ToString()
+                                    let updateElements = JQuery(sprintf "[data-bind='%s']" bindValue)
                                     updateElements.Each
                                         (fun (n, updateElement) ->
                                             let elValue = JQuery(el).Val() |> string
-                                            snd map.[updateFieldValue] elValue
-                                            if updateElement <> el || true
+                                            snd map.[bindValue] elValue
+                                            if updateElement <> el
                                             then JQuery(updateElement).Val(elValue) |> ignore
-                              //                  resize updateElement 150
                                             ()
                                         ) |> ignore
                                 )
@@ -306,10 +303,9 @@ module Client =
                         ) |> ignore
             }
 
-
-
         let loadPageTemplate() : Async<unit> =
             async {
+                JS.Alert("hallo")
                 JQuery("#insertDiv").Remove() |> ignore
                 while JS.Document.GetElementById("insertDiv") <> null do
                     do! Async.Sleep 10
@@ -318,10 +314,10 @@ module Client =
                 varDisplayedDocument.Value <- template |> Doc.Verbatim
                 while JS.Document.GetElementById("insertDiv") = null do
                     do! Async.Sleep 10
-                let pageMapElements = JS.Document.QuerySelectorAll("[data-html-page-key]")
+                let pageMapElements = JS.Document.QuerySelectorAll("[data-page-key]")
                 JQuery(pageMapElements).
                     Each(fun i el ->
-                        let key = el.GetAttribute("data-html-page-key")
+                        let key = el.GetAttribute("data-page-key")
                         let eventAction = 
                             (fun () ->
                                   let beforePages, currentPage, afterPages =
@@ -345,15 +341,9 @@ module Client =
                         el.RemoveEventListener("input", eventAction, true)
                         el.AddEventListener("input", eventAction, true)
                     ) |> ignore
+                do! fillDocumentValues()
             }
         
-        
-        let fillValues elId =
-            JS.Document.QuerySelectorAll("[data-update-values]")
-            ()
-
-
-         
         let showHideMutualElements =
             [ "createFilePageDiv"
               "createHtmlPageDiv"
@@ -362,42 +352,18 @@ module Client =
               "newDocumentDiv"
               "editUserValuesDiv"
               "editEmployerDiv"
+              "displayedDocumentDiv"
             ]
         
-        
-        let hide elId =
-            JS.Document.GetElementById(elId)?style?display <- "none"
-            match elId with
-            | "createFilePageDiv" ->()
-            | "createHtmlPageDiv" ->()
-            | "choosePageTypeDiv" -> ()
-            | "emailDiv" ->()
-            | "newDocumentDiv" -> ()
-            | "editUserValuesDiv" -> ()
-            | "editEmployerDiv" -> ()
-            | _ ->
-                failwith ("element not found:" + elId)
+        let hideAll () =
+            for elId in showHideMutualElements do
+                JS.Document.GetElementById(elId)?style?display <- "none"
               
         let show elId =
             JS.Document.GetElementById(elId)?style?display <- "block"
             for currentElId in showHideMutualElements do
                 if currentElId <> elId
-                then hide currentElId
-            match elId with
-            | "createFilePageDiv" ->
-                JS.Document.GetElementById("choosePageTypeDiv")?style?display <- "block"
-            | "createHtmlPageDiv" ->
-                JS.Document.GetElementById("choosePageTypeDiv")?style?display <- "block"
-            | "selectDocumentName" ->()
-            | "emailDiv" ->()
-            | "newDocumentDiv" -> ()
-            | "choosePageTypeDiv" -> ()
-            | "editEmployerDiv" ->
-                fillValues "addEmployerDiv"
-            | "editUserValuesDiv" -> ()
-            | "editEmployer" -> ()
-            | _ ->
-                failwith ("element not found: " + elId)
+                then JS.Document.GetElementById(currentElId)?style?display <- "none"
 
 
         let setDocument () =
@@ -434,6 +400,8 @@ module Client =
                                         varDisplayedDocument.Value <- template |> Doc.Verbatim
                                         while JS.Document.GetElementById("insertDiv") = null do
                                             do! Async.Sleep 10
+                                        do! fillDocumentValues()
+                                        show "displayedDocumentDiv"
                                     } |> Async.Start
                                 | FilePage filePage -> 
                                     () 
@@ -470,12 +438,12 @@ module Client =
                 addSelectOption selectHtmlPageTemplateEl htmlPageTemplate.name
 
             do! fillDocumentValues()
-            show "createHtmlPageDiv"
+            hideAll()
         } |> Async.Start
 
 
         div
-          [ text "Your application documents: "
+          [ h3 [text "Your application documents: "]
             selectAttr
               [ attr.id "selectDocumentName";
                 on.change
@@ -500,6 +468,44 @@ module Client =
                 on.click(fun _ _ ->())
               ]
               []
+            div
+              [ h3 [ text "Your pages:" ]
+                ulAttr
+                  [ attr.id "pageButtonsUl" ]
+                  [ li
+                      [ buttonAttr
+                          [ attr.id "addPageButton"
+                            on.click
+                              (fun el _ ->
+                                  ()//varAddPage.Value <- showAddPageDiv()
+                              )
+                          ]
+                          [ text "+"]
+                      ]
+                  ]
+              ]
+            hr []
+            inputAttr
+              [ attr.``type`` "button"
+                attr.value "Email data"
+                on.click(fun _ _ -> show "emailDiv")
+              ]
+              []
+            br []
+            inputAttr
+              [ attr.``type`` "button"
+                attr.value "Your values"
+                on.click(fun _ _ -> show "editUserValuesDiv")
+              ]
+              []
+            br []
+            inputAttr
+              [ attr.``type`` "button"
+                attr.value "Edit employer values"
+                on.click(fun _ _ -> show "editEmployerDiv")
+              ]
+              []
+            hr []
             divAttr
               [ attr.id "newDocumentDiv" ]
               [ text "Document name: "
@@ -520,30 +526,27 @@ module Client =
                   ]
                   []
               ]
-            div
-              [ ulAttr
-                  [ attr.id "pageButtonsUl" ]
-                  [ li
-                      [ buttonAttr
-                          [ attr.id "addPageButton"
-                            on.click
-                              (fun el _ ->
-                                  ()//varAddPage.Value <- showAddPageDiv()
-                              )
-                          ]
-                          [ text "+"]
-                      ]
+            divAttr
+              [attr.id "displayedDocumentDiv"]
+              [ selectAttr
+                  [ attr.id "selectHtmlPageTemplate";
+                    on.change
+                      (fun _ _ ->
+                          async {
+                            do! loadPageTemplate()
+                            do! fillDocumentValues()
+                          } |> Async.Start)
                   ]
+                  []
+                Doc.EmbedView varDisplayedDocument.View
               ]
-            selectAttr
-              [ attr.id "selectHtmlPageTemplate"; on.change (fun _ _ -> async {do! loadPageTemplate()} |> Async.Start) ]
-              []
-            Doc.EmbedView varDisplayedDocument.View
+            br []
             br []
             br []
             divAttr
-              [attr.id "emailDiv"]
-              [ text "Email subject:"
+              [ attr.id "emailDiv"]
+              [ h3 [text "Email" ]
+                text "Email subject:"
                 br []
                 inputAttr
                   [ on.input (fun el _ -> varDocument.Value <- { varDocument.Value with email = {varDocument.Value.email with subject = el?value }})]
@@ -552,16 +555,15 @@ module Client =
                 br []
                 text "Email body:"
                 br []
-                inputAttr
-                  [ on.input (fun el _ -> varDocument.Value <- { varDocument.Value with email = {varDocument.Value.email with body = el?value }})]
+                textareaAttr
+                  [ on.input (fun el _ -> varDocument.Value <- { varDocument.Value with email = {varDocument.Value.email with body = el?value }})
+                    attr.style "min-height:300px"
+                  ]
                   []
               ]
-            br []
-            br []
             divAttr
               [ attr.id "choosePageTypeDiv" ]
-              [
-                inputAttr
+              [ inputAttr
                   [ attr.``type`` "radio"; attr.name "rbgrpPageType"; attr.id "rbHtmlPage"; on.click (fun _ _ -> ()) ]
                   []
                 labelAttr
@@ -603,12 +605,10 @@ module Client =
                     buttonAttr [ attr.style "margin-left: 20px"; on.click (fun _ _ -> varAddPage.Value <- div []) ] [text "Abort"]
                   ]
               ]
-            br []
-            br []
-            br []
             divAttr
               [ attr.id "editUserValuesDiv" ]
-              [ createInput "Degree" "userDegree"
+              [ h3 [ text "Your values" ]
+                createInput "Degree" "userDegree"
                 createInput "First name" "userFirstName"
                 createInput "Last name" "userLastName"
                 createInput "Street" "userStreet"
@@ -619,7 +619,8 @@ module Client =
               ]
             divAttr
               [ attr.id "editEmployerDiv" ]
-              [ createInput "Company name" "company"
+              [ h3 [text "Employer"]
+                createInput "Company name" "company"
                 createInput "Street" "companyStreet"
                 createInput "Postcode" "companyPostcode"
                 createInput "City" "companyCity"
@@ -629,6 +630,19 @@ module Client =
                 createInput "Phone" "bossPhone"
                 createInput "Mobile phone" "bossMobilePhone"
               ]
+            inputAttr
+              [ attr.``type`` "button"
+                attr.value "Save as new document"
+                on.click
+                  (fun _ _ ->
+                    async {
+                        let! newDocumentId = Server.saveNewDocument varDocument.Value
+                        () //TODO
+                    }
+                    |> Async.Start
+                  )
+              ]
+              []
             inputAttr
               [ attr.``type`` "button"
                 attr.value "Save as new document"

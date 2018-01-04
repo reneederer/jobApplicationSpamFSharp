@@ -289,7 +289,7 @@
   var varDocument,varUserValues,varUserEmail,varEmployer,varCurrentPageIndex,varDisplayedDocument,varAddPage,showHideMutualElements,b;
   function createInput(t,d)
   {
-   return Doc.Element("div",[],[Doc.TextNode(t),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("data-"+"update-field",d)],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[])]);
+   return Doc.Element("div",[],[Doc.TextNode(t),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("data-"+"bind",d)],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[])]);
   }
   function fillDocumentValues()
   {
@@ -298,13 +298,13 @@
    return Concurrency.Delay(function()
    {
     var pageMapElements,m,myMap;
-    pageMapElements=Global.document.querySelectorAll("[data-html-page-key]");
+    pageMapElements=Global.document.querySelectorAll("[data-page-key]");
     return Concurrency.Combine((m=varDocument.c.pages.get_Item(varCurrentPageIndex.c-1),m.$==1?Concurrency.Zero():(myMap=Map.OfArray(Arrays.ofSeq(m.$0.map)),(Global.jQuery(pageMapElements).each(function($1,el)
     {
      var jEl,key;
      jEl=Global.jQuery(el);
-     key=el.getAttribute("data-html-page-key");
-     myMap.ContainsKey(key)?jEl.val(myMap.get_Item(key)):jEl.val(Global.String(el.getAttribute("data-html-page-value")));
+     key=el.getAttribute("data-page-key");
+     myMap.ContainsKey(key)?jEl.val(myMap.get_Item(key)):jEl.val(Global.String(el.getAttribute("data-page-value")));
     }),Concurrency.Zero()))),Concurrency.Delay(function()
     {
      var map;
@@ -454,30 +454,30 @@
       {
        return function($2)
        {
-        return $1("[data-update-field='"+Utils.toSafe($2)+"']");
+        return $1("[data-bind='"+Utils.toSafe($2)+"']");
        };
       }(Global.id))(a.K)).val(a.V[0]());
       return Concurrency.Zero();
      }),Concurrency.Delay(function()
      {
-      Global.jQuery(".field-updating").each(function($1,el)
+      Global.jQuery(Global.document.querySelectorAll("[data-bind]")).each(function($1,el)
       {
        function eventAction()
        {
-        var updateFieldValue;
-        updateFieldValue=Global.String(Global.jQuery(el).data("update-field"));
+        var bindValue;
+        bindValue=Global.String(Global.jQuery(el).data("bind"));
         Global.jQuery((function($2)
         {
          return function($3)
          {
-          return $2("[data-update-field='"+Utils.toSafe($3)+"']");
+          return $2("[data-bind='"+Utils.toSafe($3)+"']");
          };
-        }(Global.id))(updateFieldValue)).each(function($2,updateElement)
+        }(Global.id))(bindValue)).each(function($2,updateElement)
         {
          var elValue;
          elValue=Global.String(Global.jQuery(el).val());
-         (map.get_Item(updateFieldValue))[1](elValue);
-         !Unchecked.Equals(updateElement,el)||true?Global.jQuery(updateElement).val(elValue):void 0;
+         (map.get_Item(bindValue))[1](elValue);
+         !Unchecked.Equals(updateElement,el)?Global.jQuery(updateElement).val(elValue):void 0;
         });
        }
        el.removeEventListener("input",eventAction,true);
@@ -494,6 +494,7 @@
    b$1=null;
    return Concurrency.Delay(function()
    {
+    Global.alert("hallo");
     Global.jQuery("#insertDiv").remove();
     return Concurrency.Combine(Concurrency.While(function()
     {
@@ -522,7 +523,7 @@
        });
       })),Concurrency.Delay(function()
       {
-       Global.jQuery(Global.document.querySelectorAll("[data-html-page-key]")).each(function(i,el)
+       Global.jQuery(Global.document.querySelectorAll("[data-page-key]")).each(function(i,el)
        {
         var key;
         function eventAction()
@@ -544,24 +545,33 @@
           $1:p[2]
          })),i$1.email)));
         }
-        key=el.getAttribute("data-html-page-key");
+        key=el.getAttribute("data-page-key");
         el.removeEventListener("input",eventAction,true);
         return el.addEventListener("input",eventAction,true);
        });
-       return Concurrency.Zero();
+       return Concurrency.Bind(fillDocumentValues(),function()
+       {
+        return Concurrency.Return(null);
+       });
       }));
      });
     }));
    });
   }
-  function fillValues(elId)
+  function hideAll()
   {
-   Global.document.querySelectorAll("[data-update-values]");
-  }
-  function hide(elId)
-  {
-   Global.document.getElementById(elId).style.display="none";
-   elId==="createFilePageDiv"?void 0:elId==="createHtmlPageDiv"?void 0:elId==="choosePageTypeDiv"?void 0:elId==="emailDiv"?void 0:elId==="newDocumentDiv"?void 0:elId==="editUserValuesDiv"?void 0:elId==="editEmployerDiv"?void 0:Operators.FailWith("element not found:"+elId);
+   var e;
+   e=Enumerator.Get(showHideMutualElements);
+   try
+   {
+    while(e.MoveNext())
+     Global.document.getElementById(e.Current()).style.display="none";
+   }
+   finally
+   {
+    if("Dispose"in e)
+     e.Dispose();
+   }
   }
   function show(elId)
   {
@@ -573,7 +583,7 @@
     while(e.MoveNext())
      {
       currentElId=e.Current();
-      currentElId!==elId?hide(currentElId):void 0;
+      currentElId!==elId?Global.document.getElementById(currentElId).style.display="none":void 0;
      }
    }
    finally
@@ -581,7 +591,6 @@
     if("Dispose"in e)
      e.Dispose();
    }
-   elId==="createFilePageDiv"?Global.document.getElementById("choosePageTypeDiv").style.display="block":elId==="createHtmlPageDiv"?Global.document.getElementById("choosePageTypeDiv").style.display="block":elId==="selectDocumentName"?void 0:elId==="emailDiv"?void 0:elId==="newDocumentDiv"?void 0:elId==="choosePageTypeDiv"?void 0:elId==="editEmployerDiv"?fillValues("addEmployerDiv"):elId==="editUserValuesDiv"?void 0:elId==="editEmployer"?void 0:Operators.FailWith("element not found: "+elId);
   }
   function setDocument()
   {
@@ -630,7 +639,7 @@
         return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getHtmlPageTemplate:-1212795141",[(o=htmlPage.oTemplateId,o==null?1:o.$0)]),function(a$1)
         {
          Var.Set(varDisplayedDocument,Doc.Verbatim(a$1));
-         return Concurrency.While(function()
+         return Concurrency.Combine(Concurrency.While(function()
          {
           return Unchecked.Equals(Global.document.getElementById("insertDiv"),null);
          },Concurrency.Delay(function()
@@ -638,6 +647,13 @@
           return Concurrency.Bind(Concurrency.Sleep(10),function()
           {
            return Concurrency.Return(null);
+          });
+         })),Concurrency.Delay(function()
+         {
+          return Concurrency.Bind(fillDocumentValues(),function()
+          {
+           show("displayedDocumentDiv");
+           return Concurrency.Zero();
           });
          }));
         });
@@ -656,13 +672,13 @@
    return el.add(optionEl);
   }
   varDocument=Var.CreateWaiting();
-  varUserValues=Var.Create$1(UserValues.New(Gender.Male,"","","","","","","",""));
+  varUserValues=Var.Create$1(UserValues.New(Gender.Male,"dr l","ren","ederer","","","","",""));
   varUserEmail=Var.CreateWaiting();
-  varEmployer=Var.Create$1(Employer.New("","","","",Gender.Male,"","","","","",""));
+  varEmployer=Var.Create$1(Employer.New("","","","",Gender.Male,"","empfirstl","","","",""));
   varCurrentPageIndex=Var.Create$1(1);
   varDisplayedDocument=Var.Create$1(Doc.Element("div",[],[]));
   varAddPage=Var.Create$1(Doc.Element("div",[],[]));
-  showHideMutualElements=List.ofArray(["createFilePageDiv","createHtmlPageDiv","choosePageTypeDiv","emailDiv","newDocumentDiv","editUserValuesDiv","editEmployerDiv"]);
+  showHideMutualElements=List.ofArray(["createFilePageDiv","createHtmlPageDiv","choosePageTypeDiv","emailDiv","newDocumentDiv","editUserValuesDiv","editEmployerDiv","displayedDocumentDiv"]);
   Concurrency.Start((b=null,Concurrency.Delay(function()
   {
    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getDocumentNames:1994133801",[]),function(a)
@@ -695,7 +711,7 @@
           {
            return Concurrency.Bind(fillDocumentValues(),function()
            {
-            show("createHtmlPageDiv");
+            hideAll();
             return Concurrency.Zero();
            });
           }));
@@ -707,7 +723,7 @@
     }));
    });
   })),null);
-  return Doc.Element("div",[],[Doc.TextNode("Your application documents: "),Doc.Element("select",[AttrProxy.Create("id","selectDocumentName"),AttrModule.Handler("change",function()
+  return Doc.Element("div",[],[Doc.Element("h3",[],[Doc.TextNode("Your application documents: ")]),Doc.Element("select",[AttrProxy.Create("id","selectDocumentName"),AttrModule.Handler("change",function()
   {
    return function()
    {
@@ -735,7 +751,31 @@
    {
     return null;
    };
-  })],[]),Doc.Element("div",[AttrProxy.Create("id","newDocumentDiv")],[Doc.TextNode("Document name: "),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("id","txtNewTemplateName")],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("value","Add document"),AttrModule.Handler("click",function()
+  })],[]),Doc.Element("div",[],[Doc.Element("h3",[],[Doc.TextNode("Your pages:")]),Doc.Element("ul",[AttrProxy.Create("id","pageButtonsUl")],[Doc.Element("li",[],[Doc.Element("button",[AttrProxy.Create("id","addPageButton"),AttrModule.Handler("click",function()
+  {
+   return function()
+   {
+    return null;
+   };
+  })],[Doc.TextNode("+")])])])]),Doc.Element("hr",[],[]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("value","Email data"),AttrModule.Handler("click",function()
+  {
+   return function()
+   {
+    return show("emailDiv");
+   };
+  })],[]),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("value","Your values"),AttrModule.Handler("click",function()
+  {
+   return function()
+   {
+    return show("editUserValuesDiv");
+   };
+  })],[]),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("value","Edit employer values"),AttrModule.Handler("click",function()
+  {
+   return function()
+   {
+    return show("editEmployerDiv");
+   };
+  })],[]),Doc.Element("hr",[],[]),Doc.Element("div",[AttrProxy.Create("id","newDocumentDiv")],[Doc.TextNode("Document name: "),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("id","txtNewTemplateName")],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("value","Add document"),AttrModule.Handler("click",function()
   {
    return function()
    {
@@ -751,13 +791,7 @@
      });
     })),null);
    };
-  })],[])]),Doc.Element("div",[],[Doc.Element("ul",[AttrProxy.Create("id","pageButtonsUl")],[Doc.Element("li",[],[Doc.Element("button",[AttrProxy.Create("id","addPageButton"),AttrModule.Handler("click",function()
-  {
-   return function()
-   {
-    return null;
-   };
-  })],[Doc.TextNode("+")])])])]),Doc.Element("select",[AttrProxy.Create("id","selectHtmlPageTemplate"),AttrModule.Handler("change",function()
+  })],[])]),Doc.Element("div",[AttrProxy.Create("id","displayedDocumentDiv")],[Doc.Element("select",[AttrProxy.Create("id","selectHtmlPageTemplate"),AttrModule.Handler("change",function()
   {
    return function()
    {
@@ -766,25 +800,28 @@
     {
      return Concurrency.Bind(loadPageTemplate(),function()
      {
-      return Concurrency.Return(null);
+      return Concurrency.Bind(fillDocumentValues(),function()
+      {
+       return Concurrency.Return(null);
+      });
      });
     })),null);
    };
-  })],[]),Doc.EmbedView(varDisplayedDocument.v),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("div",[AttrProxy.Create("id","emailDiv")],[Doc.TextNode("Email subject:"),Doc.Element("br",[],[]),Doc.Element("input",[AttrModule.Handler("input",function(el)
+  })],[]),Doc.EmbedView(varDisplayedDocument.v)]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("div",[AttrProxy.Create("id","emailDiv")],[Doc.Element("h3",[],[Doc.TextNode("Email")]),Doc.TextNode("Email subject:"),Doc.Element("br",[],[]),Doc.Element("input",[AttrModule.Handler("input",function(el)
   {
    return function()
    {
     var i,i$1;
     return Var.Set(varDocument,(i=varDocument.c,Document.New(i.id,i.name,i.pages,(i$1=varDocument.c.email,DocumentEmail.New(el.value,i$1.body)))));
    };
-  })],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.TextNode("Email body:"),Doc.Element("br",[],[]),Doc.Element("input",[AttrModule.Handler("input",function(el)
+  })],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.TextNode("Email body:"),Doc.Element("br",[],[]),Doc.Element("textarea",[AttrModule.Handler("input",function(el)
   {
    return function()
    {
     var i;
     return Var.Set(varDocument,(i=varDocument.c,Document.New(i.id,i.name,i.pages,DocumentEmail.New(varDocument.c.email.subject,el.value))));
    };
-  })],[])]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("div",[AttrProxy.Create("id","choosePageTypeDiv")],[Doc.Element("input",[AttrProxy.Create("type","radio"),AttrProxy.Create("name","rbgrpPageType"),AttrProxy.Create("id","rbHtmlPage"),AttrModule.Handler("click",function()
+  }),AttrProxy.Create("style","min-height:300px")],[])]),Doc.Element("div",[AttrProxy.Create("id","choosePageTypeDiv")],[Doc.Element("input",[AttrProxy.Create("type","radio"),AttrProxy.Create("name","rbgrpPageType"),AttrProxy.Create("id","rbHtmlPage"),AttrModule.Handler("click",function()
   {
    return function()
    {
@@ -808,7 +845,20 @@
    {
     return Var.Set(varAddPage,Doc.Element("div",[],[]));
    };
-  })],[Doc.TextNode("Abort")])])]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("div",[AttrProxy.Create("id","editUserValuesDiv")],[createInput("Degree","userDegree"),createInput("First name","userFirstName"),createInput("Last name","userLastName"),createInput("Street","userStreet"),createInput("Postcode","userPostcode"),createInput("City","userCity"),createInput("Phone","userPhone"),createInput("Mobile phone","userMobilePhone")]),Doc.Element("div",[AttrProxy.Create("id","editEmployerDiv")],[createInput("Company name","company"),createInput("Street","companyStreet"),createInput("Postcode","companyPostcode"),createInput("City","companyCity"),createInput("Degree","bossDegree"),createInput("First name","bossFirstName"),createInput("Last name","bossLastName"),createInput("Phone","bossPhone"),createInput("Mobile phone","bossMobilePhone")]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("value","Save as new document"),AttrModule.Handler("click",function()
+  })],[Doc.TextNode("Abort")])])]),Doc.Element("div",[AttrProxy.Create("id","editUserValuesDiv")],[Doc.Element("h3",[],[Doc.TextNode("Your values")]),createInput("Degree","userDegree"),createInput("First name","userFirstName"),createInput("Last name","userLastName"),createInput("Street","userStreet"),createInput("Postcode","userPostcode"),createInput("City","userCity"),createInput("Phone","userPhone"),createInput("Mobile phone","userMobilePhone")]),Doc.Element("div",[AttrProxy.Create("id","editEmployerDiv")],[Doc.Element("h3",[],[Doc.TextNode("Employer")]),createInput("Company name","company"),createInput("Street","companyStreet"),createInput("Postcode","companyPostcode"),createInput("City","companyCity"),createInput("Degree","bossDegree"),createInput("First name","bossFirstName"),createInput("Last name","bossLastName"),createInput("Phone","bossPhone"),createInput("Mobile phone","bossMobilePhone")]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("value","Save as new document"),AttrModule.Handler("click",function()
+  {
+   return function()
+   {
+    var b$1;
+    return Concurrency.Start((b$1=null,Concurrency.Delay(function()
+    {
+     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.saveNewDocument:-229128764",[varDocument.c]),function()
+     {
+      return Concurrency.Zero();
+     });
+    })),null);
+   };
+  })],[]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("value","Save as new document"),AttrModule.Handler("click",function()
   {
    return function()
    {

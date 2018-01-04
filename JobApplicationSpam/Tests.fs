@@ -5,11 +5,9 @@ open FsUnit
 open JobApplicationSpam
 open Database
 open Npgsql
-open Chessie.ErrorHandling
 open System
-open Types
-open log4net
 open System.IO
+open Types
 
 module MyTests =
     log4net.Config.XmlConfigurator.Configure(new FileInfo(@"C:\Users\rene\Documents\Visual Studio 2017\Projects\jobApplicationSpamFSharp\JobApplicationSpam\log4net.config")) |> ignore

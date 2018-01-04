@@ -211,8 +211,6 @@ module Client =
         h1 [text "hallo"]
 
 
-
-          
     [<JavaScript>]
     let templates () = 
         let varDocument = Var.CreateWaiting()
@@ -275,6 +273,8 @@ module Client =
                       "bossEmail", ((fun () -> varEmployer.Value.email), (fun v -> varEmployer.Value <- { varEmployer.Value with email = v }))
                       "bossPhone", ((fun () -> varEmployer.Value.phone), (fun v -> varEmployer.Value <- { varEmployer.Value with phone = v }))
                       "bossMobilePhone", ((fun () -> varEmployer.Value.mobilePhone), (fun v -> varEmployer.Value <- { varEmployer.Value with mobilePhone = v }))
+                      "emailSubject", ((fun () -> varDocument.Value.email.subject), (fun v -> varDocument.Value <- { varDocument.Value with email = { varDocument.Value.email with subject = v} }))
+                      "emailBody", ((fun () -> varDocument.Value.email.body), (fun v -> varDocument.Value <- { varDocument.Value with email = {varDocument.Value.email with body  = v } }))
                       //"today", sprintf "%i-%i-%i" DateTime.Now.Year DateTime.Now.Month DateTime.Now.Day
                     ]
                     |> Map.ofList
@@ -351,19 +351,17 @@ module Client =
               "emailDiv"
               "newDocumentDiv"
               "editUserValuesDiv"
-              "editEmployerDiv"
+              "addEmployerDiv"
               "displayedDocumentDiv"
+              "attachmentsDiv"
             ]
         
-        let hideAll () =
-            for elId in showHideMutualElements do
-                JS.Document.GetElementById(elId)?style?display <- "none"
-              
-        let show elId =
-            JS.Document.GetElementById(elId)?style?display <- "block"
-            for currentElId in showHideMutualElements do
-                if currentElId <> elId
-                then JS.Document.GetElementById(currentElId)?style?display <- "none"
+        let show (elIds : list<string>) =
+            for elId in elIds do
+                JS.Document.GetElementById(elId)?style?display <- "block"
+            for hideElId in showHideMutualElements do
+                if not <| List.contains hideElId elIds
+                then JS.Document.GetElementById(hideElId)?style?display <- "none"
 
 
         let setDocument () =
@@ -386,7 +384,7 @@ module Client =
             async {
                 JQuery("#pageButtonsUl li:not(:last-child)").Remove() |> ignore
                 for page in varDocument.Value.pages do
-                    JQuery(sprintf """<li><button id="pageButton%i">%s</button</li>""" (page.PageIndex()) (page.Name())).InsertBefore("#addPageButton").On(
+                    JQuery(sprintf """<li><button id="pageButton%i" class="btnLikeLink">%s</button</li>""" (page.PageIndex()) (page.Name())).InsertBefore("#addPageButton").On(
                           "click"
                         , (fun el ev ->
                                 match page with
@@ -401,7 +399,7 @@ module Client =
                                         while JS.Document.GetElementById("insertDiv") = null do
                                             do! Async.Sleep 10
                                         do! fillDocumentValues()
-                                        show "displayedDocumentDiv"
+                                        show ["displayedDocumentDiv"; "attachmentsDiv"]
                                     } |> Async.Start
                                 | FilePage filePage -> 
                                     () 
@@ -416,6 +414,19 @@ module Client =
 
             
         async {
+            let menuDiv = JS.Document.GetElementById("sidebarMenuDiv")
+            let addMenuEntry entry (f : Dom.Element -> Event -> unit) = 
+                let li = JQuery(sprintf """<li><button class="btnLikeLink1">%s</button></li>""" entry).On("click", f)
+                JQuery(menuDiv).Append(li)
+
+            addMenuEntry "Add employer and apply" (fun _ _ -> show ["addEmployerDiv"]) |> ignore
+            addMenuEntry "Edit your values" (fun _ _ -> show ["editUserValuesDiv"]) |> ignore
+            addMenuEntry "Edit email" (fun _ _ -> show ["emailDiv"]) |> ignore
+            addMenuEntry "Edit attachments" (fun _ _ -> show ["attachmentsDiv"]) |> ignore
+
+
+
+
             let! documentNames = Server.getDocumentNames()
 
             let selectDocumentNameEl = JS.Document.GetElementById("selectDocumentName")
@@ -438,12 +449,12 @@ module Client =
                 addSelectOption selectHtmlPageTemplateEl htmlPageTemplate.name
 
             do! fillDocumentValues()
-            hideAll()
+            show ["addEmployerDiv"]
         } |> Async.Start
 
 
         div
-          [ h3 [text "Your application documents: "]
+          [ h4 [text "Your application documents: "]
             selectAttr
               [ attr.id "selectDocumentName";
                 on.change
@@ -451,30 +462,44 @@ module Client =
                       async {
                         do! setDocument()
                         do! setPageButtons()
+                        do! fillDocumentValues()
                       } |> Async.Start)
               ]
               []
             inputAttr
               [ attr.``type`` "button"
                 attr.style "margin-left: 20px"
+                attr.``class`` ".btnLikeLink"
                 attr.value "+"
-                on.click(fun _ _ -> show "newDocumentDiv")
+                on.click(fun _ _ -> show ["newDocumentDiv"])
               ]
               []
             inputAttr
               [ attr.``type`` "button"
+                attr.``class`` ".btnLikeLink"
                 attr.style "margin-left: 20px"
                 attr.value "-"
                 on.click(fun _ _ ->())
               ]
               []
-            div
-              [ h3 [ text "Your pages:" ]
+            inputAttr
+              [ attr.``type`` "button"
+                attr.``class`` "btnLikeLink"
+                attr.value "Email data"
+                attr.style "display: none"
+                on.click(fun _ _ -> show ["emailDiv"])
+              ]
+              []
+            divAttr
+              [ attr.id "attachmentsDiv"
+              ]
+              [ h4 [ text "Your attachments:" ]
                 ulAttr
-                  [ attr.id "pageButtonsUl" ]
+                  [ attr.id "pageButtonsUl"; attr.style "list-style-type: none; padding: 0; margin: 0;" ]
                   [ li
                       [ buttonAttr
                           [ attr.id "addPageButton"
+                            attr.``class`` "btnLikeLink"
                             on.click
                               (fun el _ ->
                                   ()//varAddPage.Value <- showAddPageDiv()
@@ -484,28 +509,24 @@ module Client =
                       ]
                   ]
               ]
-            hr []
-            inputAttr
-              [ attr.``type`` "button"
-                attr.value "Email data"
-                on.click(fun _ _ -> show "emailDiv")
-              ]
-              []
             br []
             inputAttr
               [ attr.``type`` "button"
                 attr.value "Your values"
-                on.click(fun _ _ -> show "editUserValuesDiv")
+                attr.``class`` "btnLikeLink"
+                attr.style "display:none"
+                on.click(fun _ _ -> show ["editUserValuesDiv"])
               ]
               []
             br []
             inputAttr
               [ attr.``type`` "button"
+                attr.``class`` "btnLikeLink"
                 attr.value "Edit employer values"
-                on.click(fun _ _ -> show "editEmployerDiv")
+                attr.style "display:none"
+                on.click(fun _ _ -> show ["addEmployerDiv"])
               ]
               []
-            hr []
             divAttr
               [ attr.id "newDocumentDiv" ]
               [ text "Document name: "
@@ -515,6 +536,7 @@ module Client =
                 br []
                 inputAttr
                   [ attr.``type`` "button"
+                    attr.``class`` "btnLikeLink"
                     attr.value "Add document"
                     on.click (fun _ _ ->
                         async {
@@ -540,24 +562,22 @@ module Client =
                   []
                 Doc.EmbedView varDisplayedDocument.View
               ]
-            br []
-            br []
-            br []
             divAttr
               [ attr.id "emailDiv"]
-              [ h3 [text "Email" ]
+              [ h4 [text "Email" ]
                 text "Email subject:"
                 br []
                 inputAttr
-                  [ on.input (fun el _ -> varDocument.Value <- { varDocument.Value with email = {varDocument.Value.email with subject = el?value }})]
+                  [ attr.``data-`` "bind" "emailSubject"
+                    attr.style "width:100%"
+                  ]
                   []
-                br []
                 br []
                 text "Email body:"
                 br []
                 textareaAttr
-                  [ on.input (fun el _ -> varDocument.Value <- { varDocument.Value with email = {varDocument.Value.email with body = el?value }})
-                    attr.style "min-height:300px"
+                  [ attr.``data-`` "bind" "emailBody"
+                    attr.style "min-height:300px; width: 100%"
                   ]
                   []
               ]
@@ -607,7 +627,7 @@ module Client =
               ]
             divAttr
               [ attr.id "editUserValuesDiv" ]
-              [ h3 [ text "Your values" ]
+              [ h4 [ text "Your values" ]
                 createInput "Degree" "userDegree"
                 createInput "First name" "userFirstName"
                 createInput "Last name" "userLastName"
@@ -618,8 +638,15 @@ module Client =
                 createInput "Mobile phone" "userMobilePhone"
               ]
             divAttr
-              [ attr.id "editEmployerDiv" ]
-              [ h3 [text "Employer"]
+              [ attr.id "addEmployerDiv" ]
+              [ inputAttr
+                  [ attr.``type`` "button"
+                    attr.``class`` "btnLikeLink"
+                    attr.value "Apply now"
+                    on.click (fun _ _ -> Server.applyNowWithHtmlTemplate varEmployer.Value varDocument.Value varUserValues.Value |> Async.Start)
+                  ]
+                  []
+                h4 [text "Employer"]
                 createInput "Company name" "company"
                 createInput "Street" "companyStreet"
                 createInput "Postcode" "companyPostcode"
@@ -629,46 +656,10 @@ module Client =
                 createInput "Last name" "bossLastName"
                 createInput "Phone" "bossPhone"
                 createInput "Mobile phone" "bossMobilePhone"
+                inputAttr
+                  [ attr.``type`` "button"
+                    attr.``class`` "btnLikeLink"
+                    attr.value "Apply now"
+                    on.click (fun _ _ -> Server.applyNowWithHtmlTemplate varEmployer.Value varDocument.Value varUserValues.Value |> Async.Start)] []
               ]
-            inputAttr
-              [ attr.``type`` "button"
-                attr.value "Save as new document"
-                on.click
-                  (fun _ _ ->
-                    async {
-                        let! newDocumentId = Server.saveNewDocument varDocument.Value
-                        () //TODO
-                    }
-                    |> Async.Start
-                  )
-              ]
-              []
-            inputAttr
-              [ attr.``type`` "button"
-                attr.value "Save as new document"
-                on.click
-                  (fun _ _ ->
-                    async {
-                        let! newDocumentId = Server.saveNewDocument varDocument.Value
-                        () //TODO
-                    }
-                    |> Async.Start
-                  )
-              ]
-              []
-            br []
-            inputAttr
-              [ attr.``type`` "button"
-                attr.value "Overwrite document"
-                on.click
-                  (fun _ _ ->
-                    async {
-                        let!_ = Server.overwriteDocument varDocument.Value
-                        ()
-                    } |> Async.Start
-                  )
-              ]
-              []
-            br []
-            inputAttr [attr.``type`` "button"; attr.value "Apply now"; on.click (fun _ _ -> Server.applyNowWithHtmlTemplate varEmployer.Value varDocument.Value varUserValues.Value |> Async.Start)] []
           ]

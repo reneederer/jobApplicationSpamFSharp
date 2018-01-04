@@ -18,6 +18,26 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.6/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js"></script>
     <style>
+        .btnLikeLink {
+            margin-bottom:10px;
+            margin-top:10px;
+            width: 100%;
+        }
+        .btnLikeLink1 {
+            background: inherit !important;
+            color: inherit;
+            border: none;
+            padding: 0 !important;
+            font: arial;
+            font-size: 16pt;
+            color: blue;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom:20px;
+        }
+        .btnLikeLink1:hover {
+            border-bottom: 4px solid blue;
+        }
         .page1 {
             background-color: lightblue;
             display: block;
@@ -98,7 +118,7 @@
                             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
                         </div>
                         <div id="navbarSupportedContent" class="sidebar-navbar-collapse navbar-collapse collapse">
-                            <ul style="padding-left: 0;list-style-type: none">
+                            <ul id="sidebarMenuDiv" style="padding-left: 0;list-style-type: none">
                                 <!--
                                 <li class="active"><a href="#">Login</a></li>
                                 <li><a href="/showsentjobapplications">Bewerbungen anzeigen</a></li>

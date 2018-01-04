@@ -214,20 +214,23 @@ module Client =
     [<JavaScript>]
     let templates () = 
         let varDocument = Var.CreateWaiting()
-        let varUserValues : Var<UserValues> = Var.Create<UserValues>({gender=Gender.Male;degree="dr l";firstName="ren";lastName="ederer";street="";postcode="";city="";phone="";mobilePhone=""})
+        let varUserValues : Var<UserValues> = Var.Create<UserValues>({gender=Gender.Male;degree="";firstName="";lastName="";street="";postcode="";city="";phone="";mobilePhone=""})
         let varUserEmail = Var.CreateWaiting<string>()
-        let varEmployer = Var.Create<Employer>({company="";gender=Gender.Male;degree="";firstName="empfirstl";lastName="";street="";postcode="";city="";email="";phone="";mobilePhone=""})
+        let varEmployer = Var.Create<Employer>({company="";gender=Gender.Male;degree="";firstName="";lastName="";street="";postcode="";city="";email="";phone="";mobilePhone=""})
         let varCurrentPageIndex = Var.Create(1)
         let varDisplayedDocument = Var.Create(div [] :> Doc)
-        let varAddPage = Var.Create (div [] :> Doc)
 
         let createInput t d =
-          div
-            [ text t
-              br []
-              inputAttr [attr.``data-`` "bind" d ] []
-              br[]
-              br[]
+          let guid = Guid.NewGuid().ToString()
+          divAttr
+            [attr.``class`` "form-group row"]
+            [ labelAttr
+                [attr.``class`` "col-sm-3 col-form-label"; attr.``for`` guid]
+                [text t]
+              divAttr
+                [attr.``class`` "col-sm-9"]
+                [ inputAttr [attr.id guid; attr.``data-`` "bind" d; attr.``class`` "form-control"; attr.placeholder t ] []
+                ]
             ]
           :> Doc
 
@@ -423,9 +426,9 @@ module Client =
             addMenuEntry "Edit your values" (fun _ _ -> show ["editUserValuesDiv"]) |> ignore
             addMenuEntry "Edit email" (fun _ _ -> show ["emailDiv"]) |> ignore
             addMenuEntry "Edit attachments" (fun _ _ -> show ["attachmentsDiv"]) |> ignore
-
-
-
+        
+            let! userValues = Server.getCurrentUserValues()
+            varUserValues.Value <- userValues
 
             let! documentNames = Server.getDocumentNames()
 
@@ -463,6 +466,7 @@ module Client =
                         do! setDocument()
                         do! setPageButtons()
                         do! fillDocumentValues()
+                        show ["addEmployerDiv"]
                       } |> Async.Start)
               ]
               []
@@ -482,6 +486,7 @@ module Client =
                 on.click(fun _ _ ->())
               ]
               []
+            hr []
             inputAttr
               [ attr.``type`` "button"
                 attr.``class`` "btnLikeLink"
@@ -502,31 +507,14 @@ module Client =
                             attr.``class`` "btnLikeLink"
                             on.click
                               (fun el _ ->
-                                  ()//varAddPage.Value <- showAddPageDiv()
+                                  show ["choosePageTypeDiv"; "attachmentsDiv"; "createFilePageDiv"]
+                                  JS.Document.GetElementById("rbFilePage")?checked <- "checked";
                               )
                           ]
                           [ text "+"]
                       ]
                   ]
               ]
-            br []
-            inputAttr
-              [ attr.``type`` "button"
-                attr.value "Your values"
-                attr.``class`` "btnLikeLink"
-                attr.style "display:none"
-                on.click(fun _ _ -> show ["editUserValuesDiv"])
-              ]
-              []
-            br []
-            inputAttr
-              [ attr.``type`` "button"
-                attr.``class`` "btnLikeLink"
-                attr.value "Edit employer values"
-                attr.style "display:none"
-                on.click(fun _ _ -> show ["addEmployerDiv"])
-              ]
-              []
             divAttr
               [ attr.id "newDocumentDiv" ]
               [ text "Document name: "
@@ -584,18 +572,24 @@ module Client =
             divAttr
               [ attr.id "choosePageTypeDiv" ]
               [ inputAttr
-                  [ attr.``type`` "radio"; attr.name "rbgrpPageType"; attr.id "rbHtmlPage"; on.click (fun _ _ -> ()) ]
+                  [ attr.``type`` "radio"; attr.name "rbgrpPageType"; attr.id "rbHtmlPage"; on.click (fun _ _ -> show ["attachmentsDiv";"choosePageTypeDiv"; "createHtmlPageDiv"]) ]
                   []
                 labelAttr
                   [ attr.``for`` "rbHtmlPage" ]
                   [ text "Create online" ]
                 br []
                 inputAttr
-                  [ attr.``type`` "radio"; attr.id "rbFilePage"; attr.name "rbgrpPageType"; on.click (fun _ _ -> ()) ]
+                  [ attr.``type`` "radio"; attr.id "rbFilePage"; attr.name "rbgrpPageType";
+                    on.click
+                      (fun _ _ ->
+                        show ["attachmentsDiv"; "choosePageTypeDiv"; "createFilePageDiv"]
+                        JS.Document.GetElementById("hiddenDocumentId")?value <- (JS.Document.GetElementById("selectDocumentName")?selectedIndex + 1).ToString()
+                         )
+                  ]
                   []
                 labelAttr
                   [ attr.``for`` "rbFilePage" ]
-                  [ text "Upload" ]
+                  [ text "File upload" ]
                 br []
                 br []
               ]
@@ -604,8 +598,7 @@ module Client =
               [ inputAttr [attr.id ""] []
                 br []
                 br []
-                buttonAttr [attr.``type`` "submit" ] [text "Add html page"]
-                buttonAttr [ attr.style "margin-left: 20px"; on.click (fun _ _ -> varAddPage.Value <- div []) ] [text "Abort"]
+                buttonAttr [attr.``type`` "submit" ] [text "Add html attachment"]
               ]
             divAttr
               [ attr.id "createFilePageDiv"; ]
@@ -617,12 +610,11 @@ module Client =
                         attr.name "file"
                       ]
                       []
-                    //inputAttr [ attr.``type`` "hidden"; attr.id "hiddenDocumentId"; attr.name "documentId"; attr.value ((JS.Document.GetElementById("selectDocumentName")?selectedIndex + 1).ToString()); ] []
-                    //inputAttr [ attr.``type`` "hidden"; attr.id "hiddenPageIndex"; attr.name "pageIndex"; attr.value ((varPageCount.Value + 1) |> string); ] []
+                    inputAttr [ attr.``type`` "hidden"; attr.id "hiddenDocumentId"; attr.name "documentId" ] []
+                    inputAttr [ attr.``type`` "hidden"; attr.name "pageIndex"; attr.value ((JQuery("#pageButtonsUl li").Length - 1) |> string); ] []
                     br []
                     br []
-                    buttonAttr [attr.``type`` "submit" ] [text "Upload"]
-                    buttonAttr [ attr.style "margin-left: 20px"; on.click (fun _ _ -> varAddPage.Value <- div []) ] [text "Abort"]
+                    buttonAttr [attr.``type`` "submit" ] [text "Add attachment"]
                   ]
               ]
             divAttr

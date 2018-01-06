@@ -15,6 +15,7 @@ type EndPoint =
     | [<EndPoint "/about">] About
     | [<EndPoint "/confirmemail">] ConfirmEmail
     | [<EndPoint "/templates">] Templates
+    | [<EndPoint "/logout">] Logout
 
 module Templating =
     open WebSharper.UI.Next.Html
@@ -57,6 +58,17 @@ module Templating =
         |> Option.bind (Server.getEmailByUserId >> Async.RunSynchronously)
         |> Option.defaultValue ""
 
+    [<JavaScript>]
+    let btnLogout (ctx: Context<EndPoint>) (endpoint : EndPoint) : Doc =
+        formAttr
+          [ attr.action "/logout" ]
+          [ buttonAttr
+              [ attr.``type`` "submit"
+              ]
+              [text "Logout"]
+          ]
+        :> Doc
+
     let main (ctx : Context<EndPoint>) (action : EndPoint) (title: string) (body: Doc list) : Async<Content<'a>>=
         Content.Page(
             MainTemplate()
@@ -64,6 +76,7 @@ module Templating =
                 .MenuBar(MenuBar ctx action)
                 .Body(body)
                 .LoggedInUserEmail(loggedInUserEmail ctx)
+                .BtnLogout(btnLogout ctx action)
                 .Doc()
         )
 
@@ -125,6 +138,11 @@ module Site =
             h1 [text message]
         ]
 
+    let logoutPage (ctx : Context<EndPoint>) =
+        ctx.UserSession.Logout() |> Async.RunSynchronously
+        Content.RedirectPermanentToUrl "/"
+    
+
     let templatesPage (ctx : Context<EndPoint>) =
         let dir = "./reneupload1/"
         if not <| Directory.Exists dir then Directory.CreateDirectory dir |> ignore
@@ -163,6 +181,7 @@ module Site =
             | Some _, EndPoint.About -> aboutPage ctx
             | Some _, EndPoint.ConfirmEmail -> confirmEmailPage ctx
             | Some _ , EndPoint.Templates -> templatesPage ctx
+            | Some _ , EndPoint.Logout -> logoutPage ctx
             | None, _ -> loginPage ctx
         )
 

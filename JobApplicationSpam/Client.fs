@@ -13,6 +13,7 @@ module Client =
     open WebSharper.JQuery
     open System
     open WebSharper.UI.Next.Client.HtmlExtensions
+    open WebSharper.UI.Next.Html.Tags
 
     [<JavaScript>]
     type Language =
@@ -130,6 +131,9 @@ module Client =
     | SendJobApplicationToUserOnly
     | JustAddEmployer
      
+    [<JavaScript>]
+    let logout =
+        div [text "hallo"]
      
     [<JavaScript>]
     let login () =
@@ -211,145 +215,157 @@ module Client =
 
     [<JavaScript>]
     let templates () = 
-        let varDocument = Var.CreateWaiting()
+        let varDocument = Var.Create {name="";id=0;pages=[];email={subject="";body=""}}
         let varUserValues : Var<UserValues> = Var.Create<UserValues>({gender=Gender.Female;degree="";firstName="";lastName="";street="";postcode="";city="";phone="";mobilePhone=""})
         let varUserEmail = Var.CreateWaiting<string>()
         let varEmployer = Var.Create<Employer>({company="";gender=Gender.Unknown;degree="";firstName="";lastName="";street="";postcode="";city="";email="";phone="";mobilePhone=""})
         let varCurrentPageIndex = Var.Create(1)
         let varDisplayedDocument = Var.Create(div [] :> Doc)
 
-        let createInput t d =
+        let createInputWithColumnSizes column1Size column2Size labelText dataBind =
           divAttr
             [attr.``class`` "form-group row"]
             [ labelAttr
-                [attr.``class`` "col-sm-3 col-form-label"; attr.``for`` d]
-                [text t]
+                [attr.``class`` (column1Size + " col-form-label"); attr.``for`` dataBind]
+                [text labelText]
               divAttr
-                [attr.``class`` "col-sm-9"]
-                [ inputAttr [attr.id d; attr.``data-`` "bind" d; attr.``class`` "form-control" ] []
+                [attr.``class`` column2Size]
+                [ inputAttr [attr.id dataBind; attr.``data-`` "bind" dataBind; attr.``class`` "form-control" ] []
                 ]
             ]
-        let createRadio (header : string) (rs : list<string * string * string>) =
+
+        let createRadioWithColumnSizes column1Size column2Size (labelText : string) (radioValuesList : list<string * string * string>) =
           let radioGroup = Guid.NewGuid().ToString()    
           div
-            [ for i = 0 to rs.Length - 1 do
-                  match rs.[i] with
-                  | radioText, bind, value ->
-                      let id = Guid.NewGuid().ToString()
-                      yield
-                        divAttr
-                          [attr.``class`` "form-group row"]
-                          [ labelAttr
-                               [attr.``class`` "col-sm-3 col-form-label"]
-                               [text (if i = 0 then header else "")]
-                            divAttr
-                              [ attr.``class`` "col-sm-9"
-                              ]
-                              [ inputAttr
-                                  [ attr.id id
-                                    attr.``type`` "radio"
-                                    attr.name radioGroup
-                                    attr.value value
-                                    attr.``data-`` "bind" bind
-                                  ]
-                                  []
-                                labelAttr
-                                  [ attr.``for`` id]
-                                  [ text radioText ]
+            (radioValuesList |> List.mapi (fun i (radioText, bind, value) ->
+                let id = Guid.NewGuid().ToString()
+                divAttr
+                  [attr.``class`` "form-group row"]
+                  [ labelAttr
+                       [attr.``class`` (column1Size + " col-form-label")]
+                       [text (if i = 0 then labelText else "")]
+                    divAttr
+                      [ attr.``class`` column2Size
+                      ]
+                      [ inputAttr
+                          [ attr.id id
+                            attr.``type`` "radio"
+                            attr.name radioGroup
+                            attr.value value
+                            attr.``data-`` "bind" bind
+                          ]
+                          []
+                        labelAttr
+                          [ attr.``for`` id]
+                          [ text radioText ]
+                      ]
+                  ] :> Doc
+            )
+            )
+        let createTextareaWithColumnSizes column1Size column2Size labelText dataBind minHeight =
+          divAttr
+            [attr.``class`` "form-group row"]
+            [ labelAttr
+                [attr.``class`` (column1Size + " col-form-label"); attr.``for`` dataBind]
+                [text labelText]
+              divAttr
+                [attr.``class`` column2Size]
+                [ textareaAttr [attr.id dataBind; attr.``data-`` "bind" dataBind; attr.``class`` "form-control"; attr.style ("wrap: soft; white-space: nowrap; overflow: auto; min-height: " + minHeight)] []
+                ]
+            ]
 
-                              ]
-                            :> Doc
-                          ] :> Doc
-              ]
-  
+        let createInput = createInputWithColumnSizes "col-lg-3" "col-lg-9"
+        let createRadio = createRadioWithColumnSizes "col-lg-3" "col-lg-9"
+        let createTextArea = createTextareaWithColumnSizes "col-lg-3" "col-lg-9"
             
 
         let fillDocumentValues() =
             async {
-                let pageMapElements = JS.Document.QuerySelectorAll("[data-page-key]")
-                match varDocument.Value.pages.[varCurrentPageIndex.Value - 1] with
-                | HtmlPage htmlPage ->
-                    let myMap = htmlPage.map |> Map.ofList
-                    JQuery(pageMapElements).Each
-                        (fun (n, (el : Dom.Element)) ->
-                            let jEl = JQuery(el)
-                            let key = el.GetAttribute("data-page-key")
-                            if myMap.ContainsKey key
-                            then
-                                jEl.Val(myMap.[key]) |> ignore
-                            else
-                                jEl.Val(el.GetAttribute("data-page-value") |> string) |> ignore
-                    ) |> ignore
-                | FilePage filePage ->
-                    ()
-                do! Async.Sleep 2000
-
-                let map =
-                    [ "userGender", ("radio", (fun () -> varUserValues.Value.gender.ToString()), (fun v -> varUserValues.Value <- { varUserValues.Value with gender = Gender.fromString v }))
-                      "userDegree", ("text", (fun () -> varUserValues.Value.degree), (fun v -> varUserValues.Value <- { varUserValues.Value with degree = v }))
-                      "userFirstName", ("text", (fun () -> varUserValues.Value.firstName), (fun v -> varUserValues.Value <- { varUserValues.Value with firstName = v }))
-                      "userLastName", ("text", (fun () -> varUserValues.Value.lastName), (fun v -> varUserValues.Value <- { varUserValues.Value with lastName = v }))
-                      "userStreet", ("text", (fun () -> varUserValues.Value.street), (fun v -> varUserValues.Value <- { varUserValues.Value with street= v }))
-                      "userPostcode", ("text", (fun () -> varUserValues.Value.postcode), (fun v -> varUserValues.Value <- { varUserValues.Value with postcode = v }))
-                      "userCity", ("text", (fun () -> varUserValues.Value.city), (fun v -> varUserValues.Value <- { varUserValues.Value with city = v }))
-                      "userEmail", ("text", (fun () -> varUserEmail.Value), (fun v -> varUserEmail.Value <- v))
-                      "userPhone", ("text", (fun () -> varUserValues.Value.phone), (fun v -> varUserValues.Value <- { varUserValues.Value with phone = v }))
-                      "userMobilePhone", ("text", (fun () -> varUserValues.Value.mobilePhone), (fun v -> varUserValues.Value <- { varUserValues.Value with mobilePhone = v }))
-                      "company", ("text", (fun () -> varEmployer.Value.company), (fun v -> varEmployer.Value <- { varEmployer.Value with company = v }))
-                      "companyStreet", ("text", (fun () -> varEmployer.Value.street), (fun v -> varEmployer.Value <- { varEmployer.Value with street = v }))
-                      "companyPostcode", ("text", (fun () -> varEmployer.Value.postcode), (fun v -> varEmployer.Value <- { varEmployer.Value with postcode = v }))
-                      "companyCity", ("text", (fun () -> varEmployer.Value.city), (fun v -> varEmployer.Value <- { varEmployer.Value with city = v }))
-                      "bossGender", ("radio", (fun () -> varEmployer.Value.gender.ToString()), (fun v -> varEmployer.Value <- { varEmployer.Value with gender = Gender.fromString(v) }))
-                      "bossDegree", ("text", (fun () -> varEmployer.Value.degree), (fun v -> varEmployer.Value <- { varEmployer.Value with degree = v }))
-                      "bossFirstName", ("text", (fun () -> varEmployer.Value.firstName), (fun v -> varEmployer.Value <- { varEmployer.Value with firstName = v }))
-                      "bossLastName", ("text", (fun () -> varEmployer.Value.lastName), (fun v -> varEmployer.Value <- { varEmployer.Value with lastName = v }))
-                      "bossEmail", ("text", (fun () -> varEmployer.Value.email), (fun v -> varEmployer.Value <- { varEmployer.Value with email = v }))
-                      "bossPhone", ("text", (fun () -> varEmployer.Value.phone), (fun v -> varEmployer.Value <- { varEmployer.Value with phone = v }))
-                      "bossMobilePhone", ("text", (fun () -> varEmployer.Value.mobilePhone), (fun v -> varEmployer.Value <- { varEmployer.Value with mobilePhone = v }))
-                      "emailSubject", ("text", (fun () -> varDocument.Value.email.subject), (fun v -> varDocument.Value <- { varDocument.Value with email = { varDocument.Value.email with subject = v} }))
-                      "emailBody", ("text", (fun () -> varDocument.Value.email.body), (fun v -> varDocument.Value <- { varDocument.Value with email = {varDocument.Value.email with body  = v } }))
-                      //"today", sprintf "%i-%i-%i" DateTime.Now.Year DateTime.Now.Month DateTime.Now.Day
-                    ]
-                    |> Map.ofList
-                
-                for item in map do
-                    match item.Value with
-                    | "radio", get, set ->
-                            JQuery(sprintf "[data-bind='%s']" item.Key).Each
-                               (fun i el -> if get() = el?value then el?checked <- true) |> ignore
-                    | "text", get, set ->
-                            JQuery(sprintf "[data-bind='%s']" item.Key).Each
-                                (fun i el -> el?value <- get ()) |> ignore
-                    | s, _, _ -> failwith ("Unknown input type: " + s)
-                        
-
-                JQuery(JS.Document.QuerySelectorAll("[data-bind]"))
-                    .Each
-                        (fun (n, (el : Dom.Element)) ->
-                            let eventAction =
-                                (fun () ->
-                                    let elValue = JQuery(el).Val() |> string
-                                    let bindValue = JQuery(el).Data("bind").ToString()
-                                    map.[bindValue] |> fun (_, _, set) -> set elValue |> ignore
-                                    let updateElements = JQuery(sprintf "[data-bind='%s']" bindValue)
-                                    updateElements.Each
-                                        (fun (n, updateElement) ->
-                                            if updateElement <> el
-                                            then
-                                                match map.[bindValue] with
-                                                | "radio", get, set ->
-                                                    updateElement?checked <- (elValue = updateElement?value)
-                                                | "text", get, set ->
-                                                    updateElement?value <- elValue
-                                                | s, get, set ->
-                                                    failwith ("Unknown input type: " + s) 
-                                        ) |> ignore
-                                )
-                            el.RemoveEventListener("input", eventAction, true)
-                            el.AddEventListener("input", eventAction, true)
-                            el.RemoveEventListener("click", eventAction, true)
-                            el.AddEventListener("click", eventAction, true)
+                if varDocument.Value.pages <> []
+                then
+                    let pageMapElements = JS.Document.QuerySelectorAll("[data-page-key]")
+                    match varDocument.Value.pages.[varCurrentPageIndex.Value - 1] with
+                    | HtmlPage htmlPage ->
+                        let myMap = htmlPage.map |> Map.ofList
+                        JQuery(pageMapElements).Each
+                            (fun (n, (el : Dom.Element)) ->
+                                let jEl = JQuery(el)
+                                let key = el.GetAttribute("data-page-key")
+                                if myMap.ContainsKey key
+                                then
+                                    jEl.Val(myMap.[key]) |> ignore
+                                else
+                                    jEl.Val(el.GetAttribute("data-page-value") |> string) |> ignore
                         ) |> ignore
+                    | FilePage filePage ->
+                        ()
+                    do! Async.Sleep 2000
+
+                    let map = // itemName * (itemType * getter * setter)
+                        [ "userGender", ("radio", (fun () -> varUserValues.Value.gender.ToString()), (fun v -> varUserValues.Value <- { varUserValues.Value with gender = Gender.fromString v }))
+                          "userDegree", ("text", (fun () -> varUserValues.Value.degree), (fun v -> varUserValues.Value <- { varUserValues.Value with degree = v }))
+                          "userFirstName", ("text", (fun () -> varUserValues.Value.firstName), (fun v -> varUserValues.Value <- { varUserValues.Value with firstName = v }))
+                          "userLastName", ("text", (fun () -> varUserValues.Value.lastName), (fun v -> varUserValues.Value <- { varUserValues.Value with lastName = v }))
+                          "userStreet", ("text", (fun () -> varUserValues.Value.street), (fun v -> varUserValues.Value <- { varUserValues.Value with street= v }))
+                          "userPostcode", ("text", (fun () -> varUserValues.Value.postcode), (fun v -> varUserValues.Value <- { varUserValues.Value with postcode = v }))
+                          "userCity", ("text", (fun () -> varUserValues.Value.city), (fun v -> varUserValues.Value <- { varUserValues.Value with city = v }))
+                          "userEmail", ("text", (fun () -> varUserEmail.Value), (fun v -> varUserEmail.Value <- v))
+                          "userPhone", ("text", (fun () -> varUserValues.Value.phone), (fun v -> varUserValues.Value <- { varUserValues.Value with phone = v }))
+                          "userMobilePhone", ("text", (fun () -> varUserValues.Value.mobilePhone), (fun v -> varUserValues.Value <- { varUserValues.Value with mobilePhone = v }))
+                          "company", ("text", (fun () -> varEmployer.Value.company), (fun v -> varEmployer.Value <- { varEmployer.Value with company = v }))
+                          "companyStreet", ("text", (fun () -> varEmployer.Value.street), (fun v -> varEmployer.Value <- { varEmployer.Value with street = v }))
+                          "companyPostcode", ("text", (fun () -> varEmployer.Value.postcode), (fun v -> varEmployer.Value <- { varEmployer.Value with postcode = v }))
+                          "companyCity", ("text", (fun () -> varEmployer.Value.city), (fun v -> varEmployer.Value <- { varEmployer.Value with city = v }))
+                          "bossGender", ("radio", (fun () -> varEmployer.Value.gender.ToString()), (fun v -> varEmployer.Value <- { varEmployer.Value with gender = Gender.fromString(v) }))
+                          "bossDegree", ("text", (fun () -> varEmployer.Value.degree), (fun v -> varEmployer.Value <- { varEmployer.Value with degree = v }))
+                          "bossFirstName", ("text", (fun () -> varEmployer.Value.firstName), (fun v -> varEmployer.Value <- { varEmployer.Value with firstName = v }))
+                          "bossLastName", ("text", (fun () -> varEmployer.Value.lastName), (fun v -> varEmployer.Value <- { varEmployer.Value with lastName = v }))
+                          "bossEmail", ("text", (fun () -> varEmployer.Value.email), (fun v -> varEmployer.Value <- { varEmployer.Value with email = v }))
+                          "bossPhone", ("text", (fun () -> varEmployer.Value.phone), (fun v -> varEmployer.Value <- { varEmployer.Value with phone = v }))
+                          "bossMobilePhone", ("text", (fun () -> varEmployer.Value.mobilePhone), (fun v -> varEmployer.Value <- { varEmployer.Value with mobilePhone = v }))
+                          "emailSubject", ("text", (fun () -> varDocument.Value.email.subject), (fun v -> varDocument.Value <- { varDocument.Value with email = { varDocument.Value.email with subject = v} }))
+                          "emailBody", ("text", (fun () -> varDocument.Value.email.body), (fun v -> varDocument.Value <- { varDocument.Value with email = {varDocument.Value.email with body  = v } }))
+                        ]
+                        |> Map.ofList
+                    
+                    for item in map do
+                        match item.Value with
+                        | "radio", get, set ->
+                                JQuery(sprintf "[data-bind='%s']" item.Key).Each
+                                   (fun i el -> if get() = el?value then el?checked <- true) |> ignore
+                        | "text", get, set ->
+                                JQuery(sprintf "[data-bind='%s']" item.Key).Each
+                                    (fun i el -> el?value <- get ()) |> ignore
+                        | s, _, _ -> failwith ("Unknown input type: " + s)
+                            
+
+                    JQuery(JS.Document.QuerySelectorAll("[data-bind]"))
+                        .Each
+                            (fun (n, (el : Dom.Element)) ->
+                                let eventAction =
+                                    (fun () ->
+                                        let elValue = JQuery(el).Val() |> string
+                                        let bindValue = JQuery(el).Data("bind").ToString()
+                                        map.[bindValue] |> fun (_, _, set) -> set elValue |> ignore
+                                        let updateElements = JQuery(sprintf "[data-bind='%s']" bindValue)
+                                        updateElements.Each
+                                            (fun (n, updateElement) ->
+                                                if updateElement <> el
+                                                then
+                                                    match map.[bindValue] with
+                                                    | "radio", get, set ->
+                                                        updateElement?checked <- (elValue = updateElement?value)
+                                                    | "text", get, set ->
+                                                        updateElement?value <- elValue
+                                                    | s, get, set ->
+                                                        failwith ("Unknown input type: " + s) 
+                                            ) |> ignore
+                                    )
+                                el.RemoveEventListener("input", eventAction, true)
+                                el.AddEventListener("input", eventAction, true)
+                                el.RemoveEventListener("click", eventAction, true)
+                                el.AddEventListener("click", eventAction, true)
+                            ) |> ignore
             }
 
         let loadPageTemplate() : Async<unit> =
@@ -357,7 +373,7 @@ module Client =
                 JQuery("#insertDiv").Remove() |> ignore
                 while JS.Document.GetElementById("insertDiv") <> null do
                     do! Async.Sleep 10
-                let pageTemplateIndex = JS.Document.GetElementById("selectHtmlPageTemplate")?selectedIndex
+                let pageTemplateIndex = JS.Document.GetElementById("slctHtmlPageTemplate")?selectedIndex
                 let! template = Server.getHtmlPageTemplate (pageTemplateIndex + 1)
                 varDisplayedDocument.Value <- template |> Doc.Verbatim
                 while JS.Document.GetElementById("insertDiv") = null do
@@ -393,15 +409,15 @@ module Client =
             }
         
         let showHideMutualElements =
-            [ "createFilePageDiv"
-              "createHtmlPageDiv"
-              "choosePageTypeDiv"
-              "emailDiv"
-              "newDocumentDiv"
-              "editUserValuesDiv"
-              "addEmployerDiv"
-              "displayedDocumentDiv"
-              "attachmentsDiv"
+            [ "divCreateFilePage"
+              "divCreateHtmlPage"
+              "divChoosePageType"
+              "divEmail"
+              "divNewDocument"
+              "divEditUserValues"
+              "divAddEmployer"
+              "divDisplayedDocument"
+              "divAttachments"
             ]
         
         let show (elIds : list<string>) =
@@ -415,28 +431,31 @@ module Client =
 
         let setDocument () =
             async {
-                let selectDocumentNameEl = JS.Document.GetElementById("selectDocumentName")
-                let documentIndex =
-                    if selectDocumentNameEl <> null
-                    then JS.Document.GetElementById("selectDocumentName")?selectedIndex
-                    else 0
-                let! oDocument = Server.getDocumentOffset documentIndex
+                let slctDocumentNameEl = JS.Document.GetElementById("slctDocumentName")
+                if slctDocumentNameEl?length >= 1
+                then
+                    slctDocumentNameEl?selectedIndex <- 0
+                else
+                    slctDocumentNameEl?selectedIndex <- -1
+                let! oDocument = Server.getDocumentOffset slctDocumentNameEl?selectedIndex
                 match oDocument with
                 | Some document ->
                     varDocument.Value <- document
-                    JS.Document.GetElementById("hiddenDocumentId")?value <- (JS.Document.GetElementById("selectDocumentName")?selectedIndex + 1).ToString()
+                    JS.Document.GetElementById("hiddenDocumentId")?value <- varDocument.Value.id |> string
                 | None ->
-                    ()
+                    varDocument.Value <- {id=0;name="";pages=[];email={subject="";body=""}}
             }
         
 
         let setPageButtons () =
             async {
-                JQuery("#pageButtonsUl li:not(:last-child)").Remove() |> ignore
+                JQuery("#ulPageButtons li:not(:last-child)").Remove() |> ignore
+                JS.Alert("bef!")
                 for page in varDocument.Value.pages do
+                    JS.Alert("Page!")
                     JQuery(sprintf """<li><button id="pageButton%i" class="btnLikeLink">%s</button</li>""" (page.PageIndex()) (page.Name())).InsertBefore("#addPageButton").On(
                           "click"
-                        , (fun el ev ->
+                        , (fun _ _ ->
                                 match page with
                                 | HtmlPage htmlPage ->
                                     async {
@@ -449,12 +468,13 @@ module Client =
                                         while JS.Document.GetElementById("insertDiv") = null do
                                             do! Async.Sleep 10
                                         do! fillDocumentValues()
-                                        show ["displayedDocumentDiv"; "attachmentsDiv"]
+                                        show ["divDisplayedDocument"; "divAttachments"]
                                     } |> Async.Start
                                 | FilePage filePage -> 
                                     () 
                         )
                     ) |> ignore
+                JS.Document.GetElementById("hiddenNextPageIndex")?value <- ((JQuery("#ulPageButtons li").Length) |> string)
             }
         
         let addSelectOption el value =
@@ -469,91 +489,103 @@ module Client =
                 let li = JQuery(sprintf """<li><button class="btnLikeLink1">%s</button></li>""" entry).On("click", f)
                 JQuery(menuDiv).Append(li)
 
-            addMenuEntry "Add employer and apply" (fun _ _ -> show ["addEmployerDiv"]) |> ignore
-            addMenuEntry "Edit your values" (fun _ _ -> show ["editUserValuesDiv"]) |> ignore
-            addMenuEntry "Edit email" (fun _ _ -> show ["emailDiv"]) |> ignore
-            addMenuEntry "Edit attachments" (fun _ _ -> show ["attachmentsDiv"]) |> ignore
+            addMenuEntry "Add employer and apply" (fun _ _ -> show ["divAddEmployer"]) |> ignore
+            addMenuEntry "Edit your values" (fun _ _ -> show ["divEditUserValues"]) |> ignore
+            addMenuEntry "Edit email" (fun _ _ -> show ["divEmail"]) |> ignore
+            addMenuEntry "Edit attachments" (fun _ _ -> show ["divAttachments"]) |> ignore
         
             let! userValues = Server.getCurrentUserValues()
             varUserValues.Value <- userValues
 
             let! documentNames = Server.getDocumentNames()
 
-            let selectDocumentNameEl = JS.Document.GetElementById("selectDocumentName")
+            let slctDocumentNameEl = JS.Document.GetElementById("slctDocumentName")
             for documentName in documentNames do
-                addSelectOption selectDocumentNameEl documentName
+                addSelectOption slctDocumentNameEl documentName
 
             let! oLastEditedDocumentId = Server.getLastEditedDocumentId()
             match oLastEditedDocumentId with
             | None ->
-                selectDocumentNameEl?selectedIndex <- 0
+                slctDocumentNameEl?selectedIndex <- 0
             | Some lastEditedDocumentId ->
-                selectDocumentNameEl?selectedIndex <- lastEditedDocumentId - 1
+                slctDocumentNameEl?selectedIndex <- lastEditedDocumentId - 1
             do! setDocument()
             do! setPageButtons()
 
-            //Set selectHtmlPageTemplate
+            //Set slctHtmlPageTemplate
             let! htmlPageTemplates = Server.getHtmlPageTemplates()
-            let selectHtmlPageTemplateEl = JS.Document.GetElementById("selectHtmlPageTemplate")
+            let slctHtmlPageTemplateEl = JS.Document.GetElementById("slctHtmlPageTemplate")
             for htmlPageTemplate in htmlPageTemplates do
-                addSelectOption selectHtmlPageTemplateEl htmlPageTemplate.name
+                addSelectOption slctHtmlPageTemplateEl htmlPageTemplate.name
 
             do! fillDocumentValues()
-            show ["addEmployerDiv"]
         } |> Async.Start
 
 
         div
-          [ h4 [text "Your application documents: "]
-            selectAttr
-              [ attr.id "selectDocumentName";
-                on.change
-                  (fun _ _ ->
-                      async {
-                        do! setDocument()
-                        do! setPageButtons()
-                        do! fillDocumentValues()
-                      } |> Async.Start)
+          [ divAttr
+              [ attr.style "width : 100%" ]
+              [ h4 [text "Your application documents: "]
+                selectAttr
+                  [ attr.id "slctDocumentName";
+                    on.change
+                      (fun _ _ ->
+                          async {
+                            do! setDocument()
+                            do! setPageButtons()
+                            do! fillDocumentValues()
+                          } |> Async.Start)
+                  ]
+                  []
+                inputAttr
+                  [ attr.``type`` "button"
+                    attr.style "margin-left: 20px"
+                    attr.``class`` ".btnLikeLink"
+                    attr.value "+"
+                    on.click(fun _ _ -> show ["divNewDocument"])
+                  ]
+                  []
+                inputAttr
+                  [ attr.``type`` "button"
+                    attr.id "btnDeleteDocument"
+                    attr.``class`` ".btnLikeLink"
+                    attr.style "margin-left: 20px"
+                    attr.value "-"
+                    on.click(fun el _ ->
+                        async {
+                            let slctEl = JS.Document.GetElementById("slctDocumentName")
+                            if slctEl?selectedIndex >= 0 && JS.Confirm("Really delete document " + varDocument.Value.name + "?")
+                            then
+                                JS.Alert(varDocument.Value.id |> string)
+                                do! Server.deleteDocument varDocument.Value.id
+                                let slctEl = JS.Document.GetElementById("slctDocumentName")
+                                slctEl.RemoveChild(slctEl?(slctEl?selectedIndex)) |> ignore
+                                if slctEl?length = 0
+                                then
+                                    el?style?display <- "none"
+                                    varDocument.Value <- {name="";id=0;pages=[];email={subject="";body=""}}
+                                do! setDocument()
+                                do! setPageButtons()
+                                do! fillDocumentValues()
+                        } |> Async.Start
+                    )
+                  ]
+                  []
               ]
-              []
-            inputAttr
-              [ attr.``type`` "button"
-                attr.style "margin-left: 20px"
-                attr.``class`` ".btnLikeLink"
-                attr.value "+"
-                on.click(fun _ _ -> show ["newDocumentDiv"])
-              ]
-              []
-            inputAttr
-              [ attr.``type`` "button"
-                attr.``class`` ".btnLikeLink"
-                attr.style "margin-left: 20px"
-                attr.value "-"
-                on.click(fun _ _ ->())
-              ]
-              []
             hr []
-            inputAttr
-              [ attr.``type`` "button"
-                attr.``class`` "btnLikeLink"
-                attr.value "Email data"
-                attr.style "display: none"
-                on.click(fun _ _ -> show ["emailDiv"])
-              ]
-              []
             divAttr
-              [ attr.id "attachmentsDiv"
+              [ attr.id "divAttachments"; attr.style "display: none"
               ]
               [ h4 [ text "Your attachments:" ]
                 ulAttr
-                  [ attr.id "pageButtonsUl"; attr.style "list-style-type: none; padding: 0; margin: 0;" ]
+                  [ attr.id "ulPageButtons"; attr.style "list-style-type: none; padding: 0; margin: 0;" ]
                   [ li
                       [ buttonAttr
                           [ attr.id "addPageButton"
                             attr.``class`` "btnLikeLink"
                             on.click
                               (fun el _ ->
-                                  show ["choosePageTypeDiv"; "attachmentsDiv"; "createFilePageDiv"]
+                                  show ["divChoosePageType"; "divAttachments"; "divCreateFilePage"]
                                   JS.Document.GetElementById("rbFilePage")?checked <- true;
                               )
                           ]
@@ -562,10 +594,10 @@ module Client =
                   ]
               ]
             divAttr
-              [ attr.id "newDocumentDiv" ]
+              [ attr.id "divNewDocument"; attr.style "display: none" ]
               [ text "Document name: "
                 br []
-                inputAttr [attr.id "txtNewTemplateName"] []
+                inputAttr [attr.id "txtNewDocumentName"; attr.autofocus "autofocus" ] []
                 br []
                 br []
                 inputAttr
@@ -575,17 +607,27 @@ module Client =
                     on.click (fun _ _ ->
                         async {
                             let newDocumentName = JS.Document.GetElementById("txtNewDocumentName")?value |> string
-                            do! Server.addNewDocument newDocumentName
-                            addSelectOption "selectDocumentName" newDocumentName
+                            varDocument.Value <- { varDocument.Value with name = newDocumentName }
+                            let! newDocumentId = Server.saveNewDocument varDocument.Value
+                            JS.Alert(newDocumentId |> string)
+                            varDocument.Value <- { varDocument.Value with id = newDocumentId }
+                            let slctEl = JS.Document.GetElementById("slctDocumentName")
+                            addSelectOption slctEl newDocumentName
+                            JS.Document.GetElementById("divNewDocument")?style?display <- "none"
+                            JS.Document.GetElementById("btnDeleteDocument")?style?display <- "inline"
+                            slctEl?selectedIndex <- slctEl?options?length - 1
+                            do! setDocument()
+                            do! setPageButtons()
+                            do! fillDocumentValues()
                         } |> Async.Start
                       )
                   ]
                   []
               ]
             divAttr
-              [attr.id "displayedDocumentDiv"]
+              [attr.id "divDisplayedDocument"; attr.style "display: none"]
               [ selectAttr
-                  [ attr.id "selectHtmlPageTemplate";
+                  [ attr.id "slctHtmlPageTemplate";
                     on.change
                       (fun _ _ ->
                           async {
@@ -597,28 +639,15 @@ module Client =
                 Doc.EmbedView varDisplayedDocument.View
               ]
             divAttr
-              [ attr.id "emailDiv"]
+              [ attr.id "divEmail"; attr.style "display: none"]
               [ h4 [text "Email" ]
-                text "Email subject:"
-                br []
-                inputAttr
-                  [ attr.``data-`` "bind" "emailSubject"
-                    attr.style "width:100%"
-                  ]
-                  []
-                br []
-                text "Email body:"
-                br []
-                textareaAttr
-                  [ attr.``data-`` "bind" "emailBody"
-                    attr.style "min-height:300px; width: 100%"
-                  ]
-                  []
+                createInput "Email subject:" "emailSubject"
+                createTextArea "Email body" "emailBody" "400px"
               ]
             divAttr
-              [ attr.id "choosePageTypeDiv" ]
+              [ attr.id "divChoosePageType"; attr.style "display: none" ]
               [ inputAttr
-                  [ attr.``type`` "radio"; attr.name "rbgrpPageType"; attr.id "rbHtmlPage"; on.click (fun _ _ -> show ["attachmentsDiv";"choosePageTypeDiv"; "createHtmlPageDiv"]) ]
+                  [ attr.``type`` "radio"; attr.name "rbgrpPageType"; attr.id "rbHtmlPage"; on.click (fun _ _ -> show ["divAttachments";"divChoosePageType"; "divCreateHtmlPage"]) ]
                   []
                 labelAttr
                   [ attr.``for`` "rbHtmlPage" ]
@@ -628,8 +657,7 @@ module Client =
                   [ attr.``type`` "radio"; attr.id "rbFilePage"; attr.name "rbgrpPageType";
                     on.click
                       (fun _ _ ->
-                        show ["attachmentsDiv"; "choosePageTypeDiv"; "createFilePageDiv"]
-                        JS.Document.GetElementById("hiddenDocumentId")?value <- (JS.Document.GetElementById("selectDocumentName")?selectedIndex + 1).ToString()
+                        show ["divAttachments"; "divChoosePageType"; "divCreateFilePage"]
                          )
                   ]
                   []
@@ -640,14 +668,39 @@ module Client =
                 br []
               ]
             divAttr
-              [ attr.id "createHtmlPageDiv" ]
-              [ inputAttr [attr.id ""] []
+              [ attr.id "divCreateHtmlPage"; attr.style "display: none" ]
+              [ inputAttr [attr.id "txtCreateHtmlPage"] []
                 br []
                 br []
-                buttonAttr [attr.``type`` "submit" ] [text "Add html attachment"]
+                buttonAttr
+                  [ attr.``type`` "submit";
+                    on.click
+                      (fun _ _ ->
+                        let pageIndex = JQuery("#ulPageButtons li").Length
+                        varDocument.Value <-
+                            { varDocument.Value
+                                with pages = (
+                                              varDocument.Value.pages
+                                                @
+                                                [ HtmlPage
+                                                    { name = JS.Document.GetElementById("txtCreateHtmlPage")?value
+                                                      oTemplateId = Some 1
+                                                      pageIndex = pageIndex
+                                                      map = []
+                                                    }
+                                                ]
+                                    )
+                            }
+                        async {
+                            do! setPageButtons()
+                            varCurrentPageIndex.Value <- pageIndex
+                        } |> Async.Start
+                      )
+                  ]
+                  [text "Add html attachment"]
               ]
             divAttr
-              [ attr.id "createFilePageDiv"; ]
+              [ attr.id "divCreateFilePage"; attr.style "display: none" ]
               [ formAttr [attr.enctype "multipart/form-data"; attr.method "POST"; attr.action ""]
                   [ text "Please choose a file: "
                     br []
@@ -656,15 +709,15 @@ module Client =
                         attr.name "file"
                       ]
                       []
-                    inputAttr [ attr.``type`` "hidden"; attr.id "hiddenDocumentId"; attr.name "documentId" ] []
-                    inputAttr [ attr.``type`` "hidden"; attr.name "pageIndex"; attr.value ((JQuery("#pageButtonsUl li").Length - 1) |> string); ] []
+                    inputAttr [ attr.``type`` "hidden"; attr.id "hiddenDocumentId"; attr.name "documentId"; ] []
+                    inputAttr [ attr.``type`` "hidden"; attr.id "hiddenNextPageIndex"; attr.name "pageIndex"] []
                     br []
                     br []
                     buttonAttr [attr.``type`` "submit" ] [text "Add attachment"]
                   ]
               ]
             divAttr
-              [ attr.id "editUserValuesDiv" ]
+              [ attr.id "divEditUserValues"; attr.style "display: none" ]
               [ h4 [ text "Your values" ]
                 createInput "Degree" "userDegree"
                 createRadio
@@ -681,35 +734,55 @@ module Client =
                 createInput "Mobile phone" "userMobilePhone"
               ]
             divAttr
-              [ attr.id "addEmployerDiv" ]
-              [ inputAttr
-                  [ attr.``type`` "button"
-                    attr.value "Load from website"
-                    on.click (fun el _ ->
-                        async {
-                            let! employer = Server.readWebsite (JS.Document.GetElementById("txtReadEmployerFromWebsite")?value)
-                            varEmployer.Value <- employer
-                            JS.Alert(varEmployer.Value.company)
-                            do! fillDocumentValues()
-                            JS.Alert(varEmployer.Value.company)
-                        } |> Async.Start
-                    )
+              [ attr.id "divAddEmployer"
+              ]
+              [ h4 [text "Employer"]
+                divAttr
+                  [ attr.``class`` "form-group row" ]
+                  [ divAttr
+                      [ attr.``class`` "col-lg-3"
+                      ]
+                      [ inputAttr
+                          [ attr.``type`` "button"
+                            attr.``class`` "btn-block"
+                            attr.value "Load from website"
+                            on.click (fun el _ ->
+                                async {
+                                    let! employer = Server.readWebsite (JS.Document.GetElementById("txtReadEmployerFromWebsite")?value)
+                                    varEmployer.Value <- employer
+                                    do! fillDocumentValues()
+                                } |> Async.Start
+                            )
+                          ]
+                          []
+                    ]
+                    divAttr
+                      [attr.``class`` "col-lg-9"]
+                      [ inputAttr
+                          [ attr.id "txtReadEmployerFromWebsite"
+                            attr.``type`` "text"
+                            attr.``class`` "form-control"
+                            attr.value "https://jobboerse.arbeitsagentur.de/vamJB/stellenangeboteFinden.html?execution=e4s1&_eventId_detailView&bencs=ECCL4bGU%2BoeU3dXfDx34zLzb40uikic%2B2KKQU5eGJmbIR%2B7U88EatZPz4c6thxWn&bencs=m4%2BYgQaq%2BX3rqfQIFvibQOfuTdWSRPhHFObxFs%2BMsVl5i8Ha2yIwL1W5WT0iPA4PxFEqmlYn%2F%2BS1r%2FuIRfNrBw%3D%3D&bencs=6PQaRUFDQLZ%2BGNPAPRG8v%2BzbdKHav8zjyetSZpAojmXOPuJQd%2F4O3ojlMh1kXaLryb44mxmmwUNC%2F0m3Nq0xAXci%2FOEbKO0KpeEsoXm%2BGVaRIDnp67LAL434DTMOym9f&bencs=ScHZtBeeBMNt7ILR4tjstoAti5XHVScqFoc6%2FRQffzYt%2FJrTwlVXtA8Y77YD%2Fth0"
+                            on.click (fun el _ -> el?select())
+                          ]
+                          []
+                      ]
                   ]
-                  []
-                inputAttr
-                  [ attr.id "txtReadEmployerFromWebsite"
-                    attr.``type`` "text"
-                    attr.value "https://jobboerse.arbeitsagentur.de/vamJB/stellenangeboteFinden.html?execution=e4s1&_eventId_detailView&bencs=ECCL4bGU%2BoeU3dXfDx34zLzb40uikic%2B2KKQU5eGJmbIR%2B7U88EatZPz4c6thxWn&bencs=m4%2BYgQaq%2BX3rqfQIFvibQOfuTdWSRPhHFObxFs%2BMsVl5i8Ha2yIwL1W5WT0iPA4PxFEqmlYn%2F%2BS1r%2FuIRfNrBw%3D%3D&bencs=6PQaRUFDQLZ%2BGNPAPRG8v%2BzbdKHav8zjyetSZpAojmXOPuJQd%2F4O3ojlMh1kXaLryb44mxmmwUNC%2F0m3Nq0xAXci%2FOEbKO0KpeEsoXm%2BGVaRIDnp67LAL434DTMOym9f&bencs=ScHZtBeeBMNt7ILR4tjstoAti5XHVScqFoc6%2FRQffzYt%2FJrTwlVXtA8Y77YD%2Fth0"
+                divAttr
+                  [ attr.``class`` "form-group row"
                   ]
-                  []
-                inputAttr
-                  [ attr.``type`` "button"
-                    attr.``class`` "btnLikeLink"
-                    attr.value "Apply now"
-                    on.click (fun _ _ -> Server.applyNowWithHtmlTemplate varEmployer.Value varDocument.Value varUserValues.Value |> Async.Start)
+                  [ divAttr
+                      [ attr.``class`` "col-12"
+                      ]
+                      [ inputAttr
+                          [ attr.``type`` "button"
+                            attr.``class`` "btn-block"
+                            attr.value "Apply now"
+                            on.click (fun _ _ -> Server.applyNowWithHtmlTemplate varEmployer.Value varDocument.Value varUserValues.Value |> Async.Start)
+                          ]
+                          []
+                      ]
                   ]
-                  []
-                h4 [text "Employer"]
                 createInput "Company name" "company"
                 createInput "Street" "companyStreet"
                 createInput "Postcode" "companyPostcode"

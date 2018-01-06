@@ -23,7 +23,7 @@ create table filePage(id serial primary key, documentId int not null, path varch
 create table htmlPage(id serial primary key, documentId int not null, templateId int null, pageIndex int not null, name varchar(50) not null, foreign key(documentId) references document(id), foreign key(templateId) references htmlPageTemplate(id), constraint htmlPage_unique unique(documentId, pageIndex));
 create table documentEmail(id serial primary key, documentId int not null unique, subject varchar(200) not null, body text not null, foreign key(documentId) references document(id));
 create table pageMap(id serial primary key, documentId int not null, pageIndex int not null, key varchar(100) not null, value text not null, foreign key(documentId) references document(id), constraint pageMap_unique unique(documentId, pageIndex, key));
-create table sentApplication(id serial primary key, userId int not null, employerId int not null, documentId int not null, foreign key(documentId) references document(id), foreign key(employerId) references employer(id), foreign key(userId) references users(id));
+create table sentApplication(id serial primary key, userId int not null, employerId int not null, documentId int null, foreign key(employerId) references employer(id), foreign key(userId) references users(id));
 create table sentStatusValue(id int primary key, status varchar(50));
 create table sentStatus(id serial primary key, sentApplicationId int, statusChangedOn date, dueOn timestamp, sentStatusValueId int, statusMessage varchar(200), foreign key(sentApplicationId) references sentApplication(id), foreign key(sentStatusValueId) references sentStatusValue(id));
 

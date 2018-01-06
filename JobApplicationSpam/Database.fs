@@ -326,6 +326,33 @@ module Database =
                 command.Dispose()
         log.Debug(sprintf "%A %i = %i" document userId documentId)
         documentId
+    
+    let deleteDocument (dbConn : NpgsqlConnection) (documentId : int) =
+        use command = new NpgsqlCommand("delete from pageMap where documentId = :documentId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        command.ExecuteNonQuery() |> ignore
+        command.Dispose()
+
+        use command = new NpgsqlCommand("delete from htmlPage where documentId = :documentId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        command.ExecuteNonQuery() |> ignore
+        command.Dispose()
+
+        use command = new NpgsqlCommand("delete from filePage where documentId = :documentId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        command.ExecuteNonQuery() |> ignore
+        command.Dispose()
+
+        use command = new NpgsqlCommand("delete from documentEmail where documentId = :documentId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        command.ExecuteNonQuery() |> ignore
+        command.Dispose()
+
+        use command = new NpgsqlCommand("delete from document where id = :documentId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        command.ExecuteNonQuery() |> ignore
+        command.Dispose()
+
        
     let getDocument (dbConn : NpgsqlConnection) (documentId : int) =
         use command =
@@ -342,7 +369,7 @@ module Database =
         reader.Dispose()
         command.Dispose()
 
-        use command = new NpgsqlCommand("select id, templateId, pageIndex, name from htmlPage where documentId = :documentId", dbConn)
+        use command = new NpgsqlCommand("select id, templateId, pageIndex, name from htmlPage where documentId = :documentId order by pageIndex", dbConn)
         command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
         use reader = command.ExecuteReader()
         let htmlPageData =
@@ -356,7 +383,7 @@ module Database =
         reader.Dispose()
         command.Dispose()
 
-        use command = new NpgsqlCommand("select path, pageIndex, name from filePage where documentId = :documentId", dbConn)
+        use command = new NpgsqlCommand("select path, pageIndex, name from filePage where documentId = :documentId order by pageIndex", dbConn)
         command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
         use reader = command.ExecuteReader()
         let filePages =
@@ -393,7 +420,7 @@ module Database =
 
         { id = documentId
           name = documentName
-          pages = htmlPages @ filePages
+          pages = (htmlPages @ filePages) |> List.sortBy (fun x -> x.PageIndex())
           email = {subject = emailSubject; body = emailBody}
         }
     
@@ -495,6 +522,7 @@ module Database =
         |> Map.ofList
     
     let addFilePage (dbConn : NpgsqlConnection) (documentId : int) (path : string) (pageIndex : int)  =
+        log.Debug (sprintf "(documentId: %i, path: %s, pageIndex: %i)" documentId path pageIndex)
         use command = new NpgsqlCommand("update filePage set pageIndex = pageIndex + 1 where pageIndex >= :pageIndex", dbConn)
         command.Parameters.Add(new NpgsqlParameter("pageIndex", pageIndex)) |> ignore
         command.ExecuteNonQuery() |> ignore
@@ -511,6 +539,7 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("pageIndex", pageIndex)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("name", Path.GetFileName(path))) |> ignore
         command.ExecuteNonQuery() |> ignore
+        log.Debug (sprintf "(documentId: %i, path: %s, pageIndex: %i) = ()" documentId path pageIndex)
 
     let addNewDocument (dbConn : NpgsqlConnection) (userId : int) (name : string) =
         use command = new NpgsqlCommand("insert into document (userId, name) values (:userId, :name)", dbConn)

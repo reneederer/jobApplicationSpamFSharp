@@ -265,6 +265,14 @@ module Server =
             | None -> return failwith "User is not logged in"
         }
 
+    [<Remote>]
+    let deleteDocument (documentId : int) =
+        async {
+            use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+            dbConn.Open()
+            Database.deleteDocument dbConn documentId
+        }
+
 
     [<Remote>]
     let getDocumentOffset (htmlJobApplicationOffset : int) =
@@ -384,7 +392,7 @@ module Server =
             dbConn.Open()
             return Database.getHtmlPageTemplates dbConn
         }
-
+    
     [<Remote>]
     let getHtmlPageTemplate (templateId : int) =
         async {

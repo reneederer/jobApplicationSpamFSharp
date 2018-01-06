@@ -74,6 +74,8 @@
     <Compile Include="Database.fs" />
     <Compile Include="Odt.fs" />
     <Compile Include="Website.fs" />
+    <Compile Include="Internationalisation\English.fs" />
+    <Compile Include="Internationalisation\Deutsch.fs" />
     <Compile Include="Remoting.fs" />
     <Compile Include="Client.fs" />
     <Compile Include="Tests.fs" />

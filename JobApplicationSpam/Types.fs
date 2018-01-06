@@ -138,4 +138,51 @@ module Types =
     type Language =
     | English
     | Deutsch
+    with
+        static member fromString(s:string) =
+            match s.ToLower() with
+            | "english" -> English
+            | "deutsch" -> Deutsch
+            | _ -> English
+        override this.ToString() =
+            match this with
+            | English -> "english"
+            | Deutsch -> "deutsch"
 
+    [<WebSharper.JavaScript>]
+    type Word =
+        | AddEmployerAndApply
+        | EditYourValues
+        | EditEmail
+        | EditAttachments
+        | YourApplicationDocuments
+        | LoadFromWebsite
+        | ApplyNow
+        | CompanyName
+        | Street
+        | Postcode
+        | City
+        | Gender
+        | Degree
+        | FirstName
+        | LastName
+        | Email
+        | Phone
+        | MobilePhone
+        | YourValues
+        | EmailSubject
+        | EmailBody
+        | YourAttachments
+        | CreateOnline
+        | UploadFile
+        | PleaseChooseAFile
+        | AddAttachment
+        | YouMightWantToReplaceSomeWordsInYourFileWithVariables
+        | VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication
+        | Employer
+        | ReallyDeleteDocument
+        | Male
+        | Female
+        | AddDocument
+        | DocumentName
+        | AddHtmlAttachment

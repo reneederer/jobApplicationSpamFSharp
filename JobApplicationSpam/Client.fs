@@ -17,126 +17,6 @@ module Client =
     open Server
 
     [<JavaScript>]
-    type Language =
-        | English
-        | German
-    
-    [<JavaScript>]
-    type Str =
-        | StrMale
-        | StrFemale
-        | StrAddEmployer
-        | StrCompanyName
-        | StrCompanyStreet
-        | StrCompanyPostcode
-        | StrCompanyCity
-        | StrBossGender
-        | StrBossDegree
-        | StrBossFirstName
-        | StrBossLastName
-        | StrBossEmail
-        | StrBossPhone
-        | StrBossMobilePhone
-        | StrUploadTemplate
-        | StrTemplateName
-        | StrEmailSubject
-        | StrEmailBody
-        | StrUserAppliesAs
-        | StrAddFile
-        | StrEditUserValues
-        | StrSubmitEditUserValues
-        | StrUserValuesGender
-        | StrUserValuesDegree
-        | StrUserValuesFirstName
-        | StrUserValuesLastName
-        | StrUserValuesStreet
-        | StrUserValuesPostcode
-        | StrUserValuesCity
-        | StrUserValuesPhone
-        | StrUserValuesMobilePhone
-
-    [<JavaScript>]
-    let translate language str =
-        match language, str with
-        | English, StrMale -> "male"
-        | English, StrFemale -> "female"
-        | English, StrAddEmployer -> "Add Employer"
-        | English, StrCompanyName -> "Company name"
-        | English, StrBossFirstName -> "First name"
-        | English, StrBossLastName -> "Last name"
-        | English, StrCompanyStreet -> "Street"
-        | English, StrCompanyPostcode -> "Postcode"
-        | English, StrCompanyCity -> "City"
-        | English, StrBossGender -> "Gender"
-        | English, StrBossDegree -> "Degree"
-        | English, StrBossEmail -> "Email"
-        | English, StrBossPhone -> "Phone"
-        | English, StrBossMobilePhone -> "Mobile phone"
-        | English, StrUploadTemplate -> "Add template"
-        | English, StrEmailSubject -> "Email subject"
-        | English, StrEmailBody -> "Email body"
-        | English, StrTemplateName -> "Template name"
-        | English, StrUserAppliesAs -> "Job"
-        | English, StrAddFile -> "Add file"
-        | English, StrEditUserValues -> "Edit your values"
-        | English, StrSubmitEditUserValues -> "Save values"
-        | English, StrUserValuesGender -> "Gender"
-        | English, StrUserValuesDegree -> "Degree"
-        | English, StrUserValuesFirstName -> "First name"
-        | English, StrUserValuesLastName -> "Last name"
-        | English, StrUserValuesStreet -> "Street"
-        | English, StrUserValuesPostcode -> "Postcode"
-        | English, StrUserValuesCity -> "City"
-        | English, StrUserValuesPhone -> "Phone"
-        | English, StrUserValuesMobilePhone -> "Mobile phone"
-        | German, StrMale -> "männlich"
-        | German, StrFemale -> "weiblich"
-        | German, StrAddEmployer -> "Arbeitgeber eingeben"
-        | German, StrCompanyName -> "Firmenname"
-        | German, StrCompanyStreet -> "Straße"
-        | German, StrCompanyPostcode -> "Postleitzahl"
-        | German, StrCompanyCity -> "Stadt"
-        | German, StrBossGender -> "Geschlecht"
-        | German, StrBossDegree -> "Titel"
-        | German, StrBossFirstName -> "Vorname"
-        | German, StrBossLastName -> "Nachname"
-        | German, StrBossEmail -> "Email"
-        | German, StrBossPhone -> "Telefon"
-        | German, StrBossMobilePhone -> "Mobiltelefon"
-        | German, StrUploadTemplate -> "Vorlage hochladen"
-        | German, StrEmailSubject -> "Email-Betreff"
-        | German, StrEmailBody -> "Email-Text"
-        | German, StrTemplateName -> "Name der Vorlage"
-        | German, StrUserAppliesAs -> "Beruf"
-        | German, StrAddFile -> "Datei hinzufügen"
-        | German, StrEditUserValues -> "Angaben zum Bewerber"
-        | German, StrSubmitEditUserValues -> "Speichern"
-        | German, StrUserValuesGender -> "Geschlecht"
-        | German, StrUserValuesDegree -> "Titel"
-        | German, StrUserValuesFirstName -> "Vorname"
-        | German, StrUserValuesLastName -> "Nachname"
-        | German, StrUserValuesStreet -> "Straße"
-        | German, StrUserValuesPostcode -> "PLZ"
-        | German, StrUserValuesCity -> "Stadt"
-        | German, StrUserValuesPhone -> "Telefon"
-        | German, StrUserValuesMobilePhone -> "Mobiltelefon"
-
-    
-    [<JavaScript>]
-    let currentLanguage = German
-
-
-    [<JavaScript>]
-    type AddEmployerAction =
-    | ApplyImmediately
-    | SendJobApplicationToUserOnly
-    | JustAddEmployer
-     
-    [<JavaScript>]
-    let logout =
-        div [text "hallo"]
-     
-    [<JavaScript>]
     let login () =
         let varTxtLoginEmail = Var.Create ""
         let varTxtLoginPassword = Var.Create ""
@@ -212,7 +92,7 @@ module Client =
     [<JavaScript>]
     let showSentJobApplications () =
         h1 [text "hallo"]
-
+    
 
     [<JavaScript>]
     let templates () = 
@@ -222,6 +102,25 @@ module Client =
         let varEmployer = Var.Create<Employer>({company="";gender=Gender.Unknown;degree="";firstName="";lastName="";street="";postcode="";city="";email="";phone="";mobilePhone=""})
         let varCurrentPageIndex = Var.Create(1)
         let varDisplayedDocument = Var.Create(div [] :> Doc)
+        let varLanguage = Var.Create English
+        let varLanguageDict = Var.Create<Map<Word, string>>(Deutsch.dict |> Map.ofList)
+
+
+        let getCookie str =
+            JS.Document.Cookie.Split([| "; "; ";" |], StringSplitOptions.None)
+                |> Array.tryFind(fun (x : string) -> x.StartsWith(str + "="))
+                |> Option.map (fun x -> x.Substring(str.Length + 1))
+
+
+        let setLanguage language =
+            JS.Document.Cookie <- "language=" + language.ToString()
+
+        
+        let i = Var.Create(0)
+        let t (w : Word) =
+            i.Value <- i.Value + 1
+            varLanguageDict.Value.[w]
+
 
         let createInputWithColumnSizes column1Size column2Size labelText dataBind =
           divAttr
@@ -300,7 +199,6 @@ module Client =
                         ) |> ignore
                     | FilePage filePage ->
                         ()
-                    do! Async.Sleep 2000
 
                     let map = // itemName * (itemType * getter * setter)
                         [ "userGender", ("radio", (fun () -> varUserValues.Value.gender.ToString()), (fun v -> varUserValues.Value <- { varUserValues.Value with gender = Gender.fromString v }))
@@ -454,15 +352,6 @@ module Client =
                                 if JS.Confirm("Really delete this page?")
                                 then
                                     async {
-                                        varDocument.Value <-
-                                            { varDocument.Value
-                                                with pages =
-                                                        varDocument.Value.pages
-                                                        |> List.splitAt (page.PageIndex() - 1)
-                                                        |> fun (before, after) ->
-                                                            before @ (after |> List.skip 1 |> List.map (fun x -> x.PageIndex(x.PageIndex() - 1)))
-                                                
-                                            }
                                         let! _ = overwriteDocument varDocument.Value
                                         do! setDocument()
                                         do! setPageButtons()
@@ -558,48 +447,69 @@ module Client =
 
             
         async {
+            (*
+            setLanguage Deutsch
+            let! dict = Server.getLanguageDict (Language.fromString(getCookie "language" |> Option.defaultValue "english"))
+            *)
+            varLanguageDict.Value <- (Deutsch.dict |> Map.ofList)
+
             let menuDiv = JS.Document.GetElementById("sidebarMenuDiv")
+            while menuDiv = null do
+                do! Async.Sleep 10
             let addMenuEntry entry (f : Dom.Element -> Event -> unit) = 
                 let li = JQuery(sprintf """<li><button class="btnLikeLink1">%s</button></li>""" entry).On("click", f)
                 JQuery(menuDiv).Append(li)
 
-            addMenuEntry "Add employer and apply" (fun _ _ -> show ["divAddEmployer"]) |> ignore
-            addMenuEntry "Edit your values" (fun _ _ -> show ["divEditUserValues"]) |> ignore
-            addMenuEntry "Edit email" (fun _ _ -> show ["divEmail"]) |> ignore
-            addMenuEntry "Edit attachments" (fun _ _ -> show ["divAttachments"]) |> ignore
+            JS.Alert("akkg")
+            addMenuEntry (t AddEmployerAndApply) (fun _ _ -> show ["divAddEmployer"]) |> ignore
+            addMenuEntry (t EditYourValues) (fun _ _ -> show ["divEditUserValues"]) |> ignore
+            addMenuEntry (t EditEmail) (fun _ _ -> show ["divEmail"]) |> ignore
+            addMenuEntry (t EditAttachments) (fun _ _ -> show ["divAttachments"]) |> ignore
+
+            let! userEmail = Server.getCurrentUserEmail()
+            varUserEmail.Value <- userEmail
         
             let! userValues = Server.getCurrentUserValues()
             varUserValues.Value <- userValues
+            JS.Alert("abkg")
 
             let! documentNames = Server.getDocumentNames()
 
             let slctDocumentNameEl = JS.Document.GetElementById("slctDocumentName")
+            while JS.Document.GetElementById("slctDocumentName") = null do
+                JS.Alert("jg")
+                do! Async.Sleep 10
+            JS.Alert("jjkg")
             for documentName in documentNames do
                 addSelectOption slctDocumentNameEl documentName
 
+            JS.Alert("ajkg")
             let! oLastEditedDocumentId = Server.getLastEditedDocumentId()
             match oLastEditedDocumentId with
             | None ->
                 slctDocumentNameEl?selectedIndex <- 0
             | Some lastEditedDocumentId ->
                 slctDocumentNameEl?selectedIndex <- lastEditedDocumentId - 1
+            JS.Alert("ajkk")
             do! setDocument()
             do! setPageButtons()
 
             //Set slctHtmlPageTemplate
             let! htmlPageTemplates = Server.getHtmlPageTemplates()
             let slctHtmlPageTemplateEl = JS.Document.GetElementById("slctHtmlPageTemplate")
+            while slctHtmlPageTemplateEl = null do
+                do! Async.Sleep 10
             for htmlPageTemplate in htmlPageTemplates do
                 addSelectOption slctHtmlPageTemplateEl htmlPageTemplate.name
 
             do! fillDocumentValues()
+            JS.Alert("ajka")
         } |> Async.Start
-
 
         div
           [ divAttr
               [ attr.style "width : 100%" ]
-              [ h4 [text "Your application documents: "]
+              [ h4 [text (t YourApplicationDocuments)]
                 selectAttr
                   [ attr.id "slctDocumentName";
                     on.change
@@ -628,7 +538,7 @@ module Client =
                     on.click(fun el _ ->
                         async {
                             let slctEl = JS.Document.GetElementById("slctDocumentName")
-                            if slctEl?selectedIndex >= 0 && JS.Confirm("Really delete document " + varDocument.Value.name + "?")
+                            if slctEl?selectedIndex >= 0 && JS.Confirm(String.Format(t ReallyDeleteDocument, varDocument.Value.name))
                             then
                                 do! Server.deleteDocument varDocument.Value.id
                                 let slctEl = JS.Document.GetElementById("slctDocumentName")
@@ -649,7 +559,7 @@ module Client =
             divAttr
               [ attr.id "divAttachments"; attr.style "display: none"
               ]
-              [ h4 [ text "Your attachments:" ]
+              [ h4 [ text (t YourAttachments) ]
                 ulAttr
                   [ attr.id "ulPageButtons"; attr.style "list-style-type: none; padding: 0; margin: 0;" ]
                   [ li
@@ -668,7 +578,7 @@ module Client =
               ]
             divAttr
               [ attr.id "divNewDocument"; attr.style "display: none" ]
-              [ text "Document name: "
+              [ text (t DocumentName)
                 br []
                 inputAttr [attr.id "txtNewDocumentName"; attr.autofocus "autofocus" ] []
                 br []
@@ -676,7 +586,7 @@ module Client =
                 inputAttr
                   [ attr.``type`` "button"
                     attr.``class`` "btnLikeLink"
-                    attr.value "Add document"
+                    attr.value (t AddDocument)
                     on.click (fun _ _ ->
                         async {
                             let newDocumentName = JS.Document.GetElementById("txtNewDocumentName")?value |> string
@@ -712,9 +622,9 @@ module Client =
               ]
             divAttr
               [ attr.id "divEmail"; attr.style "display: none"]
-              [ h4 [text "Email" ]
-                createInput "Email subject:" "emailSubject"
-                createTextArea "Email body" "emailBody" "400px"
+              [ h4 [text (t Email) ]
+                createInput (t EmailSubject) "emailSubject"
+                createTextArea (t EmailBody) "emailBody" "400px"
               ]
             divAttr
               [ attr.id "divChoosePageType"; attr.style "display: none" ]
@@ -723,7 +633,7 @@ module Client =
                   []
                 labelAttr
                   [ attr.``for`` "rbHtmlPage" ]
-                  [ text "Create online" ]
+                  [ text (t CreateOnline) ]
                 br []
                 inputAttr
                   [ attr.``type`` "radio"; attr.id "rbFilePage"; attr.name "rbgrpPageType";
@@ -735,7 +645,7 @@ module Client =
                   []
                 labelAttr
                   [ attr.``for`` "rbFilePage" ]
-                  [ text "File upload" ]
+                  [ text (t UploadFile)]
                 br []
                 br []
               ]
@@ -769,12 +679,12 @@ module Client =
                         } |> Async.Start
                       )
                   ]
-                  [text "Add html attachment"]
+                  [text (t AddHtmlAttachment)]
               ]
             divAttr
               [ attr.id "divCreateFilePage"; attr.style "display: none" ]
               [ formAttr [attr.enctype "multipart/form-data"; attr.method "POST"; attr.action ""]
-                  [ text "Please choose a file: "
+                  [ text (t PleaseChooseAFile)
                     br []
                     inputAttr
                       [ attr.``type`` "file"
@@ -785,30 +695,87 @@ module Client =
                     inputAttr [ attr.``type`` "hidden"; attr.id "hiddenNextPageIndex"; attr.name "pageIndex"] []
                     br []
                     br []
-                    buttonAttr [attr.``type`` "submit" ] [text "Add attachment"]
+                    br []
+                    buttonAttr [attr.``type`` "submit" ] [text (t AddAttachment)]
+                    br []
+                    br []
+                    br []
+                    b [ text
+                          ((t YouMightWantToReplaceSomeWordsInYourFileWithVariables) +
+                          (t VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication))
+                      ]
+                    br []
+                    br []
+                    text "$firmaName"
+                    br []
+                    text "$firmaStrasse"
+                    br []
+                    text "$firmaPlz"
+                    br []
+                    text "$firmaStadt"
+                    br []
+                    text "$chefAnredeBriefkopf"
+                    br []
+                    text "$chefAnrede"
+                    br []
+                    text "$geehrter"
+                    br []
+                    text "$chefTitel"
+                    br []
+                    text "$chefVorname"
+                    br []
+                    text "$chefNachname"
+                    br []
+                    text "$chefEmail"
+                    br []
+                    text "$chefTelefon"
+                    br []
+                    text "$chefMobil"
+                    br []
+                    text "$meinGeschlecht"
+                    br []
+                    text "$meinTitel"
+                    br []
+                    text "$meinVorname"
+                    br []
+                    text "$meinNachname"
+                    br []
+                    text "$meineStrasse"
+                    br []
+                    text "$meinePlz"
+                    br []
+                    text "$meineStadt"
+                    br []
+                    text "$meineEmail"
+                    br []
+                    text "$meinMobilTelefon"
+                    br []
+                    text "$meineTelefonnr"
+                    br []
+                    text "$datumHeute"
                   ]
               ]
             divAttr
               [ attr.id "divEditUserValues"; attr.style "display: none" ]
-              [ h4 [ text "Your values" ]
-                createInput "Degree" "userDegree"
+              [ h4 [ text (t YourValues) ]
+                createInput (t Degree) "userDegree"
                 createRadio
-                  "Gender"
-                  [ "male", "userGender", "m"
-                    "female", "userGender", "f"
+                  (t Gender)
+                  [ (t Male), "userGender", "m"
+                    (t Female), "userGender", "f"
                   ]
-                createInput "First name" "userFirstName"
-                createInput "Last name" "userLastName"
-                createInput "Street" "userStreet"
-                createInput "Postcode" "userPostcode"
-                createInput "City" "userCity"
-                createInput "Phone" "userPhone"
-                createInput "Mobile phone" "userMobilePhone"
+                createInput (t FirstName) "userFirstName"
+                createInput (t LastName) "userLastName"
+                createInput (t Street) "userStreet"
+                createInput (t Postcode) "userPostcode"
+                createInput (t City) "userCity"
+                createInput (t Phone) "userPhone"
+                createInput (t MobilePhone) "userMobilePhone"
               ]
             divAttr
               [ attr.id "divAddEmployer"
               ]
-              [ h4 [text "Employer"]
+              [ h4 [text (t Employer)]
                 divAttr
                   [ attr.``class`` "form-group row" ]
                   [ divAttr
@@ -817,7 +784,7 @@ module Client =
                       [ inputAttr
                           [ attr.``type`` "button"
                             attr.``class`` "btn-block"
-                            attr.value "Load from website"
+                            attr.value (t LoadFromWebsite)
                             on.click (fun el _ ->
                                 async {
                                     let! employer = Server.readWebsite (JS.Document.GetElementById("txtReadEmployerFromWebsite")?value)
@@ -849,31 +816,32 @@ module Client =
                       [ inputAttr
                           [ attr.``type`` "button"
                             attr.``class`` "btn-block"
-                            attr.value "Apply now"
+                            attr.value (t ApplyNow)
                             on.click (fun _ _ -> Server.applyNowWithHtmlTemplate varEmployer.Value varDocument.Value varUserValues.Value |> Async.Start)
                           ]
                           []
                       ]
                   ]
-                createInput "Company name" "company"
-                createInput "Street" "companyStreet"
-                createInput "Postcode" "companyPostcode"
-                createInput "City" "companyCity"
+                createInput (t CompanyName) "company"
+                createInput (t Street) "companyStreet"
+                createInput (t Postcode) "companyPostcode"
+                createInput (t City) "companyCity"
                 createRadio
-                    "Gender"
-                    [ "male", "bossGender", "m"
-                      "female", "bossGender", "f"
+                    (t Gender)
+                    [ (t Male), "bossGender", "m"
+                      (t Female), "bossGender", "f"
                     ]
-                createInput "Degree" "bossDegree"
-                createInput "First name" "bossFirstName"
-                createInput "Last name" "bossLastName"
-                createInput "Email" "bossEmail"
-                createInput "Phone" "bossPhone"
-                createInput "Mobile phone" "bossMobilePhone"
+                createInput (t Degree) "bossDegree"
+                createInput (t FirstName) "bossFirstName"
+                createInput (t LastName) "bossLastName"
+                createInput (t Email) "bossEmail"
+                createInput (t Phone) "bossPhone"
+                createInput (t MobilePhone) "bossMobilePhone"
                 inputAttr
                   [ attr.``type`` "button"
                     attr.``class`` "btnLikeLink"
-                    attr.value "Apply now"
+                    attr.value (t ApplyNow)
                     on.click (fun _ _ -> Server.applyNowWithHtmlTemplate varEmployer.Value varDocument.Value varUserValues.Value |> Async.Start)] []
               ]
           ]
+

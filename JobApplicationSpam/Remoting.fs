@@ -1,5 +1,4 @@
-﻿
-namespace JobApplicationSpam
+﻿namespace JobApplicationSpam
 
 open WebSharper
 open Npgsql
@@ -34,6 +33,25 @@ module Server =
             Option.map (Int32.TryParse)
             >> Option.bind (fun (parsed, v) -> if parsed then Some v else None)
         )
+    
+    [<Remote>]
+    let getLanguageDict language : Async<list<Word * string>>=
+        async {
+            return
+                match language with
+                | English ->
+                    English.dict
+                | Deutsch ->
+                    Deutsch.dict
+                | _ ->
+                    English.dict
+        }
+    
+    [<Remote>]
+    let getAvailableLanguages =
+        async {
+            return Directory.EnumerateFiles("Internationalization") |> List.ofSeq
+        }
 
 
     [<Remote>]

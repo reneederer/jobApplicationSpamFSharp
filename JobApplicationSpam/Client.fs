@@ -14,6 +14,7 @@ module Client =
     open System
     open WebSharper.UI.Next.Client.HtmlExtensions
     open WebSharper.UI.Next.Html.Tags
+    open Server
 
     [<JavaScript>]
     type Language =
@@ -432,11 +433,6 @@ module Client =
         let setDocument () =
             async {
                 let slctDocumentNameEl = JS.Document.GetElementById("slctDocumentName")
-                if slctDocumentNameEl?length >= 1
-                then
-                    slctDocumentNameEl?selectedIndex <- 0
-                else
-                    slctDocumentNameEl?selectedIndex <- -1
                 let! oDocument = Server.getDocumentOffset slctDocumentNameEl?selectedIndex
                 match oDocument with
                 | Some document ->
@@ -447,15 +443,93 @@ module Client =
             }
         
 
-        let setPageButtons () =
+        let rec setPageButtons () =
             async {
                 JQuery("#ulPageButtons li:not(:last-child)").Remove() |> ignore
-                JS.Alert("bef!")
                 for page in varDocument.Value.pages do
-                    JS.Alert("Page!")
-                    JQuery(sprintf """<li><button id="pageButton%i" class="btnLikeLink">%s</button</li>""" (page.PageIndex()) (page.Name())).InsertBefore("#addPageButton").On(
-                          "click"
-                        , (fun _ _ ->
+                    let deleteButton =
+                        JQuery(sprintf """<button class="text-right" id="pageButton%iDelete">-</button>""" (page.PageIndex())).On(
+                            "click"
+                          , (fun _ _ ->
+                                if JS.Confirm("Really delete this page?")
+                                then
+                                    async {
+                                        varDocument.Value <-
+                                            { varDocument.Value
+                                                with pages =
+                                                        varDocument.Value.pages
+                                                        |> List.splitAt (page.PageIndex() - 1)
+                                                        |> fun (before, after) ->
+                                                            before @ (after |> List.skip 1 |> List.map (fun x -> x.PageIndex(x.PageIndex() - 1)))
+                                                
+                                            }
+                                        let! _ = overwriteDocument varDocument.Value
+                                        do! setDocument()
+                                        do! setPageButtons()
+                                        do! fillDocumentValues()
+                                    } |> Async.Start
+                            )
+                          )
+                    let pageUpButton =
+                        JQuery(sprintf """<button class="text-right" id="pageButton%iUp">&uarr;</button>""" (page.PageIndex())).On(
+                            "click"
+                          , (fun _ _ ->
+                                async {
+                                    varDocument.Value <-
+                                        { varDocument.Value
+                                            with pages =
+                                                    varDocument.Value.pages
+                                                    |> List.splitAt (page.PageIndex() - 2)
+                                                    |> fun (before, after) ->
+                                                        match after with
+                                                        | x1::x2::xs -> 
+                                                            before @ (x2.PageIndex(x1.PageIndex())::x1.PageIndex(x2.PageIndex())::xs)
+                                                        | [x] -> before @ [x]
+                                                        | [] -> before
+                                            
+                                        }
+                                    let! _ = overwriteDocument varDocument.Value
+                                    do! setDocument()
+                                    do! setPageButtons()
+                                    do! fillDocumentValues()
+                                } |> Async.Start
+                            )
+                          )
+
+
+                    let pageDownButton =
+                        JQuery(sprintf """<button class="text-right" id="pageButton%iDelete">&darr;</button>""" (page.PageIndex())).On(
+                            "click"
+                          , (fun _ _ ->
+                                async {
+                                    varDocument.Value <-
+                                        { varDocument.Value
+                                            with pages =
+                                                    varDocument.Value.pages
+                                                    |> List.splitAt (page.PageIndex() - 1)
+                                                    |> fun (before, after) ->
+                                                        match after with
+                                                        | x1::x2::xs -> 
+                                                            before @ (x2.PageIndex(x1.PageIndex())::x1.PageIndex(x2.PageIndex())::xs)
+                                                        | [x] -> before @ [x]
+                                                        | [] -> before
+                                            
+                                        }
+                                    let! _ = overwriteDocument varDocument.Value
+                                    do! setDocument()
+                                    do! setPageButtons()
+                                    do! fillDocumentValues()
+                                } |> Async.Start
+                            )
+                          )
+                    JQuery(sprintf """<li><button id="pageButton%i" class="" style="width:80%%">%s</button></li>""" (page.PageIndex()) (page.Name()))
+                        .InsertBefore("#btnAddPage")
+                        .Append(deleteButton)
+                        .Append(pageUpButton)
+                        .Append(pageDownButton)
+                        .On(
+                              "click"
+                            , (fun _ _ ->
                                 match page with
                                 | HtmlPage htmlPage ->
                                     async {
@@ -556,7 +630,6 @@ module Client =
                             let slctEl = JS.Document.GetElementById("slctDocumentName")
                             if slctEl?selectedIndex >= 0 && JS.Confirm("Really delete document " + varDocument.Value.name + "?")
                             then
-                                JS.Alert(varDocument.Value.id |> string)
                                 do! Server.deleteDocument varDocument.Value.id
                                 let slctEl = JS.Document.GetElementById("slctDocumentName")
                                 slctEl.RemoveChild(slctEl?(slctEl?selectedIndex)) |> ignore
@@ -581,7 +654,7 @@ module Client =
                   [ attr.id "ulPageButtons"; attr.style "list-style-type: none; padding: 0; margin: 0;" ]
                   [ li
                       [ buttonAttr
-                          [ attr.id "addPageButton"
+                          [ attr.id "btnAddPage"
                             attr.``class`` "btnLikeLink"
                             on.click
                               (fun el _ ->
@@ -609,7 +682,6 @@ module Client =
                             let newDocumentName = JS.Document.GetElementById("txtNewDocumentName")?value |> string
                             varDocument.Value <- { varDocument.Value with name = newDocumentName }
                             let! newDocumentId = Server.saveNewDocument varDocument.Value
-                            JS.Alert(newDocumentId |> string)
                             varDocument.Value <- { varDocument.Value with id = newDocumentId }
                             let slctEl = JS.Document.GetElementById("slctDocumentName")
                             addSelectOption slctEl newDocumentName

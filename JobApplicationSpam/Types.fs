@@ -102,6 +102,10 @@ module Types =
             match this with
             | HtmlPage htmlPage -> htmlPage.pageIndex
             | FilePage filePage -> filePage.pageIndex
+        member this.PageIndex(newIndex) =
+            match this with
+            | HtmlPage htmlPage -> HtmlPage { htmlPage with pageIndex = newIndex }
+            | FilePage filePage -> FilePage { filePage with pageIndex = newIndex }
 
     [<WebSharper.JavaScript>]
     type DocumentEmail =

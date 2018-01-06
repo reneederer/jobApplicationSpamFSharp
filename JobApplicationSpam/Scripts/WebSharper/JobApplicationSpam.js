@@ -136,7 +136,18 @@
   };
  };
  DocumentPage=Types.DocumentPage=Runtime.Class({
-  PageIndex:function()
+  PageIndex:function(newIndex)
+  {
+   var filePage,htmlPage;
+   return this.$==1?(filePage=this.$0,new DocumentPage({
+    $:1,
+    $0:FilePage.New(filePage.name,filePage.path,newIndex)
+   })):(htmlPage=this.$0,new DocumentPage({
+    $:0,
+    $0:HtmlPage.New(htmlPage.name,htmlPage.oTemplateId,newIndex,htmlPage.map)
+   }));
+  },
+  PageIndex$1:function()
   {
    return this.$==1?this.$0.pageIndex:this.$0.pageIndex;
   },
@@ -661,13 +672,10 @@
    {
     var slctDocumentNameEl;
     slctDocumentNameEl=Global.document.getElementById("slctDocumentName");
-    return Concurrency.Combine(slctDocumentNameEl.length>=1?(slctDocumentNameEl.selectedIndex=0,Concurrency.Zero()):(slctDocumentNameEl.selectedIndex=-1,Concurrency.Zero()),Concurrency.Delay(function()
+    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getDocumentOffset:-1633111335",[slctDocumentNameEl.selectedIndex]),function(a)
     {
-     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getDocumentOffset:-1633111335",[slctDocumentNameEl.selectedIndex]),function(a)
-     {
-      return a==null?(Var.Set(varDocument,Document.New(0,"",List.T.Empty,DocumentEmail.New("",""))),Concurrency.Zero()):(Var.Set(varDocument,a.$0),Global.document.getElementById("hiddenDocumentId").value=Global.String(varDocument.c.id),Concurrency.Zero());
-     });
-    }));
+     return a==null?(Var.Set(varDocument,Document.New(0,"",List.T.Empty,DocumentEmail.New("",""))),Concurrency.Zero()):(Var.Set(varDocument,a.$0),Global.document.getElementById("hiddenDocumentId").value=Global.String(varDocument.c.id),Concurrency.Zero());
+    });
    });
   }
   function setPageButtons()
@@ -677,14 +685,116 @@
    return Concurrency.Delay(function()
    {
     Global.jQuery("#ulPageButtons li:not(:last-child)").remove();
-    Global.alert("bef!");
     return Concurrency.Combine(Concurrency.For(varDocument.c.pages,function(a)
     {
-     Global.alert("Page!");
-     Global.jQuery((((Runtime.Curried3(function($1,$2,$3)
+     var deleteButton,pageUpButton,pageDownButton,_this,_this$1,_this$2;
+     deleteButton=Global.jQuery((function($1)
      {
-      return $1("<li><button id=\"pageButton"+Global.String($2)+"\" class=\"btnLikeLink\">"+Utils.toSafe($3)+"</button</li>");
-     }))(Global.id))(a.PageIndex()))(a.Name())).insertBefore("#addPageButton").on("click",function()
+      return function($2)
+      {
+       return $1("<button class=\"text-right\" id=\"pageButton"+Global.String($2)+"Delete\">-</button>");
+      };
+     }(Global.id))(a.PageIndex$1())).on("click",function()
+     {
+      var b$2;
+      return Global.confirm("Really delete this page?")?Concurrency.Start((b$2=null,Concurrency.Delay(function()
+      {
+       var i,t,x;
+       Var.Set(varDocument,(i=varDocument.c,Document.New(i.id,i.name,(t=(x=varDocument.c.pages,List.splitAt(a.PageIndex$1()-1,x)),List.append(t[0],List.map(function(x$1)
+       {
+        return x$1.PageIndex(x$1.PageIndex$1()-1);
+       },List.skip(1,t[1])))),i.email)));
+       return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.overwriteDocument:-229128764",[varDocument.c]),function()
+       {
+        return Concurrency.Bind(setDocument(),function()
+        {
+         return Concurrency.Bind(setPageButtons(),function()
+         {
+          return Concurrency.Bind(fillDocumentValues(),function()
+          {
+           return Concurrency.Return(null);
+          });
+         });
+        });
+       });
+      })),null):null;
+     });
+     pageUpButton=Global.jQuery((function($1)
+     {
+      return function($2)
+      {
+       return $1("<button class=\"text-right\" id=\"pageButton"+Global.String($2)+"Up\">&uarr;</button>");
+      };
+     }(Global.id))(a.PageIndex$1())).on("click",function()
+     {
+      var b$2;
+      return Concurrency.Start((b$2=null,Concurrency.Delay(function()
+      {
+       var i,t,x,before,after,x1,x2;
+       Var.Set(varDocument,(i=varDocument.c,Document.New(i.id,i.name,(t=(x=varDocument.c.pages,List.splitAt(a.PageIndex$1()-2,x)),(before=t[0],(after=t[1],after.$==0?before:after.$1.$==0?List.append(before,List.ofArray([after.$0])):(x1=after.$0,(x2=after.$1.$0,List.append(before,new List.T({
+        $:1,
+        $0:x2.PageIndex(x1.PageIndex$1()),
+        $1:new List.T({
+         $:1,
+         $0:x1.PageIndex(x2.PageIndex$1()),
+         $1:after.$1.$1
+        })
+       }))))))),i.email)));
+       return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.overwriteDocument:-229128764",[varDocument.c]),function()
+       {
+        return Concurrency.Bind(setDocument(),function()
+        {
+         return Concurrency.Bind(setPageButtons(),function()
+         {
+          return Concurrency.Bind(fillDocumentValues(),function()
+          {
+           return Concurrency.Return(null);
+          });
+         });
+        });
+       });
+      })),null);
+     });
+     pageDownButton=Global.jQuery((function($1)
+     {
+      return function($2)
+      {
+       return $1("<button class=\"text-right\" id=\"pageButton"+Global.String($2)+"Delete\">&darr;</button>");
+      };
+     }(Global.id))(a.PageIndex$1())).on("click",function()
+     {
+      var b$2;
+      return Concurrency.Start((b$2=null,Concurrency.Delay(function()
+      {
+       var i,t,x,before,after,x1,x2;
+       Var.Set(varDocument,(i=varDocument.c,Document.New(i.id,i.name,(t=(x=varDocument.c.pages,List.splitAt(a.PageIndex$1()-1,x)),(before=t[0],(after=t[1],after.$==0?before:after.$1.$==0?List.append(before,List.ofArray([after.$0])):(x1=after.$0,(x2=after.$1.$0,List.append(before,new List.T({
+        $:1,
+        $0:x2.PageIndex(x1.PageIndex$1()),
+        $1:new List.T({
+         $:1,
+         $0:x1.PageIndex(x2.PageIndex$1()),
+         $1:after.$1.$1
+        })
+       }))))))),i.email)));
+       return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.overwriteDocument:-229128764",[varDocument.c]),function()
+       {
+        return Concurrency.Bind(setDocument(),function()
+        {
+         return Concurrency.Bind(setPageButtons(),function()
+         {
+          return Concurrency.Bind(fillDocumentValues(),function()
+          {
+           return Concurrency.Return(null);
+          });
+         });
+        });
+       });
+      })),null);
+     });
+     (_this=(_this$1=(_this$2=Global.jQuery((((Runtime.Curried3(function($1,$2,$3)
+     {
+      return $1("<li><button id=\"pageButton"+Global.String($2)+"\" class=\"\" style=\"width:80%\">"+Utils.toSafe($3)+"</button></li>");
+     }))(Global.id))(a.PageIndex$1()))(a.Name())).insertBefore("#btnAddPage"),_this$2.append.apply(_this$2,[deleteButton])),_this$1.append.apply(_this$1,[pageUpButton])),_this.append.apply(_this,[pageDownButton])).on("click",function()
      {
       var htmlPage,b$2;
       return a.$==1?null:(htmlPage=a.$0,Concurrency.Start((b$2=null,Concurrency.Delay(function()
@@ -870,7 +980,7 @@
     var b$1;
     return Concurrency.Start((b$1=null,Concurrency.Delay(function()
     {
-     return Global.document.getElementById("slctDocumentName").selectedIndex>=0&&Global.confirm("Really delete document "+varDocument.c.name+"?")?(Global.alert(Global.String(varDocument.c.id)),Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.deleteDocument:-1223116942",[varDocument.c.id]),function()
+     return Global.document.getElementById("slctDocumentName").selectedIndex>=0&&Global.confirm("Really delete document "+varDocument.c.name+"?")?Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.deleteDocument:-1223116942",[varDocument.c.id]),function()
      {
       var slctEl;
       slctEl=Global.document.getElementById("slctDocumentName");
@@ -888,10 +998,10 @@
         });
        });
       }));
-     })):Concurrency.Zero();
+     }):Concurrency.Zero();
     })),null);
    };
-  })],[])]),Doc.Element("hr",[],[]),Doc.Element("div",[AttrProxy.Create("id","divAttachments"),AttrProxy.Create("style","display: none")],[Doc.Element("h4",[],[Doc.TextNode("Your attachments:")]),Doc.Element("ul",[AttrProxy.Create("id","ulPageButtons"),AttrProxy.Create("style","list-style-type: none; padding: 0; margin: 0;")],[Doc.Element("li",[],[Doc.Element("button",[AttrProxy.Create("id","addPageButton"),AttrProxy.Create("class","btnLikeLink"),AttrModule.Handler("click",function()
+  })],[])]),Doc.Element("hr",[],[]),Doc.Element("div",[AttrProxy.Create("id","divAttachments"),AttrProxy.Create("style","display: none")],[Doc.Element("h4",[],[Doc.TextNode("Your attachments:")]),Doc.Element("ul",[AttrProxy.Create("id","ulPageButtons"),AttrProxy.Create("style","list-style-type: none; padding: 0; margin: 0;")],[Doc.Element("li",[],[Doc.Element("button",[AttrProxy.Create("id","btnAddPage"),AttrProxy.Create("class","btnLikeLink"),AttrModule.Handler("click",function()
   {
    return function()
    {
@@ -911,7 +1021,6 @@
      return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.saveNewDocument:-229128764",[varDocument.c]),function(a)
      {
       var i$1,slctEl;
-      Global.alert(Global.String(a));
       Var.Set(varDocument,(i$1=varDocument.c,Document.New(a,i$1.name,i$1.pages,i$1.email)));
       slctEl=Global.document.getElementById("slctDocumentName");
       addSelectOption(slctEl,newDocumentName);

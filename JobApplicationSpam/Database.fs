@@ -231,6 +231,14 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("body", document.email.body)) |> ignore
         command.ExecuteNonQuery() |> ignore
         command.Dispose()
+        use command = new NpgsqlCommand("delete from htmlPage where documentId = :documentId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
+        command.ExecuteNonQuery() |> ignore
+        command.Dispose()
+        use command = new NpgsqlCommand("delete from filePage where documentId = :documentId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
+        command.ExecuteNonQuery() |> ignore
+        command.Dispose()
         for page in document.pages do
             match page with
             | HtmlPage htmlPage ->
@@ -244,6 +252,11 @@ module Database =
                 command.Parameters.Add(new NpgsqlParameter("templateId", htmlPage.oTemplateId |> Option.get)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("pageIndex", htmlPage.pageIndex)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("name", htmlPage.name)) |> ignore
+                command.ExecuteNonQuery() |> ignore
+                command.Dispose()
+                use command = new NpgsqlCommand("delete from pageMap where documentId = :documentId and pageIndex = :pageIndex", dbConn)
+                command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("pageIndex", htmlPage.pageIndex)) |> ignore
                 command.ExecuteNonQuery() |> ignore
                 command.Dispose()
                 for mapItem in htmlPage.map do

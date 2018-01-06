@@ -273,7 +273,6 @@ module Server =
             Database.deleteDocument dbConn documentId
         }
 
-
     [<Remote>]
     let getDocumentOffset (htmlJobApplicationOffset : int) =
         let oUserId = getCurrentUserId() |> Async.RunSynchronously

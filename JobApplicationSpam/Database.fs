@@ -25,6 +25,18 @@ module Database =
         log.Debug(sprintf "%i = %A" userId oEmail)
         oEmail
         
+    let getUserIdByEmail (dbConn : NpgsqlConnection) (email : string) =
+        log.Debug(sprintf "(email= %s)" email)
+        use command = new NpgsqlCommand("select id from users where email = :email limit 1", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
+        use reader = command.ExecuteReader()
+        let oUserId =
+            if reader.Read()
+            then Some <| reader.GetInt32(0)
+            else None
+        log.Debug(sprintf "%s = %A" email oUserId)
+        oUserId
+
     let getEmployer (dbConn : NpgsqlConnection) (employerId : int) =
         log.Debug(sprintf "%i" employerId)
         use command =
@@ -87,23 +99,41 @@ module Database =
                 , dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         use reader = command.ExecuteReader()
-        let oUserValues =
+        let userValues =
             if reader.Read()
             then
-                Some
-                    { gender = reader.GetString(0) |> Gender.fromString
-                      degree = reader.GetString(1)
-                      firstName = reader.GetString(2)
-                      lastName = reader.GetString(3)
-                      street = reader.GetString(4)
-                      postcode = reader.GetString(5)
-                      city = reader.GetString(6)
-                      phone = reader.GetString(7)
-                      mobilePhone = reader.GetString(8)
-                    }
-            else None
-        log.Debug(sprintf "%i = %A" userId oUserValues)
-        oUserValues
+                { gender = reader.GetString(0) |> Gender.fromString
+                  degree = reader.GetString(1)
+                  firstName = reader.GetString(2)
+                  lastName = reader.GetString(3)
+                  street = reader.GetString(4)
+                  postcode = reader.GetString(5)
+                  city = reader.GetString(6)
+                  phone = reader.GetString(7)
+                  mobilePhone = reader.GetString(8)
+                }
+            else
+                reader.Dispose()
+                command.Dispose()
+                use command =
+                    new NpgsqlCommand(""" insert into userValues(userId, gender, degree, firstName,
+                                         lastName, street, postcode, city, phone, mobilePhone)
+                                         values(:userId, 'u', '', '', '', '', '', '', '', '')""", dbConn)
+                command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+                command.ExecuteNonQuery() |> ignore
+                { gender = Gender.Unknown
+                  degree = ""
+                  firstName = ""
+                  lastName = ""
+                  street = ""
+                  postcode = ""
+                  city = ""
+                  phone = ""
+                  mobilePhone = ""
+                }
+
+        log.Debug(sprintf "%i = %A" userId userValues)
+        userValues
 
     let setUserValues (dbConn : NpgsqlConnection) (userValues : UserValues) (userId : int) =
         log.Debug(sprintf "%A %i" userValues userId)
@@ -160,11 +190,11 @@ module Database =
     let insertNewUser (dbConn : NpgsqlConnection) (email : string) (password : string) (salt : string) (guid : string) =
         log.Debug(sprintf "%s %s %s %s" email password salt guid)
         use command = new NpgsqlCommand("insert into users(email, password, salt, guid) values(:email, :password, :salt, :guid) returning id", dbConn)
-        command.Parameters.AddRange(
+        command.Parameters.AddRange
             [| new NpgsqlParameter("email", email)
                new NpgsqlParameter("password", password)
                new NpgsqlParameter("salt", salt)
-               new NpgsqlParameter("guid", guid) |])
+               new NpgsqlParameter("guid", guid) |]
         let insertedNewUserId = command.ExecuteScalar() |> string |> Int32.Parse
         log.Debug(sprintf "%s %s %s %s = %i" email password salt guid insertedNewUserId)
         insertedNewUserId

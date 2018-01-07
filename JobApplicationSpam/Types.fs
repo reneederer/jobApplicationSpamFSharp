@@ -192,3 +192,5 @@ module Types =
         | ReallyDeletePage
         | PleaseConfirmYourEmailAddressEmailSubject
         | PleaseConfirmYourEmailAddressEmailBody
+        | Login
+        | Register

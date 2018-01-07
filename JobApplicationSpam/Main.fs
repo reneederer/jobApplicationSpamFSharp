@@ -13,7 +13,7 @@ type EndPoint =
     | [<EndPoint "/register">] Register
     | [<EndPoint "/showsentjobapplications">] ShowSentJobApplications
     | [<EndPoint "/about">] About
-    | [<EndPoint "/confirmemail">] ConfirmEmail
+    | [<EndPoint "GET /confirmemail">] ConfirmEmail
     | [<EndPoint "/templates">] Templates
     | [<EndPoint "/logout">] Logout
     | [<EndPoint "/download">] Download of guid:string
@@ -110,14 +110,13 @@ module Site =
     
     let loginPage (ctx : Context<EndPoint>) =
         Templating.main ctx EndPoint.Login "Login" [
-            h1 [text "Login"]
             client <@ Client.login () @>
         ]
 
     let registerPage (ctx : Context<EndPoint>) =
         Templating.main ctx EndPoint.Register "Register" [
             h1 [text "Register"]
-            client <@ Client.register () @>
+            //client <@ Client.register () @>
         ]
 
 
@@ -131,21 +130,6 @@ module Site =
         Templating.main ctx EndPoint.About "About" [
             h1 [text "About"]
             p [text "This is a template WebSharper client-server application."]
-        ]
-    
-    let confirmEmailPage (ctx : Context<EndPoint>) =
-        let message =
-            match ctx.Request.Get.["email"], ctx.Request.Get.["guid"] with
-            | Some email, Some guid->
-                match Server.confirmEmail email guid |> Async.RunSynchronously with
-                | Ok _ -> "Great! Your email has been confirmed."
-                | Bad vs -> "Email confirmation has failed."
-            | Some _, None
-            | None, Some _
-            | None, None ->
-                "Confirmation requires email and guid to be set."
-        Templating.main ctx EndPoint.About "About" [
-            h1 [text message]
         ]
 
     let logoutPage (ctx : Context<EndPoint>) =
@@ -192,6 +176,27 @@ module Site =
         Templating.main ctx EndPoint.About "Templates" [
             client <@ Client.templates() @>
         ]
+    
+    let confirmEmailPage (ctx : Context<EndPoint>) =
+        async {
+            match ctx.Request.Get.["email"], ctx.Request.Get.["guid"] with
+            | Some email, Some guid->
+                match Server.confirmEmail email guid |> Async.RunSynchronously with
+                | Ok _ -> 
+                        let! oUserId = Server.getUserIdByEmail email
+                        match oUserId with
+                        | Some userId ->
+                            do! ctx.UserSession.LoginUser (userId |> string)
+                            return templatesPage ctx
+                        | None ->
+                            return loginPage ctx
+                | Bad vs -> return loginPage ctx
+            | Some _, None
+            | None, Some _
+            | None, None ->
+                return loginPage ctx
+        } |> Async.RunSynchronously
+
 
     let downloadPage (ctx : Context<EndPoint>) (guid : string) =
         async {
@@ -220,6 +225,7 @@ module Site =
             | None, EndPoint.Register -> registerPage ctx
             | Some _, EndPoint.About -> aboutPage ctx
             | Some _, EndPoint.ConfirmEmail -> confirmEmailPage ctx
+            | None, EndPoint.ConfirmEmail -> confirmEmailPage ctx
             | Some _ , EndPoint.Templates -> templatesPage ctx
             | Some _ , EndPoint.Logout -> logoutPage ctx
             | Some _ , EndPoint.Download guid ->

@@ -19,76 +19,68 @@ module Client =
     open WebSharper.Formlets.Enhance
 
     [<JavaScript>]
+    let varLanguageDict = Var.Create<Map<Word, string>>(Deutsch.dict |> Map.ofList)
+
+    [<JavaScript>]
+    let t (w : Word) =
+        varLanguageDict.Value.[w]
+
+    [<JavaScript>]
     let login () =
-        let varTxtLoginEmail = Var.Create ""
-        let varTxtLoginPassword = Var.Create ""
-        formAttr
-          [ on.submit (fun _ ev ->
-                async {
-                  let! loginResult = Server.login (varTxtLoginEmail.Value) (varTxtLoginPassword.Value)
-                  match loginResult with
-                  | Ok (v, _) ->
-                    JS.Window.Location.Href <- ""
-                    ()
-                  | Bad xs -> JS.Alert(String.concat ", " xs)
-                } |> Async.Start
-                ev.PreventDefault()
-                ev.StopImmediatePropagation()
-                ev.StopPropagation()
-          )
-          ]
-          [ divAttr
+        div
+          [ h4 [text (t Login) ]
+            divAttr
               [ attr.``class`` "form-group" ]
               [ labelAttr
                   [ attr.``for`` "txtLoginEmail" ] 
                   [text "Email"]
-                Doc.Input
-                  [ attr.``class`` "form-control"; attr.id "txtLoginEmail"; attr.placeholder "Email" ] varTxtLoginEmail
+                inputAttr
+                  [ attr.``class`` "form-control"; attr.id "txtLoginEmail" ]
+                  []
               ]
             divAttr
               [ attr.``class`` "form-group" ]
               [ labelAttr
                   [ attr.``for`` "txtLoginPassword" ] 
                   [text "Password"]
-                Doc.PasswordBox
-                  [ attr.``class`` "form-control"; attr.id "txtLoginPassword"; attr.placeholder "Password" ] varTxtLoginPassword
+                inputAttr
+                  [ attr.``type`` "password"; attr.``class`` "form-control"; attr.id "txtLoginPassword" ]
+                  []
               ]
-            inputAttr [ attr.``type`` "submit"; attr.value "Login" ] []
-          ]
-
-    [<JavaScript>]
-    let register () =
-        let varTxtRegisterEmail = Var.Create ""
-        let varTxtRegisterPassword1 = Var.Create ""
-        let varTxtRegisterPassword2 = Var.Create ""
-        formAttr
-          [ on.submit (fun _ _ ->
-              async {
-                  let x = Server.register (varTxtRegisterEmail.Value) (varTxtRegisterPassword1.Value) (varTxtRegisterPassword2.Value)
-                  return ()
-              } |> Async.Start
+            inputAttr
+              [ attr.``type`` "button"
+                attr.value "Login"
+                on.click (fun _ ev ->
+                  async {
+                    let! loginResult = Server.login (JQuery("#txtLoginEmail").Val() |> string) (JQuery("#txtLoginPassword").Val() |> string)
+                    match loginResult with
+                    | Ok (v, _) ->
+                      JS.Window.Location.Href <- ""
+                      ()
+                    | Bad xs -> JS.Alert(String.concat ", " xs)
+                  } |> Async.Start
+                  ev.PreventDefault()
+                  ev.StopPropagation()
               )
-          ]
-          [ divAttr
-              [ attr.``class`` "form-group" ]
-              [ labelAttr
-                  [ attr.``for`` "txtRegisterEmail" ] 
-                  [text "Email"]
-                Doc.Input
-                  [ attr.``class`` "form-control"; attr.id "txtRegisterEmail"; attr.placeholder "Email" ]
-                  varTxtRegisterEmail
-                labelAttr
-                  [ attr.``for`` "txtRegisterPassword1"; ] 
-                  [text "Password"]
-                Doc.PasswordBox
-                  [ attr.``class`` "form-control"; attr.id "txtRegisterPassword1"; attr.placeholder "Password" ]
-                  varTxtRegisterPassword1
-                labelAttr
-                  [ attr.``for`` "txtRegisterPassword2" ] 
-                  [text "Password"]
-                Doc.PasswordBox [ attr.``class`` "form-control"; attr.id "txtRegisterPassword2"; attr.placeholder "Repeat Password" ] varTxtRegisterPassword2
-                inputAttr [ attr.``type`` "submit"; attr.value "Register" ] []
               ]
+              []
+            inputAttr
+              [ attr.``type`` "button"
+                attr.style "margin-left: 30px;"
+                attr.value "Register"
+                on.click (fun _ _ ->
+                  async {
+                      let! registerResult =
+                          Server.register
+                            (JS.Document.GetElementById("txtLoginEmail")?value)
+                            (JS.Document.GetElementById("txtLoginPassword")?value)
+                      match registerResult with
+                      | Ok _ -> JS.Alert(t PleaseConfirmYourEmailAddressEmailSubject)
+                      | Bad xs -> JS.Alert(String.concat ", " xs)
+                  } |> Async.Start
+                )
+              ]
+              []
           ]
     
     [<JavaScript>]
@@ -104,7 +96,6 @@ module Client =
         let varEmployer = Var.Create<Employer>({company="";gender=Gender.Unknown;degree="";firstName="";lastName="";street="";postcode="";city="";email="";phone="";mobilePhone=""})
         let varDisplayedDocument = Var.Create(div [] :> Doc)
         let varLanguage = Var.Create English
-        let varLanguageDict = Var.Create<Map<Word, string>>(Deutsch.dict |> Map.ofList)
 
         let getCurrentPageIndex () =
             let index = JQuery("#divAttachmentButtons").Find(".mainButton").Index(JQuery(".active")) + 1
@@ -120,8 +111,6 @@ module Client =
             JS.Document.Cookie <- JS.Document.Cookie + ";language=" + language.ToString()
 
         
-        let t (w : Word) =
-            varLanguageDict.Value.[w]
 
 
         let createInputWithColumnSizes column1Size column2Size labelText dataBind (validFun : string -> (bool * string)) =
@@ -524,6 +513,7 @@ module Client =
 
             let! userEmail = Server.getCurrentUserEmail()
             varUserEmail.Value <- userEmail
+            JS.Alert("courrent!")
         
             let! userValues = Server.getCurrentUserValues()
             varUserValues.Value <- userValues

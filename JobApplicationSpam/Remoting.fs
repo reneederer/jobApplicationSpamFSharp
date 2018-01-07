@@ -26,6 +26,13 @@ module Server =
             return Database.getEmailByUserId dbConn userId
         }
 
+    [<Remote>]
+    let getUserIdByEmail (email : string) =
+        async {
+            use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+            dbConn.Open()
+            return Database.getUserIdByEmail dbConn email
+        }
 
     [<Remote>]
     let getCurrentUserId () =
@@ -93,9 +100,7 @@ module Server =
             async {
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
-                match Database.getUserValues dbConn userId with
-                | Some userValues -> return userValues
-                | None -> return failwith "An error occured" 
+                return Database.getUserValues dbConn userId
             }
         | None -> failwith "There is no user logged in."
 
@@ -185,14 +190,11 @@ module Server =
 
 
     [<Remote>]
-    let register email (password1 : string) password2 =
+    let register (email : string) (password1 : string) =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            if password1 <> password2
-            then
-                return fail "Passwords are not equal"
-            elif not <| Database.userEmailExists dbConn email
+            if Database.userEmailExists dbConn email
             then
                 return fail "Email already exists"
             else
@@ -207,6 +209,7 @@ module Server =
                     dict.[PleaseConfirmYourEmailAddressEmailSubject]
                     (String.Format(dict.[PleaseConfirmYourEmailAddressEmailBody], email, guid))
                     []
+                Database.insertNewUser dbConn email hashedPassword salt guid |> ignore
                 return ok "Please confirm your email"
         }
 

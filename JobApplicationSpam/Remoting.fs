@@ -10,6 +10,7 @@ open Website
 
 
 module Server =
+    open Deutsch
     open System.Web
     open System.Net.Mail
     open System.IO
@@ -67,16 +68,23 @@ module Server =
 
 
 
-    let sendEmail fromAddress fromName toAddress subject body attachmentPaths =
+    let sendEmail fromAddress fromName toAddress subject body (attachmentPathsAndNames : list<string * string>) =
         use smtpClient = new SmtpClient(ConfigurationManager.AppSettings.["email_server"], ConfigurationManager.AppSettings.["email_port"] |> Int32.TryParse |> snd)
         smtpClient.EnableSsl <- true
         smtpClient.Credentials <- new System.Net.NetworkCredential(ConfigurationManager.AppSettings.["email_username"], ConfigurationManager.AppSettings.["email_password"])
         let fromAddress = new MailAddress(fromAddress, fromName, System.Text.Encoding.UTF8)
         let toAddress = new MailAddress(toAddress)
         let message = new MailMessage(fromAddress, toAddress, SubjectEncoding = System.Text.Encoding.UTF8, Subject = subject, Body = body, BodyEncoding = System.Text.Encoding.UTF8)
-        attachmentPaths
-        |> List.iter (fun x -> message.Attachments.Add(new Attachment(x)))
+        let attachments =
+            attachmentPathsAndNames
+            |> List.map (fun (filePath, fileName) ->
+                let attachment = new Attachment(filePath)
+                attachment.Name <- fileName
+                message.Attachments.Add(attachment)
+                attachment)
         smtpClient.Send(message)
+        for attachment in attachments do
+            attachment.Dispose()
     
     [<Remote>]
     let getCurrentUserValues () =
@@ -191,12 +199,13 @@ module Server =
                 let salt = generateSalt(64)
                 let hashedPassword = generateHash password1 salt 1000 64
                 let guid = Guid.NewGuid().ToString()
+                let dict = Deutsch.dict |> Map.ofList
                 sendEmail
                     "rene.ederer.nbg@gmail.com"
                     "bewerbungsspam.de"
                     email
-                    "Please confirm your email address"
-                    ("Dear user,\n\nplease visit this link to confirm your email address.\nhttp://bewerbungsspam.de/confirmemail?email=rene.ederer.nbg@gmail.com&guid=" + guid + "\nPlease excuse the inconvenience.\n\nYour team from www.bewerbungsspam.de")
+                    dict.[PleaseConfirmYourEmailAddressEmailSubject]
+                    (String.Format(dict.[PleaseConfirmYourEmailAddressEmailBody], email, guid))
                     []
                 return ok "Please confirm your email"
         }
@@ -359,11 +368,11 @@ module Server =
 
 
     [<Remote>]
-    let applyNowWithHtmlTemplate (employer : Employer) (document : Document) (userValues : UserValues) =
+    let applyNow (employer : Employer) (document : Document) (userValues : UserValues) =
         let oUserId = getCurrentUserId() |> Async.RunSynchronously
         async {
             match oUserId with 
-            | None -> failwith "No user loggeg in"
+            | None -> failwith "No user logged in"
             | Some userId ->
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
@@ -374,33 +383,8 @@ module Server =
                     Database.insertSentApplication dbConn userId employerId documentId
                     let userEmail = Database.getEmailByUserId dbConn userId |> Option.defaultValue ""
                     Database.setUserValues dbConn userValues userId |> ignore
-                    let myList =
-                        [ ("$firmaName", employer.company)
-                          ("$firmaStrasse", employer.street)
-                          ("$firmaPlz", employer.postcode)
-                          ("$firmaStadt", employer.city)
-                          ("$chefAnredeBriefkopf", match employer.gender with Gender.Male -> "Herrn" | Gender.Female -> "Frau" | Gender.Unknown -> "")
-                          ("$chefAnrede", employer.gender.ToString())
-                          ("$geehrter", match employer.gender with Gender.Male -> "geehrter" | Gender.Female -> "geehrte" | Gender.Unknown -> "")
-                          ("$chefTitel", employer.degree)
-                          ("$chefVorname", employer.firstName)
-                          ("$chefNachname", employer.lastName)
-                          ("$chefEmail", employer.email)
-                          ("$chefTelefon", employer.phone)
-                          ("$chefMobil", employer.mobilePhone)
-                          ("$meinGeschlecht", userValues.gender.ToString())
-                          ("$meinTitel", userValues.degree)
-                          ("$meinVorname", userValues.firstName)
-                          ("$meinNachname", userValues.lastName)
-                          ("$meineStrasse", userValues.street)
-                          ("$meinePlz", userValues.postcode)
-                          ("$meineStadt", userValues.city)
-                          ("$meineEmail", userEmail)
-                          ("$meinMobilTelefon", userValues.mobilePhone)
-                          ("$meineTelefonnr", userValues.phone)
-                          ("$datumHeute", DateTime.Today.ToString("dd.MM.yyyy"))
-                        ]
-                    let tmpPath = sprintf "./Users/%i/tmp/%s/" userId (Guid.NewGuid().ToString())
+                    let! myList = replaceMap userEmail userValues employer document
+                    let tmpPath = sprintf "tmp/%s/" (Guid.NewGuid().ToString())
                     let odtPaths =
                         [ for item in document.pages do
                             match item with
@@ -423,29 +407,46 @@ module Server =
                                     *)
                                 yield Odt.replaceInOdt pageTemplatePath "c:/users/rene/myodt/" tmpPath (myList @ lines)
                             | FilePage filePage ->
+                                let fullPath = sprintf "Users/%i/%i/%s" userId document.id filePage.path
                                 yield
-                                    if filePage.path.EndsWith ".pdf"
+                                    if filePage.path.EndsWith(".pdf")
                                     then
-                                        Path.Combine(sprintf "./Users/%i/%i/%s" userId document.id filePage.path)
-                                    else
+                                        fullPath
+                                    elif filePage.path.EndsWith(".odt") || filePage.path.EndsWith(".docx")
+                                    then
+                                        let directoryGuid = Guid.NewGuid().ToString("N")
                                         Odt.replaceInOdt
-                                            (sprintf "./Users/%i/%i/%s" userId document.id filePage.path)
-                                            (Path.Combine(tmpPath, "replacedOdt"))
-                                            (Path.Combine(tmpPath, "extractedOdt"))
+                                            fullPath
+                                            (Path.Combine(tmpPath, directoryGuid, "replacedOdt/"))
+                                            (Path.Combine(tmpPath, directoryGuid, "extractedOdt/"))
                                             myList
+                                    else
+                                        let fileGuid = Guid.NewGuid().ToString("N")
+                                        let copiedPath = Path.Combine(tmpPath, fileGuid + filePage.path)
+                                        File.Copy(fullPath, copiedPath)
+                                        Odt.replaceInFile
+                                            copiedPath
+                                            myList
+                                        copiedPath
                         ]
                     let pdfPaths =
                         [ for odtPath in odtPaths do
                             yield Odt.odtToPdf odtPath
                         ]
-                    Odt.mergePdfs pdfPaths (Path.Combine(tmpPath, "bewerbung.pdf"))
+                    let mergedPdfPath = Path.Combine(tmpPath, (sprintf "Bewerbung_%s_%s.pdf" userValues.firstName userValues.lastName))
+                    Odt.mergePdfs pdfPaths mergedPdfPath
+                    sendEmail
+                        userEmail
+                        (userValues.firstName + " " + userValues.lastName)
+                        "rene.ederer.nbg@gmail.com" //employer.email
+                        (Odt.replaceInString document.email.subject myList)
+                        (Odt.replaceInString (document.email.body.Replace("\\r\\n", "\r\n").Replace("\\n", "\n")) myList)
+                        [mergedPdfPath, sprintf "Bewerbung_%s_%s.pdf" userValues.firstName userValues.lastName]
                     transaction.Commit()
                 with
                 | e ->
                     log.Error ("", e)
                     transaction.Rollback()
-                    //sendEmail "rene.ederer.nbg@gmail.com" "René Ederer" employer.email template.emailSubject template.emailBody template.pdfPaths
-                    //return ()
         }
 
     [<Remote>]

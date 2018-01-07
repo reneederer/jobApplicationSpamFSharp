@@ -9,12 +9,12 @@ module Odt =
     open PdfSharp.Pdf.IO
     open WebSharper.UI.Next.Html.Tags
 
-    let private replaceAll text map =
+    let replaceInString text map =
         List.fold (fun (state:string) (k: string, v: string) -> state.Replace(k, v)) text map
 
     let replaceInFile path map =
         let content = File.ReadAllText(path)
-        let replacedText = replaceAll content map
+        let replacedText = replaceInString content map
         File.WriteAllText(path, replacedText)
 
     let rec private replaceInDirectory path map =
@@ -23,7 +23,7 @@ module Odt =
             replaceInFile file map
         let directories = Directory.EnumerateDirectories(path)
         for directory in directories do
-            replaceInDirectory (Path.Combine(path, directory)) map
+            replaceInDirectory directory map
     
     let replaceInOdt odtPath extractedOdtDirectory replacedOdtDirectory map =
         let odtFileName = Path.GetFileName(odtPath)

@@ -190,3 +190,5 @@ module Types =
         | DownloadWithReplacedVariables
         | ReallyDeleteDocument
         | ReallyDeletePage
+        | PleaseConfirmYourEmailAddressEmailSubject
+        | PleaseConfirmYourEmailAddressEmailBody

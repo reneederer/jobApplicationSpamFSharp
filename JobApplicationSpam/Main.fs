@@ -166,6 +166,7 @@ module Site =
                 (fun i (x : HttpPostedFileBase) ->
                     if x.FileName <> ""
                     then
+                        failwith <| x.ContentLength.ToString()
                         let fileName =
                             if File.Exists(Path.Combine(dir, x.FileName))
                             then

@@ -108,17 +108,17 @@ hallo div!</div>
 insert into htmlPageTemplate(name, odtPath, html) values('Lebenslauf', 'c:/users/rene/desktop/bewerbung_lebenslauf.odt', '<div id="insertDiv"><b>Lebenslauf...</b></div>');
 insert into document(userId, name) values(1, 'mein htmlTemplate');
 insert into document(userId, name) values(1, 'mein zweites htmlTemplate');
-insert into documentEmail(documentId, subject, body) values(1, 'titel1', 'body1');
+insert into documentEmail(documentId, subject, body) values(1, '$meinVorname', 'Sehr $meinNachname \n$meineStrasse\n$chefAnrede<br>$chefNachname\nmit');
 insert into documentEmail(documentId, subject, body) values(2, 'titel2', 'body2');
-insert into filePage(documentId, path, pageIndex, name) values(1, 'labenwolf_zeugnis_small.pdf', 3, 'Labenwolf Zeugnis');
+insert into filePage(documentId, path, pageIndex, name) values(1, 'bewerbung_neu.odt', 1, 'Anschreiben');
+insert into filePage(documentId, path, pageIndex, name) values(1, 'labenwolf_zeugnis_small.pdf', 2, 'Labenwolf Zeugnis');
+insert into filePage(documentId, path, pageIndex, name) values(1, 'bewerbung_neu1.odt', 3, 'Anschreiben');
+insert into filePage(documentId, path, pageIndex, name) values(1, 'segitz_zeugnis_small.pdf', 4, 'Labenwolf Zeugnis');
 insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 1, 1, 'mein zweites Anschreiben');
 insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 1, 2, 'mein zweites Deckblatt');
 insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 2, 3, 'mein drittes Deckblatt');
 insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 3, 4, 'mein dritter Lebenslauf');
 insert into filePage(documentId, path, pageIndex, name) values(2, 'labenwolf_zeugnis_small.pdf', 5, 'LabenwolfZeugnis');
-insert into htmlPage(documentId, templateId, pageIndex, name) values(1, 1, 1, 'mein Anschreiben');
-insert into htmlPage(documentId, templateId, pageIndex, name) values(1, 1, 2, 'mein Deckblatt');
-insert into pageMap(documentId, pageIndex, key, value) values (1, 1, 'mainText', 'Sehr geehrte Damen und Herren\n\nhiermit bewerbe ich mich auf Ihre Stellenzeige\nauf LinkedIn\n\nMit freundlichen Grüßen\n\n\n\nRené Ederer');
 insert into pageMap(documentId, pageIndex, key, value) values (1, 2, 'mainText', 'nur ein gruß');
 
 insert into sentStatusValue(id, status) values(1, 'Waiting for reply after sending job application');

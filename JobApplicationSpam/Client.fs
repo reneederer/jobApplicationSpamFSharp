@@ -120,9 +120,7 @@ module Client =
             JS.Document.Cookie <- JS.Document.Cookie + ";language=" + language.ToString()
 
         
-        let i = Var.Create(0)
         let t (w : Word) =
-            i.Value <- i.Value + 1
             varLanguageDict.Value.[w]
 
 
@@ -350,6 +348,7 @@ module Client =
               "divAddEmployer"
               "divDisplayedDocument"
               "divAttachments"
+              "divUploadedFileDownload"
             ]
         
         let show (elIds : list<string>) =
@@ -640,6 +639,9 @@ module Client =
                           []
                       ]
                   ]
+                br []
+                hr []
+                br []
               ]
             divAttr
               [ attr.id "divNewDocument"; attr.style "display: none" ]
@@ -790,16 +792,16 @@ module Client =
                     inputAttr
                       [ attr.``type`` "file"
                         attr.name "file"
+                        on.change(fun _ _ -> JS.Document.GetElementById("flUpload")?style?visibility <- "visible")
                       ]
                       []
                     inputAttr [ attr.``type`` "hidden"; attr.id "hiddenDocumentId"; attr.name "documentId"; ] []
                     inputAttr [ attr.``type`` "hidden"; attr.id "hiddenNextPageIndex"; attr.name "pageIndex"] []
                     br []
                     br []
+                    buttonAttr [attr.``type`` "submit"; attr.id "flUpload"; attr.style "visibility: hidden" ] [text (t AddAttachment)]
                     br []
-                    buttonAttr [attr.``type`` "submit" ] [text (t AddAttachment)]
-                    br []
-                    br []
+                    hr []
                     br []
                     b [ text
                           ((t YouMightWantToReplaceSomeWordsInYourFileWithVariables) +
@@ -918,7 +920,7 @@ module Client =
                       [ buttonAttr
                           [ attr.``type`` "button"
                             attr.``class`` "btn-block"
-                            on.click (fun _ _ -> Server.applyNowWithHtmlTemplate varEmployer.Value varDocument.Value varUserValues.Value |> Async.Start)
+                            on.click (fun _ _ -> Server.applyNow varEmployer.Value varDocument.Value varUserValues.Value |> Async.Start)
                           ]
                           [ text (t ApplyNow)
                           ]
@@ -944,7 +946,7 @@ module Client =
                   [ attr.``type`` "button"
                     attr.``class`` "btnLikeLink btn-block"
                     attr.value (t ApplyNow)
-                    on.click (fun _ _ -> Server.applyNowWithHtmlTemplate varEmployer.Value varDocument.Value varUserValues.Value |> Async.Start)] []
+                    on.click (fun _ _ -> Server.applyNow varEmployer.Value varDocument.Value varUserValues.Value |> Async.Start)] []
               ]
           ]
 

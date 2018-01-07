@@ -347,6 +347,7 @@ module Server =
                           ("$meineTelefonnr", userValues.phone)
                           ("$datumHeute", DateTime.Today.ToString("dd.MM.yyyy"))
                         ]
+                    let tmpPath = sprintf "./Users/%i/tmp/%s/" userId (Guid.NewGuid().ToString())
                     let odtPaths =
                         [ for item in document.pages do
                             match item with
@@ -367,24 +368,25 @@ module Server =
                                     @ List.skip len emptyLines
                                     |> List.sortByDescending (fun (key, _) -> key.Length)
                                     *)
-                                let tmpPath = "c:/users/rene/myodt1/" + Guid.NewGuid().ToString()
                                 yield Odt.replaceInOdt pageTemplatePath "c:/users/rene/myodt/" tmpPath (myList @ lines)
                             | FilePage filePage ->
-                                let tmpPath = "c:/users/rene/myodt1/" + Guid.NewGuid().ToString()
                                 yield
                                     if filePage.path.EndsWith ".pdf"
                                     then
-                                        filePage.path
+                                        Path.Combine(sprintf "./Users/%i/%s" userId filePage.path)
                                     else
-                                        Odt.replaceInOdt filePage.path "c:/users/rene/myodt/" tmpPath myList
+                                        Odt.replaceInOdt
+                                            (sprintf "./Users/%i/%s" userId filePage.path)
+                                            (Path.Combine(tmpPath, "replacedOdt"))
+                                            (Path.Combine(tmpPath, "extractedOdt"))
+                                            myList
                         ]
                     let pdfPaths =
                         [ for odtPath in odtPaths do
                             yield Odt.odtToPdf odtPath
                         ]
-                    Odt.mergePdfs pdfPaths "c:/users/rene/myodt1/mygreatpdf.pdf"
+                    Odt.mergePdfs pdfPaths (Path.Combine(tmpPath, "bewerbung.pdf"))
                     transaction.Commit()
-                    //return ()
                 with
                 | e ->
                     log.Error ("", e)
@@ -534,3 +536,4 @@ module Server =
         async {
             return Website.read url
         }
+    

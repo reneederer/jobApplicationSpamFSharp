@@ -16,6 +16,7 @@ type EndPoint =
     | [<EndPoint "/confirmemail">] ConfirmEmail
     | [<EndPoint "/templates">] Templates
     | [<EndPoint "/logout">] Logout
+    | [<EndPoint "/download">] Download of filePath:string
 
 module Templating =
     open WebSharper.UI.Next.Html
@@ -58,12 +59,20 @@ module Templating =
         |> Option.bind (Server.getEmailByUserId >> Async.RunSynchronously)
         |> Option.defaultValue ""
 
-    [<JavaScript>]
+
+    let atSign (ctx: Context<EndPoint>) =
+        if ctx.UserSession.GetLoggedInUser()
+            |> Async.RunSynchronously
+            |> Option.isSome
+        then "@"
+        else ""
+
     let btnLogout (ctx: Context<EndPoint>) (endpoint : EndPoint) : Doc =
         formAttr
           [ attr.action "/logout" ]
           [ buttonAttr
               [ attr.``type`` "submit"
+                attr.style ("display: " + (if ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously |> Option.isSome then "inline" else "none"))
               ]
               [text "Logout"]
           ]
@@ -73,6 +82,7 @@ module Templating =
         Content.Page(
             MainTemplate()
                 .Title(title)
+                .AtSign(atSign ctx)
                 .MenuBar(MenuBar ctx action)
                 .Body(body)
                 .LoggedInUserEmail(loggedInUserEmail ctx)
@@ -144,31 +154,47 @@ module Site =
     
 
     let templatesPage (ctx : Context<EndPoint>) =
-        let dir = "./reneupload1/"
-        if not <| Directory.Exists dir then Directory.CreateDirectory dir |> ignore
-        ctx.Request.Files
-        |> Seq.iteri
-            (fun i (x : HttpPostedFileBase) ->
-                if x.FileName <> ""
-                then
-                    let path = Path.Combine(dir, x.FileName)
-                    x.SaveAs path
-                    try
-                        match ctx.Request.Post.["documentId"], ctx.Request.Post.["pageIndex"], ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously |> Option.map Int32.Parse with
-                        | Some documentIdStr, Some pageIndexStr, Some userId ->
-                            let documentId = documentIdStr |> Int32.Parse
-                            Server.addFilePage documentId path (pageIndexStr |> Int32.Parse) |> Async.RunSynchronously
-                            Server.setLastEditedDocumentId userId documentId |> Async.RunSynchronously
-                        | _, _, _ ->
-                            failwith "Document id or pageIndex unknown or userId was None"
-                    with
-                    | e ->
-                        File.Delete(path)
-                        reraise()
-            )
+        match ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously |> Option.map Int32.TryParse with
+        | Some (true, userId) ->
+            let dir = Path.Combine(sprintf "./Users/%i" userId)
+            if not <| Directory.Exists dir then Directory.CreateDirectory dir |> ignore
+            ctx.Request.Files
+            |> Seq.iteri
+                (fun i (x : HttpPostedFileBase) ->
+                    if x.FileName <> ""
+                    then
+                        ctx.Request.Cookies.Add(new HttpCookie("upload", x.FileName))
+                        let path = Path.Combine(dir, x.FileName)
+                        x.SaveAs path
+                        try
+                            match ctx.Request.Post.["documentId"], ctx.Request.Post.["pageIndex"], ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously |> Option.map Int32.Parse with
+                            | Some documentIdStr, Some pageIndexStr, Some userId ->
+                                let documentId = documentIdStr |> Int32.Parse
+                                Server.addFilePage documentId path (pageIndexStr |> Int32.Parse) |> Async.RunSynchronously
+                                Server.setLastEditedDocumentId userId documentId |> Async.RunSynchronously
+                            | _, _, _ ->
+                                failwith "Document id or pageIndex unknown or userId was None"
+                        with
+                        | e ->
+                            File.Delete(path)
+                            reraise()
+                )
+        | _ -> ()
         Templating.main ctx EndPoint.About "Templates" [
             client <@ Client.templates() @>
         ]
+
+    let downloadPage (ctx : Context<EndPoint>) (filePath : string) =
+        let file = FileInfo(Path.Combine("Users/1/", filePath))
+        if file.Exists then
+            Content.File(file.FullName, true, "application/pdf")
+            |> Content.MapResponse (fun resp ->
+                { resp with
+                    Headers = Seq.append resp.Headers 
+                        [Http.Header.Custom "Content-Disposition" ("attachment; filename=" + file.Name)]
+                }
+            )
+        else Content.NotFound
 
     let main =
         Application.MultiPage (fun (ctx : Context<EndPoint>) endpoint ->
@@ -182,6 +208,8 @@ module Site =
             | Some _, EndPoint.ConfirmEmail -> confirmEmailPage ctx
             | Some _ , EndPoint.Templates -> templatesPage ctx
             | Some _ , EndPoint.Logout -> logoutPage ctx
+            | Some _ , EndPoint.Download filePath ->
+                downloadPage ctx filePath
             | None, _ -> loginPage ctx
         )
 

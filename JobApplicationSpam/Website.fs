@@ -24,7 +24,7 @@ module Website =
                 | "Herr"
                 | "Herrn" -> Gender.Male
                 | "Frau" -> Gender.Female
-                | _ -> failwith value
+                | _ -> Gender.Unknown
             with
             | e -> Gender.Unknown
 
@@ -125,12 +125,3 @@ module Website =
           phone = ""
           mobilePhone = ""
         }
-
-
-
-
-
-
-
-
-

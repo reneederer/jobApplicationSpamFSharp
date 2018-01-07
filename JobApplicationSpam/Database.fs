@@ -281,7 +281,7 @@ module Database =
                          update set
                             (path, name) = (:path, :name)", dbConn)
                 command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("path", filePage.path)) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("path", Path.GetFileName(filePage.path))) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("pageIndex", filePage.pageIndex)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("name", filePage.name)) |> ignore
                 command.ExecuteNonQuery() |> ignore
@@ -332,7 +332,7 @@ module Database =
                         """insert into FilePage(documentId, path, pageIndex, name)
                         values (:documentId, :path, :pageIndex, :name) returning id""", dbConn)
                 command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("path", filePage.path)) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("path", Path.GetFileName(filePage.path))) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("pageIndex", filePage.pageIndex)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("name", filePage.name)) |> ignore
                 let pageId = command.ExecuteScalar() |> string |> Int32.Parse

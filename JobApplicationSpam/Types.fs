@@ -180,9 +180,13 @@ module Types =
         | YouMightWantToReplaceSomeWordsInYourFileWithVariables
         | VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication
         | Employer
-        | ReallyDeleteDocument
         | Male
         | Female
+        | UnknownGender
         | AddDocument
         | DocumentName
         | AddHtmlAttachment
+        | JustDownload
+        | DownloadWithReplacedVariables
+        | ReallyDeleteDocument
+        | ReallyDeletePage

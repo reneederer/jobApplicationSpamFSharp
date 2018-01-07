@@ -42,7 +42,7 @@ insert into employer(userId, company, street, postcode, city, gender, degree, fi
 insert into employer(userId, company, gender, street, postcode, city, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'BFI Informationssysteme GmbH', 'Ötterichweg 7', '90411', 'Nürnberg', 'm', '', 'Michael', 'Schlund', 'Michael.Schlund@bfi-info.de', '0911 9457668', '');
 
 insert into htmlPageTemplate(name, odtPath, html) values('Anschreiben nach DIN 5008', 'c:/users/rene/desktop/bewerbung_neu.odt',
-'<div id="insertDiv">
+'<div id="divInsert">
 <div id="divTemplate" class="page1">
     <div style="width: 100%; background-color: white">
         <input class="resizing" autofocus "autofocus" style="font-family: Arial; font-size: 12pt; font-weight: normal" data-bind="userDegree" data-variable-value="userDegree" placeholder="Dein Titel" />
@@ -108,12 +108,12 @@ insert into document(userId, name) values(1, 'mein htmlTemplate');
 insert into document(userId, name) values(1, 'mein zweites htmlTemplate');
 insert into documentEmail(documentId, subject, body) values(1, 'titel1', 'body1');
 insert into documentEmail(documentId, subject, body) values(2, 'titel2', 'body2');
-insert into filePage(documentId, path, pageIndex, name) values(1, 'C:/Users/rene/Downloads/labenwolf_zeugnis_small.pdf', 3, 'Labenwolf Zeugnis');
+insert into filePage(documentId, path, pageIndex, name) values(1, 'labenwolf_zeugnis_small.pdf', 3, 'Labenwolf Zeugnis');
 insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 1, 1, 'mein zweites Anschreiben');
 insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 1, 2, 'mein zweites Deckblatt');
 insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 2, 3, 'mein drittes Deckblatt');
 insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 3, 4, 'mein dritter Lebenslauf');
-insert into filePage(documentId, path, pageIndex, name) values(2, 'C:/Users/rene/Downloads/labenwolf_zeugnis_small.pdf', 5, 'LabenwolfZeugnis');
+insert into filePage(documentId, path, pageIndex, name) values(2, 'labenwolf_zeugnis_small.pdf', 5, 'LabenwolfZeugnis');
 insert into htmlPage(documentId, templateId, pageIndex, name) values(1, 1, 1, 'mein Anschreiben');
 insert into htmlPage(documentId, templateId, pageIndex, name) values(1, 1, 2, 'mein Deckblatt');
 insert into pageMap(documentId, pageIndex, key, value) values (1, 1, 'mainText', 'Sehr geehrte Damen und Herren\n\nhiermit bewerbe ich mich auf Ihre Stellenzeige\nauf LinkedIn\n\nMit freundlichen Grüßen\n\n\n\nRené Ederer');

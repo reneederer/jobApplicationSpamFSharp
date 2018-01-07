@@ -1,4 +1,5 @@
 ﻿;set client_encoding to 'UTF8';
+drop table if exists link cascade;
 drop table if exists sentStatus cascade;
 drop table if exists sentStatusValue cascade;
 drop table if exists sentApplication cascade;
@@ -26,6 +27,7 @@ create table pageMap(id serial primary key, documentId int not null, pageIndex i
 create table sentApplication(id serial primary key, userId int not null, employerId int not null, documentId int null, foreign key(employerId) references employer(id), foreign key(userId) references users(id));
 create table sentStatusValue(id int primary key, status varchar(50));
 create table sentStatus(id serial primary key, sentApplicationId int, statusChangedOn date, dueOn timestamp, sentStatusValueId int, statusMessage varchar(200), foreign key(sentApplicationId) references sentApplication(id), foreign key(sentStatusValueId) references sentStatusValue(id));
+create table link(id serial primary key, path varchar(100), documentId int, guid varchar(36), foreign key(documentId) references document(id));
 
 insert into users(email, password, salt, guid) values('rene.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null);
 insert into users(email, password, salt, guid) values('helmut.goerke@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', 'someguid');

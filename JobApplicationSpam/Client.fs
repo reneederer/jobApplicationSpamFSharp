@@ -16,6 +16,7 @@ module Client =
     open WebSharper.UI.Next.Html.Tags
     open Server
     open WebSharper.Html.Server.Attr
+    open WebSharper.Formlets.Enhance
 
     [<JavaScript>]
     let login () =
@@ -106,7 +107,7 @@ module Client =
         let varLanguageDict = Var.Create<Map<Word, string>>(Deutsch.dict |> Map.ofList)
 
         let getCurrentPageIndex () =
-            let index = JQuery("#ulPageButtons .active").First().Index() + 1
+            let index = JQuery("#divAttachmentButtons").Find(".mainButton").Index(JQuery(".active")) + 1
             Math.Max (index, 1)
 
         let getCookie str =
@@ -124,7 +125,6 @@ module Client =
             i.Value <- i.Value + 1
             varLanguageDict.Value.[w]
 
-        JS.Alert(getCookie "upload" |> Option.defaultValue "no upload")
 
         let createInputWithColumnSizes column1Size column2Size labelText dataBind (validFun : string -> (bool * string)) =
           divAttr
@@ -376,10 +376,10 @@ module Client =
 
         let rec setPageButtons () =
             async {
-                JQuery("#ulPageButtons li:not(:last-child)").Remove() |> ignore
+                JQuery("#divAttachmentButtons").Children("div").Remove() |> ignore
                 for page in varDocument.Value.pages do
                     let deleteButton =
-                        JQuery(sprintf """<button class="text-right" id="pageButton%iDelete">-</button>""" (page.PageIndex())).On(
+                        JQuery(sprintf """<button class="distanced" id="pageButton%iDelete"><i class="fa fa-trash" aria-hidden="true"></i></button>""" (page.PageIndex())).On(
                             "click"
                           , (fun _ _ ->
                                 if JS.Confirm(String.Format(t ReallyDeletePage, page.Name()))
@@ -401,11 +401,12 @@ module Client =
                                         do! setDocument()
                                         do! setPageButtons()
                                         do! fillDocumentValues()
+                                        show ["divAttachments"]
                                     } |> Async.Start
                             )
                           )
                     let pageUpButton =
-                        JQuery(sprintf """<button class="text-right" id="pageButton%iUp">&uarr;</button>""" (page.PageIndex())).On(
+                        JQuery( """<button class="distanced" style="%s"><i class="fa fa-arrow-up" aria-hidden="true"></i></button>""").On(
                             "click"
                           , (fun _ _ ->
                                 async {
@@ -425,6 +426,7 @@ module Client =
                                     let! _ = overwriteDocument varDocument.Value
                                     do! setDocument()
                                     do! setPageButtons()
+                                    show ["divAttachments"]
                                     do! fillDocumentValues()
                                 } |> Async.Start
                             )
@@ -432,7 +434,10 @@ module Client =
 
 
                     let pageDownButton =
-                        JQuery(sprintf """<button class="text-right" id="pageButton%iDelete">&darr;</button>""" (page.PageIndex())).On(
+                        JQuery(
+                            sprintf
+                                """<button class="distanced" style="%s"><i class="fa fa-arrow-down" aria-hidden="true"></i></button>"""
+                                (if page.PageIndex() = 1 then "visiblity:hidden" else "")).On(
                             "click"
                           , (fun _ _ ->
                                 async {
@@ -452,23 +457,18 @@ module Client =
                                     let! _ = overwriteDocument varDocument.Value
                                     do! setDocument()
                                     do! setPageButtons()
+                                    show ["divAttachments"]
                                     do! fillDocumentValues()
                                 } |> Async.Start
                             )
                           )
-                    JQuery(sprintf """<li><button id="pageButton%i" class="" style="width:80%%">%s</button></li>""" (page.PageIndex()) (page.Name()))
-                        .InsertBefore("#btnAddPage")
-                        .Append(deleteButton)
-                        .Append(pageUpButton)
-                        .Append(pageDownButton)
-                        .On(
+                    let mainButton =
+                        JQuery(sprintf """<button class="distanced btn-block mainButton" style="width: 100%%">%s</button>""" (page.Name())).On(
                               "click"
                             , (fun el _ ->
                                 JQuery(el).AddClass("active") |> ignore
-                                JQuery(el).Parent().Parent().Find("button").Each(fun (i, b) ->
-                                    JS.Alert("testa")
+                                JQuery(el).Parent().Parent().Parent().Find(".mainButton").Each(fun (i, b) ->
                                     if b <> el then JQuery(b).RemoveClass("active") |> ignore) |> ignore
-                                JS.Alert("currentIndex: " + (getCurrentPageIndex() |> string))
                                 match page with
                                 | HtmlPage htmlPage ->
                                     async {
@@ -485,9 +485,20 @@ module Client =
                                     } |> Async.Start
                                 | FilePage filePage -> 
                                     show ["divAttachments"; "divUploadedFileDownload"]
+                              )
                         )
-                    ) |> ignore
-                JS.Document.GetElementById("hiddenNextPageIndex")?value <- ((JQuery("#ulPageButtons li").Length) |> string)
+                    let firstDiv = JQuery("""<div class="col-6 col-sm-7 col-md-8 col-lg-8 col-xl-8" style="float: left; display:inline; padding: 0; margin-left:0;"></div>""").Append(mainButton)
+                    let secondDiv =
+                        JQuery("""<div class="col-6 col-sm-5 col-md-4 col-lg-4 col-xl-4" style="float: right; display:inline"></div>""")
+                            .Append(if page.PageIndex() >= (varDocument.Value.pages |> List.length) then pageDownButton.Css("visibility", "hidden") else pageDownButton)
+                            .Append(if page.PageIndex() <= 1 then pageUpButton.Css("visibility", "hidden") else pageUpButton)
+                            .Append(deleteButton)
+                        
+                    JQuery("""<div class="row" style="min-width:100%; margin-bottom: 10px;"></div>""")
+                        .Append(firstDiv)
+                        .Append(secondDiv)
+                        .InsertBefore("#btnAddPage") |> ignore
+                JS.Document.GetElementById("hiddenNextPageIndex")?value <- ((JQuery("#divAttachmentButtons").Children("div").Length + 1) |> string)
             }
         
         let addSelectOption el value =
@@ -565,20 +576,23 @@ module Client =
                           } |> Async.Start)
                   ]
                   []
-                inputAttr
+                buttonAttr
                   [ attr.``type`` "button"
                     attr.style "margin-left: 20px"
                     attr.``class`` ".btnLikeLink"
-                    attr.value "+"
                     on.click(fun _ _ -> show ["divNewDocument"])
                   ]
-                  []
-                inputAttr
+                  [ iAttr
+                      [ attr.``class`` "fa fa-plus-square"
+                        Attr.Create "aria-hidden" "true"
+                      ]
+                      []
+                  ]
+                buttonAttr
                   [ attr.``type`` "button"
                     attr.id "btnDeleteDocument"
                     attr.``class`` ".btnLikeLink"
                     attr.style "margin-left: 20px"
-                    attr.value "-"
                     on.click(fun el _ ->
                         async {
                             let slctEl = JS.Document.GetElementById("slctDocumentName")
@@ -597,26 +611,36 @@ module Client =
                         } |> Async.Start
                     )
                   ]
-                  []
+                  [ iAttr
+                      [ attr.``class`` "fa fa-trash"
+                        Attr.Create "aria-hidden" "true"
+                      ]
+                      []
+                  ]
               ]
             hr []
             divAttr
               [ attr.id "divAttachments"; attr.style "display: none"
               ]
               [ h4 [ text (t YourAttachments) ]
-                ulAttr
-                  [ attr.id "ulPageButtons"; attr.style "list-style-type: none; padding: 0; margin: 0;" ]
-                  [ li
-                      [ buttonAttr
-                          [ attr.id "btnAddPage"
-                            attr.``class`` "btnLikeLink"
-                            on.click
-                              (fun el _ ->
-                                  show ["divChoosePageType"; "divAttachments"; "divCreateFilePage"]
-                                  JS.Document.GetElementById("rbFilePage")?``checked`` <- true;
-                              )
+                divAttr
+                  [ attr.id "divAttachmentButtons"
+                  ]
+                  [ buttonAttr
+                      [ attr.id "btnAddPage"
+                        attr.style "margin:0;"
+                        attr.``class`` "btnLikeLink"
+                        on.click
+                          (fun el _ ->
+                              show ["divChoosePageType"; "divAttachments"; "divCreateFilePage"]
+                              JS.Document.GetElementById("rbFilePage")?``checked`` <- true;
+                          )
+                      ]
+                      [ iAttr
+                          [ attr.``class`` "fa fa-plus-square"
+                            Attr.Create "aria-hidden" "true"
                           ]
-                          [ text "+"]
+                          []
                       ]
                   ]
               ]
@@ -668,22 +692,22 @@ module Client =
               [ attr.id "divUploadedFileDownload"; attr.style "display: none"]
               [ formAttr
                   [ on.submit
-                        (fun el _ ->
-                            el.SetAttribute(
-                                ("action",
+                        (fun el e ->
+                            e.PreventDefault()
+                            e.StopPropagation()
+                            async {
+                                 let varGuid = Var.CreateWaiting<string>()
                                  match varDocument.Value.pages |> List.tryItem (getCurrentPageIndex() - 1) with
-                                 | Some (FilePage filePage) -> "download/" + filePage.path
-                                 | None ->
-                                     JS.Alert((varDocument.Value.pages |> List.length |> string) + "hallofa")
-                                     ""
-                                 | Some (HtmlPage htmlPage) ->
-                                     JS.Alert("emy" + (getCurrentPageIndex () |> string))
-                                     ""
-                                )
-                            )
+                                 | Some (FilePage filePage) ->
+                                    let! guid = Server.createLink filePage.path varDocument.Value.id
+                                    varGuid.Value <- guid
+                                    el.SetAttribute("action", "download/" + varGuid.Value)
+                                    el.SetAttribute("target", "_blank")
+                                    el.SetAttribute("method", "get")
+                                    JS.Window.Location.Href <- sprintf "download/%s" varGuid.Value
+                                 | _ -> varGuid.Value <- ""
+                            } |> Async.Start
                         )
-                    attr.target "_blank"
-                    attr.method "get"
                   ]
                   [ buttonAttr
                       [ attr.``type`` "submit"
@@ -743,7 +767,7 @@ module Client =
                   [ attr.``type`` "submit";
                     on.click
                       (fun _ _ ->
-                        let pageIndex = JQuery("#ulPageButtons li").Length
+                        let pageIndex = JQuery("#divAttachmentButtons").Children("div").Length
                         varDocument.Value <-
                             { varDocument.Value
                                 with pages = (
@@ -897,13 +921,13 @@ module Client =
                   [ divAttr
                       [ attr.``class`` "col-12"
                       ]
-                      [ inputAttr
+                      [ buttonAttr
                           [ attr.``type`` "button"
                             attr.``class`` "btn-block"
-                            attr.value (t ApplyNow)
                             on.click (fun _ _ -> Server.applyNowWithHtmlTemplate varEmployer.Value varDocument.Value varUserValues.Value |> Async.Start)
                           ]
-                          []
+                          [ text (t ApplyNow)
+                          ]
                       ]
                   ]
                 createInput (t CompanyName) "company" (fun (s : string) -> s <> "", "This field is required")
@@ -924,7 +948,7 @@ module Client =
                 createInput (t MobilePhone) "bossMobilePhone" (fun s -> true, "")
                 inputAttr
                   [ attr.``type`` "button"
-                    attr.``class`` "btnLikeLink"
+                    attr.``class`` "btnLikeLink btn-block"
                     attr.value (t ApplyNow)
                     on.click (fun _ _ -> Server.applyNowWithHtmlTemplate varEmployer.Value varDocument.Value varUserValues.Value |> Async.Start)] []
               ]

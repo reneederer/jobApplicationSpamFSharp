@@ -216,6 +216,8 @@ module Database =
 
 
     let overwriteDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) =
+        if document.id <> 1
+        then failwith ("DocumentId is " + document.id.ToString())
         log.Debug(sprintf "%A %i" document userId)
         use command = new NpgsqlCommand("update document set name = :name where id = :documentId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("name", document.name)) |> ignore
@@ -240,31 +242,28 @@ module Database =
         command.ExecuteNonQuery() |> ignore
         command.Dispose()
         for page in document.pages do
+            use command = new NpgsqlCommand("delete from pageMap where documentId = :documentId and pageIndex = :pageIndex", dbConn)
+            command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
+            command.Parameters.Add(new NpgsqlParameter("pageIndex", page.PageIndex())) |> ignore
+            command.ExecuteNonQuery() |> ignore
+            command.Dispose()
             match page with
             | HtmlPage htmlPage ->
                 use command =
                     new NpgsqlCommand(
                         """insert into htmlPage(documentId, templateId, pageIndex, name)
-                        values (:documentId, :templateId, :pageIndex, :name)
-                        on conflict on constraint htmlPage_unique do update
-                        set (templateId, name) = (:templateId, :name)""", dbConn)
+                        values (:documentId, :templateId, :pageIndex, :name)""", dbConn)
                 command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("templateId", htmlPage.oTemplateId |> Option.get)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("pageIndex", htmlPage.pageIndex)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("name", htmlPage.name)) |> ignore
                 command.ExecuteNonQuery() |> ignore
                 command.Dispose()
-                use command = new NpgsqlCommand("delete from pageMap where documentId = :documentId and pageIndex = :pageIndex", dbConn)
-                command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("pageIndex", htmlPage.pageIndex)) |> ignore
-                command.ExecuteNonQuery() |> ignore
-                command.Dispose()
                 for mapItem in htmlPage.map do
                     use command =
                         new NpgsqlCommand(
                             """insert into pageMap(documentId, pageIndex, key, value)
-                            values (:documentId, :pageIndex, :key, :value)
-                            on conflict on constraint pageMap_unique do update set value = :value""", dbConn)
+                            values (:documentId, :pageIndex, :key, :value)""", dbConn)
                     command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
                     command.Parameters.Add(new NpgsqlParameter("pageIndex", htmlPage.pageIndex)) |> ignore
                     command.Parameters.Add(new NpgsqlParameter("key", fst mapItem)) |> ignore
@@ -276,10 +275,7 @@ module Database =
                     new NpgsqlCommand(
                         "insert into filePage
                             (documentId, path, pageIndex, name)
-                            values (:documentId, :path, :pageIndex, :name)
-                         on conflict on constraint filePage_unique do
-                         update set
-                            (path, name) = (:path, :name)", dbConn)
+                            values (:documentId, :path, :pageIndex, :name)", dbConn)
                 command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("path", Path.GetFileName(filePage.path))) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("pageIndex", filePage.pageIndex)) |> ignore
@@ -536,13 +532,9 @@ module Database =
     
     let addFilePage (dbConn : NpgsqlConnection) (documentId : int) (path : string) (pageIndex : int)  =
         log.Debug (sprintf "(documentId: %i, path: %s, pageIndex: %i)" documentId path pageIndex)
-        use command = new NpgsqlCommand("update filePage set pageIndex = pageIndex + 1 where pageIndex >= :pageIndex", dbConn)
+        use command = new NpgsqlCommand("update filePage set pageIndex = pageIndex + 1 where pageIndex >= :pageIndex and documentId = :documentId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("pageIndex", pageIndex)) |> ignore
-        command.ExecuteNonQuery() |> ignore
-        command.Dispose()
-
-        use command = new NpgsqlCommand("update filePage set pageIndex = pageIndex + 1 where pageIndex >= :pageIndex", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("pageIndex", pageIndex)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
         command.ExecuteNonQuery() |> ignore
         command.Dispose()
 
@@ -561,6 +553,13 @@ module Database =
         command.ExecuteNonQuery() |> ignore
 
     let addHtmlPage dbConn (documentId : int) (oTemplateId : option<int>) (pageIndex : int) (name : string) =
+        log.Debug (sprintf "(documentId: %i, oTemplateId: %A, pageIndex: %i, name: %s)" documentId oTemplateId pageIndex name)
+        use command = new NpgsqlCommand("update htmlPage set pageIndex = pageIndex + 1 where pageIndex >= :pageIndex and documentId = :documentId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("pageIndex", pageIndex)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        command.ExecuteNonQuery() |> ignore
+        command.Dispose()
+
         use command = new NpgsqlCommand("insert into htmlpage (documentId, templateId, pageIndex, name) values (:documentId, :templateId, :pageIndex, :name)", dbConn)
         command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
         match oTemplateId with
@@ -577,3 +576,28 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("documentIndex", documentIndex)) |> ignore
         command.ExecuteScalar() |> string |> Int32.Parse
+
+    let createLink dbConn (filePath : string) (documentId : int) =
+        let guid = Guid.NewGuid().ToString()
+        use command = new NpgsqlCommand("insert into link (path, documentId, guid) values(:path, :documentId, :guid)", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("path", filePath)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("guid", guid)) |> ignore
+        command.ExecuteNonQuery() |> ignore
+        guid
+
+
+    let getFilePathByGuid dbConn (guid : string) =
+        use command = new NpgsqlCommand("select path, documentId from link where guid = :guid limit 1", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("guid", guid)) |> ignore
+        use reader = command.ExecuteReader()
+        if reader.Read() && not <| reader.IsDBNull(0)
+        then reader.GetString(0), reader.GetInt32(1)
+        else "", 0
+
+    let deleteLink dbConn (documentId : int) (guid : string) =
+        use command = new NpgsqlCommand("delete from link where (documentId, guid) = (:documentId, guid)", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("guid", guid)) |> ignore
+        command.ExecuteNonQuery() |> ignore
+

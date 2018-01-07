@@ -373,10 +373,10 @@ module Server =
                                 yield
                                     if filePage.path.EndsWith ".pdf"
                                     then
-                                        Path.Combine(sprintf "./Users/%i/%s" userId filePage.path)
+                                        Path.Combine(sprintf "./Users/%i/%i/%s" userId document.id filePage.path)
                                     else
                                         Odt.replaceInOdt
-                                            (sprintf "./Users/%i/%s" userId filePage.path)
+                                            (sprintf "./Users/%i/%i/%s" userId document.id filePage.path)
                                             (Path.Combine(tmpPath, "replacedOdt"))
                                             (Path.Combine(tmpPath, "extractedOdt"))
                                             myList
@@ -537,3 +537,26 @@ module Server =
             return Website.read url
         }
     
+    [<Remote>]
+    let createLink filePath documentId =
+        async {
+            use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+            dbConn.Open()
+            return Database.createLink dbConn filePath documentId
+        }
+
+    [<Remote>]
+    let getFilePathByGuid guid =
+        async {
+            use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+            dbConn.Open()
+            return Database.getFilePathByGuid dbConn guid
+        }
+
+    [<Remote>]
+    let deleteLink documentId guid =
+        async {
+            use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+            dbConn.Open()
+            Database.deleteLink dbConn documentId guid
+        }

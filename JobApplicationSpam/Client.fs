@@ -379,7 +379,7 @@ module Client =
                 JQuery("#divAttachmentButtons").Children("div").Remove() |> ignore
                 for page in varDocument.Value.pages do
                     let deleteButton =
-                        JQuery(sprintf """<button class="distanced" id="pageButton%iDelete"><i class="fa fa-trash" aria-hidden="true"></i></button>""" (page.PageIndex())).On(
+                        JQuery("""<button class="distanced"><i class="fa fa-trash" aria-hidden="true"></i></button>""").On(
                             "click"
                           , (fun _ _ ->
                                 if JS.Confirm(String.Format(t ReallyDeletePage, page.Name()))
@@ -406,7 +406,7 @@ module Client =
                             )
                           )
                     let pageUpButton =
-                        JQuery( """<button class="distanced" style="%s"><i class="fa fa-arrow-up" aria-hidden="true"></i></button>""").On(
+                        JQuery( """<button class="distanced"><i class="fa fa-arrow-up" aria-hidden="true"></i></button>""").On(
                             "click"
                           , (fun _ _ ->
                                 async {
@@ -434,10 +434,7 @@ module Client =
 
 
                     let pageDownButton =
-                        JQuery(
-                            sprintf
-                                """<button class="distanced" style="%s"><i class="fa fa-arrow-down" aria-hidden="true"></i></button>"""
-                                (if page.PageIndex() = 1 then "visiblity:hidden" else "")).On(
+                        JQuery("""<button class="distanced"><i class="fa fa-arrow-down" aria-hidden="true"></i></button>""").On(
                             "click"
                           , (fun _ _ ->
                                 async {
@@ -690,43 +687,39 @@ module Client =
               ]
             divAttr
               [ attr.id "divUploadedFileDownload"; attr.style "display: none"]
-              [ formAttr
-                  [ on.submit
-                        (fun el e ->
-                            e.PreventDefault()
-                            e.StopPropagation()
+              [ buttonAttr
+                  [ attr.``type`` "button"
+                    on.click
+                        (fun _ _ ->
                             async {
-                                 let varGuid = Var.CreateWaiting<string>()
-                                 match varDocument.Value.pages |> List.tryItem (getCurrentPageIndex() - 1) with
-                                 | Some (FilePage filePage) ->
-                                    let! guid = Server.createLink filePage.path varDocument.Value.id
-                                    varGuid.Value <- guid
-                                    el.SetAttribute("action", "download/" + varGuid.Value)
-                                    el.SetAttribute("target", "_blank")
-                                    el.SetAttribute("method", "get")
-                                    JS.Window.Location.Href <- sprintf "download/%s" varGuid.Value
-                                 | _ -> varGuid.Value <- ""
+                                match varDocument.Value.pages |> List.tryItem (getCurrentPageIndex() - 1) with
+                                | Some (FilePage filePage) ->
+                                    let! fullPath = Server.getFullPath filePage.path varDocument.Value.id
+                                    let! guid = Server.createLink fullPath
+                                    JS.Window.Location.Href <- sprintf "download/%s" guid
+                                | _ -> ()
                             } |> Async.Start
                         )
                   ]
-                  [ buttonAttr
-                      [ attr.``type`` "submit"
-                      ]
-                      [ text (t JustDownload) ]
+                  [ text (t JustDownload)
                   ]
                 br []
                 br []
-                formAttr
-                  [ attr.action
-                        (match varDocument.Value.pages |> List.tryItem (getCurrentPageIndex() - 1) with
-                        | Some (FilePage filePage) -> filePage.path
-                        | _ -> "")
-                    attr.method "get"
+                buttonAttr
+                  [ attr.``type`` "button"
+                    on.click
+                        (fun _ _ ->
+                            async {
+                                match varDocument.Value.pages |> List.tryItem (getCurrentPageIndex() - 1) with
+                                | Some (FilePage filePage) ->
+                                    let! path = Server.replaceVariables filePage.path varUserValues.Value varEmployer.Value varDocument.Value
+                                    let! guid = Server.createLink path
+                                    JS.Window.Location.Href <- sprintf "download/%s" guid
+                                | _ -> ()
+                            } |> Async.Start
+                        )
                   ]
-                  [ buttonAttr
-                      [ attr.``type`` "submit"
-                      ]
-                      [ text (t DownloadWithReplacedVariables) ]
+                  [ text (t DownloadWithReplacedVariables)
                   ]
               ]
             divAttr
@@ -882,6 +875,7 @@ module Client =
               ]
             divAttr
               [ attr.id "divAddEmployer"
+                attr.style "display: none"
               ]
               [ h4 [text (t Employer)]
                 divAttr

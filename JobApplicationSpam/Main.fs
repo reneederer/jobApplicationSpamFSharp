@@ -194,9 +194,9 @@ module Site =
 
     let downloadPage (ctx : Context<EndPoint>) (guid : string) =
         async {
-            let! (filePath, documentId) = Server.getFilePathByGuid guid
-            do! Server.deleteLink documentId guid
-            let file = FileInfo(sprintf "Users/%i/%s" documentId filePath)
+            let! filePath = Server.getFilePathByGuid guid
+            //do! Server.deleteLink documentId guid
+            let file = FileInfo(filePath)
             return
                 if file.Exists then
                     Content.File(file.FullName, true, "application/pdf")

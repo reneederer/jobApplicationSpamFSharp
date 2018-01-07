@@ -302,7 +302,60 @@ module Server =
                 return Database.getDocumentOffset dbConn userId htmlJobApplicationOffset
             | None -> return failwith "No user logged in"
         }
+    
+    [<Remote>]
+    let replaceMap (userEmail : string) (userValues : UserValues) (employer : Employer) (document : Document) =
+        async {
+            return
+                [ ("$firmaName", employer.company)
+                  ("$firmaStrasse", employer.street)
+                  ("$firmaPlz", employer.postcode)
+                  ("$firmaStadt", employer.city)
+                  ("$chefAnredeBriefkopf", match employer.gender with Gender.Male -> "Herrn" | Gender.Female -> "Frau" | Gender.Unknown -> "")
+                  ("$chefAnrede", employer.gender.ToString())
+                  ("$geehrter", match employer.gender with Gender.Male -> "geehrter" | Gender.Female -> "geehrte" | Gender.Unknown -> "")
+                  ("$chefTitel", employer.degree)
+                  ("$chefVorname", employer.firstName)
+                  ("$chefNachname", employer.lastName)
+                  ("$chefEmail", employer.email)
+                  ("$chefTelefon", employer.phone)
+                  ("$chefMobil", employer.mobilePhone)
+                  ("$meinGeschlecht", userValues.gender.ToString())
+                  ("$meinTitel", userValues.degree)
+                  ("$meinVorname", userValues.firstName)
+                  ("$meinNachname", userValues.lastName)
+                  ("$meineStrasse", userValues.street)
+                  ("$meinePlz", userValues.postcode)
+                  ("$meineStadt", userValues.city)
+                  ("$meineEmail", userEmail)
+                  ("$meinMobilTelefon", userValues.mobilePhone)
+                  ("$meineTelefonnr", userValues.phone)
+                  ("$datumHeute", DateTime.Today.ToString("dd.MM.yyyy"))
+                ]
+        }
 
+    [<Remote>]
+    let replaceVariables (filePath : string) (userValues : UserValues) (employer : Employer) (document : Document)=
+        match getCurrentUserId() |> Async.RunSynchronously with
+        | Some userId ->
+            async {
+                let! userEmail = getEmailByUserId userId
+                let guid = Guid.NewGuid().ToString("N")
+                let! map = replaceMap (userEmail |> Option.defaultValue "") userValues employer document
+                let fullPath = sprintf "Users/%i/%i/%s" userId document.id filePath
+                Directory.CreateDirectory(sprintf "tmp/%s" guid) |> ignore
+                if filePath.EndsWith(".odt") || filePath.EndsWith(".docx")
+                then
+                    return Odt.replaceInOdt fullPath (sprintf "tmp/%s/extracted/" guid) (sprintf "tmp/%s/replaced/" guid) map
+                else
+                    let newFilePath = sprintf "tmp/%s/%s" guid (Path.GetFileName(filePath))
+                    File.Copy(fullPath, newFilePath, true)
+                    Odt.replaceInFile newFilePath map
+                    return newFilePath
+            }
+
+        | None -> async { return "" }
+         
 
 
     [<Remote>]
@@ -538,11 +591,11 @@ module Server =
         }
     
     [<Remote>]
-    let createLink filePath documentId =
+    let createLink filePath =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.createLink dbConn filePath documentId
+            return Database.createLink dbConn filePath
         }
 
     [<Remote>]
@@ -554,9 +607,19 @@ module Server =
         }
 
     [<Remote>]
-    let deleteLink documentId guid =
+    let deleteLink guid =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            Database.deleteLink dbConn documentId guid
+            Database.deleteLink dbConn guid
+        }
+
+    [<Remote>]
+    let getFullPath fileName documentId =
+        let oUserId = getCurrentUserId() |> Async.RunSynchronously
+        async {
+            match oUserId with
+            | Some userId ->
+                return sprintf "Users/%i/%i/%s" userId documentId fileName
+            | None -> return failwith "Nobody is logged in"
         }

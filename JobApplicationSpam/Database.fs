@@ -577,27 +577,22 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("documentIndex", documentIndex)) |> ignore
         command.ExecuteScalar() |> string |> Int32.Parse
 
-    let createLink dbConn (filePath : string) (documentId : int) =
+    let createLink dbConn (filePath : string) =
         let guid = Guid.NewGuid().ToString()
-        use command = new NpgsqlCommand("insert into link (path, documentId, guid) values(:path, :documentId, :guid)", dbConn)
+        use command = new NpgsqlCommand("insert into link (path, guid) values(:path, :guid)", dbConn)
         command.Parameters.Add(new NpgsqlParameter("path", filePath)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("guid", guid)) |> ignore
         command.ExecuteNonQuery() |> ignore
         guid
 
 
     let getFilePathByGuid dbConn (guid : string) =
-        use command = new NpgsqlCommand("select path, documentId from link where guid = :guid limit 1", dbConn)
+        use command = new NpgsqlCommand("select path from link where guid = :guid limit 1", dbConn)
         command.Parameters.Add(new NpgsqlParameter("guid", guid)) |> ignore
-        use reader = command.ExecuteReader()
-        if reader.Read() && not <| reader.IsDBNull(0)
-        then reader.GetString(0), reader.GetInt32(1)
-        else "", 0
+        command.ExecuteScalar() |> string
 
-    let deleteLink dbConn (documentId : int) (guid : string) =
-        use command = new NpgsqlCommand("delete from link where (documentId, guid) = (:documentId, guid)", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+    let deleteLink dbConn (guid : string) =
+        use command = new NpgsqlCommand("delete from link where guid = :guid", dbConn)
         command.Parameters.Add(new NpgsqlParameter("guid", guid)) |> ignore
         command.ExecuteNonQuery() |> ignore
 

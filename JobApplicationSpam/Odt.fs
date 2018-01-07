@@ -12,7 +12,7 @@ module Odt =
     let private replaceAll text map =
         List.fold (fun (state:string) (k: string, v: string) -> state.Replace(k, v)) text map
 
-    let private replaceInFile path map =
+    let replaceInFile path map =
         let content = File.ReadAllText(path)
         let replacedText = replaceAll content map
         File.WriteAllText(path, replacedText)

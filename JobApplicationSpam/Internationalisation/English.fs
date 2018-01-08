@@ -52,4 +52,6 @@ module English =
           AppliedOnDate, "Applied on"
           TheEmailOfYourEmployerDoesNotLookValid, "The email of your employer does not look valid."
           FieldIsRequired, """Field "{0}" must not be empty."""
+          SorryAnErrorOccurred, "Sorry, an error occurred."
+          YourApplicationHasNotBeenSent, "\nYour application has not been sent :-("
         ]

@@ -644,6 +644,38 @@ module Database =
         command.ExecuteNonQuery() |> ignore
         guid
 
+    let getDeletableFilePaths dbConn (documentId : int) =
+        use command =
+            new NpgsqlCommand(
+                """select f1.path
+                   from filepage f1
+                   where f1.documentid = :documentId
+                   and not exists
+                     (select f2.path
+                      from filepage f2
+                      where f1.path = f2.path
+                      and f1.id <> f2.id)"""
+             , dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        use reader = command.ExecuteReader()
+        [ while reader.Read() do
+            yield reader.GetString(0)
+        ]
+
+    let deleteDeletableDocumentFilePages dbConn (documentId : int) =
+        use command =
+            new NpgsqlCommand(
+                """delete from filepage f1
+                   where f1.documentid = :documentId
+                   and not exists
+                     (select f2.path
+                      from filepage f2
+                      where f1.path = f2.path
+                      and f1.id <> f2.id)"""
+             , dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        command.ExecuteNonQuery()
+
 
     let getFilePathByGuid dbConn (guid : string) =
         use command = new NpgsqlCommand("select path from link where guid = :guid limit 1", dbConn)

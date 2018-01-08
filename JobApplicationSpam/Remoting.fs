@@ -301,6 +301,10 @@ module Server =
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
             Database.deleteDocument dbConn documentId
+            let filePaths = Database.getDeletableFilePaths dbConn documentId
+            for filePath in filePaths do
+                File.Delete filePath
+            Database.deleteDeletableDocumentFilePages dbConn documentId |> ignore
         }
 
     [<Remote>]
@@ -367,7 +371,7 @@ module Server =
                 else
                     let newFilePath = sprintf "tmp/%s/%s" guid (Path.GetFileName(filePath))
                     File.Copy(fullPath, newFilePath, true)
-                    Odt.replaceInFile newFilePath map
+                    Odt.replaceInFile newFilePath map Ignore
                     return newFilePath
             }
 
@@ -435,6 +439,7 @@ module Server =
                                         Odt.replaceInFile
                                             copiedPath
                                             myList
+                                            Ignore
                                         copiedPath
                         ]
                     let pdfPaths =

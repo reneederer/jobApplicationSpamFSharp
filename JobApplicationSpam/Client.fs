@@ -548,6 +548,7 @@ module Client =
                         faEl.AddClass("fa-spinner fa-spin") |> ignore
                         )
                     btnLoadFromWebsite.Prop("disabled", true) |> ignore
+                    JQuery("#divJobApplicationContent").Find("input,textarea,button,select").Prop("disabled", true) |> ignore
 
                     let! applyResult = Server.applyNow varEmployer.Value varDocument.Value varUserValues.Value
 
@@ -557,10 +558,11 @@ module Client =
                         faEl.RemoveClass("fa-spinner fa-spin") |> ignore
                     )
                     btnLoadFromWebsite.Prop("disabled", false) |> ignore
+                    JQuery("#divJobApplicationContent").Find("input,textarea,button,select").Prop("disabled", false) |> ignore
                     match applyResult with
                     | Bad xs ->
                         do! Async.Sleep 700
-                        JS.Alert("Sorry, an error occurred.\nYour application has not been sent :-(")
+                        JS.Alert(t SorryAnErrorOccurred + "\n" + t YourApplicationHasNotBeenSent)
                     | Ok _ ->
                         buttons
                         |> List.iter (fun (bEl, faEl) ->
@@ -638,9 +640,12 @@ module Client =
             do! fillDocumentValues()
         } |> Async.Start
 
-        div
+        divAttr
+          [ attr.id "divJobApplicationContent"
+          ]
           [ divAttr
-              [ attr.style "width : 100%" ]
+              [ attr.style "width : 100%"
+              ]
               [ h4 [text (t YourApplicationDocuments)]
                 selectAttr
                   [ attr.id "slctDocumentName";

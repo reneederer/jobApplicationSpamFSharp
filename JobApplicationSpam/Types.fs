@@ -212,3 +212,5 @@ module Types =
         | AppliedOnDate
         | TheEmailOfYourEmployerDoesNotLookValid
         | FieldIsRequired
+        | SorryAnErrorOccurred
+        | YourApplicationHasNotBeenSent

@@ -52,6 +52,8 @@ module Deutsch =
           AppliedOnDate, "Beworben am"
           TheEmailOfYourEmployerDoesNotLookValid, "Die Email-Adresse des Arbeitgeber scheint fehlerhaft zu sein."
           FieldIsRequired, """Feld "{0}" darf nicht leer sein."""
+          SorryAnErrorOccurred, "Entschuldigung, es ist ein Fehler aufgetreten."
+          YourApplicationHasNotBeenSent, "Deine Bewerbung konnte nicht versendet werden :-("
         ]
 
 

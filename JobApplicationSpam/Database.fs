@@ -10,6 +10,7 @@ module Database =
     open System.Reflection
     open System.IO
     open NpgsqlTypes
+    open WebSharper.Sitelets.Http
 
     let log = LogManager.GetLogger(MethodBase.GetCurrentMethod().GetType())
 
@@ -78,7 +79,7 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("street", employer.street)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("postcode", employer.postcode)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("city", employer.city)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("gender", if employer.gender = Gender.Male then 'm' else 'f')) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("gender", employer.gender.ToString())) |> ignore
         command.Parameters.Add(new NpgsqlParameter("degree", employer.degree)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("firstName", employer.firstName)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("lastName", employer.lastName)) |> ignore
@@ -224,26 +225,53 @@ module Database =
             failwith <| "Email does not exist or guid was already null: " + email
         log.Debug(sprintf "%s = ()" email)
 
-    let insertSentApplication (dbConn : NpgsqlConnection) (userId : int) (employerId : int) (documentId : int) = //TODO
-        log.Debug(sprintf "%i %i %i" userId employerId documentId)
-        use command = new NpgsqlCommand("insert into sentApplication(userId, employerId, documentId) values(:userId, :employerId, :documentId) returning id", dbConn)
+    let insertSentApplication (dbConn : NpgsqlConnection) (userId : int) (employerId : int) (applyAs : string) =
+        log.Debug(sprintf "%i %i %s" userId employerId applyAs)
+        use command = new NpgsqlCommand("insert into sentApplication(userId, employerId, appliedAs) values(:userId, :employerId, :appliedAs) returning id", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("employerId", employerId)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("appliedAs", applyAs)) |> ignore
         let sentApplicationId = command.ExecuteScalar() |> string |> Int32.Parse
         command.Dispose()
 
         use command =
             new NpgsqlCommand(
                 """insert into sentStatus(sentApplicationId, statusChangedOn, dueOn, sentStatusValueId, statusMessage)
-                values(:sentApplicationId, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 1, '') """, dbConn)
+                values(:sentApplicationId, current_date, null, 1, '') """, dbConn)
         command.Parameters.Add(new NpgsqlParameter("sentApplicationId", sentApplicationId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("employerId", employerId)) |> ignore
         command.ExecuteNonQuery() |> ignore
         command.Dispose()
-        log.Debug(sprintf "%i %i %i = ()" userId employerId documentId)
+        log.Debug(sprintf "%i %i %s = ()" userId employerId applyAs)
 
+    let getSentApplications (dbConn : NpgsqlConnection) (userId : int) (startDate : DateTime) (endDate : DateTime) =
+        log.Debug(sprintf "%i %s %s" userId (startDate.Date.ToString()) (endDate.Date.ToString()))
+        use command =
+            new NpgsqlCommand(
+                """select company, appliedAs, statusChangedOn
+                   from sentApplication
+                   join sentStatus
+                     on sentApplication.id = sentStatus.sentApplicationId
+                   join employer
+                     on employer.id = sentApplication.employerId
+                   where sentApplication.userId = :userId
+                     and sentStatusValueId = 1
+                   """
+                , dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        use reader = command.ExecuteReader()
+        let sentApplications =
+            [ while reader.Read() do
+                let statusChangedDate = reader.GetDate(2)
+                yield
+                  { companyName = reader.GetString(0)
+                    appliedAs = reader.GetString(1)
+                    statusChangedOn = DateTime(statusChangedDate.Year, statusChangedDate.Month, statusChangedDate.Day)
+                  }
+            ]
+        log.Debug(sprintf "%i %s %s = %A" userId (startDate.Date.ToString()) (endDate.Date.ToString()) sentApplications)
+        sentApplications
 
     let overwriteDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) =
         if document.id <> 1
@@ -396,7 +424,7 @@ module Database =
     let getDocument (dbConn : NpgsqlConnection) (documentId : int) =
         use command =
             new NpgsqlCommand(
-                """select d.name, email.subject, email.body
+                """select d.name, d.jobName, email.subject, email.body
                 from document d
                 join documentEmail email on d.id = email.documentId
                 where d.id = :documentId""", dbConn)
@@ -404,7 +432,7 @@ module Database =
         use reader = command.ExecuteReader()
         reader.Read() |> ignore
         let documentName = reader.GetString(0)
-        let emailSubject, emailBody = reader.GetString(1), reader.GetString(2)
+        let jobName, emailSubject, emailBody = reader.GetString(1), reader.GetString(2), reader.GetString(3)
         reader.Dispose()
         command.Dispose()
 
@@ -461,6 +489,7 @@ module Database =
           name = documentName
           pages = (htmlPages @ filePages) |> List.sortBy (fun x -> x.PageIndex())
           email = {subject = emailSubject; body = emailBody}
+          jobName = jobName
         }
     
     let getDocumentOffset (dbConn : NpgsqlConnection) (userId : int) (documentOffset : int) =

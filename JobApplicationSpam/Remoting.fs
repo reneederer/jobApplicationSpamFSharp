@@ -343,6 +343,7 @@ module Server =
                   ("$meinMobilTelefon", userValues.mobilePhone)
                   ("$meineTelefonnr", userValues.phone)
                   ("$datumHeute", DateTime.Today.ToString("dd.MM.yyyy"))
+                  ("$jobName", document.jobName)
                 ]
         }
 
@@ -375,7 +376,7 @@ module Server =
         let oUserId = getCurrentUserId() |> Async.RunSynchronously
         async {
             match oUserId with 
-            | None -> failwith "No user logged in"
+            | None -> return failwith "No user logged in"
             | Some userId ->
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
@@ -383,7 +384,7 @@ module Server =
                 try
                     let documentId = Database.overwriteDocument dbConn document userId
                     let employerId = Database.addEmployer dbConn employer userId
-                    Database.insertSentApplication dbConn userId employerId documentId
+                    Database.insertSentApplication dbConn userId employerId document.jobName
                     let userEmail = Database.getEmailByUserId dbConn userId |> Option.defaultValue ""
                     Database.setUserValues dbConn userValues userId |> ignore
                     let! myList = replaceMap userEmail userValues employer document
@@ -438,6 +439,7 @@ module Server =
                         ]
                     let mergedPdfPath = Path.Combine(tmpPath, (sprintf "Bewerbung_%s_%s.pdf" userValues.firstName userValues.lastName))
                     Odt.mergePdfs pdfPaths mergedPdfPath
+                    (*
                     sendEmail
                         userEmail
                         (userValues.firstName + " " + userValues.lastName)
@@ -445,11 +447,14 @@ module Server =
                         (Odt.replaceInString document.email.subject myList)
                         (Odt.replaceInString (document.email.body.Replace("\\r\\n", "\r\n").Replace("\\n", "\n")) myList)
                         [mergedPdfPath, sprintf "Bewerbung_%s_%s.pdf" userValues.firstName userValues.lastName]
+                        *)
                     transaction.Commit()
+                    return ok ()
                 with
                 | e ->
                     log.Error ("", e)
                     transaction.Rollback()
+                    return fail "Couldn't send the application"
         }
 
     [<Remote>]
@@ -515,41 +520,6 @@ module Server =
             return Database.setLastEditedDocumentId dbConn userId documentId
         }
 
-    [<Remote>]
-    let valuesMap userValues employer =
-        let oUserId = getCurrentUserId() |> Async.RunSynchronously
-        match oUserId with
-        | None -> failwith "No user logged in"
-        | Some userId ->
-            async {
-                let! userEmail = (getEmailByUserId userId)
-                return
-                  [ "$firmaName", employer.company
-                    "$firmaStrasse", employer.street
-                    "$firmaPlz", employer.postcode
-                    "$firmaStadt", employer.city
-                    "$chefAnredeBriefkopf", match employer.gender with Gender.Male -> "Herrn" | Gender.Female -> "Frau" | Gender.Unknown -> ""
-                    "$chefAnrede", employer.gender.ToString()
-                    "$geehrter", match employer.gender with Gender.Male -> "geehrter" | Gender.Female -> "geehrte" | Gender.Unknown -> ""
-                    "$chefTitel", employer.degree
-                    "$chefVorname", employer.firstName
-                    "$chefNachname", employer.lastName
-                    "$chefEmail", employer.email
-                    "$chefTelefon", employer.phone
-                    "$chefMobil", employer.mobilePhone
-                    "$meinGeschlecht", userValues.gender.ToString()
-                    "$meinTitel", userValues.degree
-                    "$meinVorname", userValues.firstName
-                    "$meinNachname", userValues.lastName
-                    "$meineStrasse", userValues.street
-                    "$meinePlz", userValues.postcode
-                    "$meineStadt", userValues.city
-                    "$meineEmail", userEmail |> Option.get
-                    "$meinMobilTelefon", userValues.mobilePhone
-                    "$meineTelefonnr", userValues.phone
-                    "$datumHeute", DateTime.Today.ToString("dd.MM.yyyy")
-                ]
-            }
 
     [<Remote>]
     let addNewDocument name =
@@ -627,3 +597,17 @@ module Server =
                 return sprintf "Users/%i/%i/%s" userId documentId fileName
             | None -> return failwith "Nobody is logged in"
         }
+
+    [<Remote>]
+    let getSentApplications (startDate : DateTime) (endDate : DateTime) =
+        let oUserId = getCurrentUserId() |> Async.RunSynchronously
+        async {
+            match oUserId with
+            | Some userId ->
+                use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+                dbConn.Open()
+                return Database.getSentApplications dbConn userId startDate endDate
+            | None -> 
+                return failwith "Nobody is logged in"
+        }
+

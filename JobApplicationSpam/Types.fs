@@ -5,6 +5,7 @@ module Types =
     open log4net
     open log4net.Core
     open WebSharper.Core.ContentTypes.Text
+    open System
 
     [<WebSharper.JavaScript>]
     type Gender =
@@ -119,6 +120,7 @@ module Types =
           name : string
           pages : list<DocumentPage>
           email : DocumentEmail
+          jobName : string
         }
 
     [<WebSharper.JavaScript>]
@@ -132,6 +134,12 @@ module Types =
     type PageDB =
         { name : string
         ; oTemplateId : option<int>
+        }
+    
+    type SentApplication =
+        { companyName : string
+          appliedAs : string
+          statusChangedOn : DateTime
         }
     
     [<WebSharper.JavaScript>]
@@ -194,3 +202,7 @@ module Types =
         | PleaseConfirmYourEmailAddressEmailBody
         | Login
         | Register
+        | SentApplications
+        | JobName
+        | AppliedAs
+        | AppliedOnDate

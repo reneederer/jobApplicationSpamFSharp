@@ -44,6 +44,10 @@ module English =
           ReallyDeleteDocument, """Really delete document "{0}"?"""
           PleaseConfirmYourEmailAddressEmailSubject, "Please confirm your email address"
           PleaseConfirmYourEmailAddressEmailBody, "Dear user,\n\nplease visit this link to confirm your email address.\nhttp://bewerbungsspam.de/confirmemail?email={0}&guid={1}\nPlease excuse the inconvenience.\n\nYour team from www.bewerbungsspam.de"
-          Login, "Einloggen"
-          Register, "Registrieren"
+          Login, "Login"
+          Register, "Register"
+          SentApplications, "Sent applications"
+          JobName, "Apply as"
+          AppliedAs, "Applied as"
+          AppliedOnDate, "Applied on"
         ]

@@ -90,12 +90,13 @@ module Client =
 
     [<JavaScript>]
     let templates () = 
-        let varDocument = Var.Create {name="";id=0;pages=[];email={subject="";body=""}}
+        let varDocument = Var.Create {name="";id=0;pages=[];email={subject="";body=""};jobName=""}
         let varUserValues : Var<UserValues> = Var.Create<UserValues>({gender=Gender.Female;degree="";firstName="";lastName="";street="";postcode="";city="";phone="";mobilePhone=""})
         let varUserEmail = Var.CreateWaiting<string>()
         let varEmployer = Var.Create<Employer>({company="";gender=Gender.Unknown;degree="";firstName="";lastName="";street="";postcode="";city="";email="";phone="";mobilePhone=""})
         let varDisplayedDocument = Var.Create(div [] :> Doc)
         let varLanguage = Var.Create English
+        let varDivSentApplications = Var.Create(div [] :> Doc)
 
         let getCurrentPageIndex () =
             let index = JQuery("#divAttachmentButtons").Find(".mainButton").Index(JQuery(".active")) + 1
@@ -111,6 +112,36 @@ module Client =
             JS.Document.Cookie <- JS.Document.Cookie + ";language=" + language.ToString()
 
         
+        let getSentApplications () =
+            async {
+                let! sentApplications = Server.getSentApplications DateTime.Now DateTime.Now
+                varDivSentApplications.Value <-
+                    tableAttr
+                      [ attr.style "border-spacing: 10px; border-collapse: separate" ]
+                      [ thead
+                          [ tr
+                              [ th [ text (t CompanyName) ]
+                                th [ text (t JobName) ]
+                                th [ text (t AppliedOnDate) ]
+                              ]
+                          ]
+                        tbody
+                          [ for app in sentApplications do
+                               yield!
+                                 [ tr
+                                     [ td
+                                         [ text app.companyName ]
+                                       td
+                                         [ text app.appliedAs ]
+                                       td
+                                         [ text (sprintf "%02i.%02i.%04i" app.statusChangedOn.Day app.statusChangedOn.Month app.statusChangedOn.Year) ]
+                                     ]
+                                   :> Doc
+                                 ]
+                          ]
+                      ]
+            }
+        
 
 
         let createInputWithColumnSizes column1Size column2Size labelText dataBind (validFun : string -> (bool * string)) =
@@ -125,6 +156,7 @@ module Client =
                     [ attr.id dataBind
                       attr.``data-`` "bind" dataBind
                       attr.``class`` "form-control"
+                      attr.``type`` "text"
                       on.blur (fun el _ ->
                         let (valid, textInvalid) = validFun el?value
                         if valid
@@ -172,7 +204,7 @@ module Client =
                             attr.name radioGroup
                             attr.value value
                             attr.``data-`` "bind" bind
-                            attr.``checked`` ``checked``
+                            attr.``checked`` "checked"
                           ]
                           []
                         labelAttr
@@ -244,6 +276,7 @@ module Client =
                           "bossMobilePhone", ("text", (fun () -> varEmployer.Value.mobilePhone), (fun v -> varEmployer.Value <- { varEmployer.Value with mobilePhone = v }))
                           "emailSubject", ("text", (fun () -> varDocument.Value.email.subject), (fun v -> varDocument.Value <- { varDocument.Value with email = { varDocument.Value.email with subject = v} }))
                           "emailBody", ("text", (fun () -> varDocument.Value.email.body), (fun v -> varDocument.Value <- { varDocument.Value with email = {varDocument.Value.email with body  = v } }))
+                          "jobName", ("text", (fun () -> varDocument.Value.jobName), (fun v -> varDocument.Value <- { varDocument.Value with jobName = v }))
                         ]
                         |> Map.ofList
                     
@@ -338,6 +371,7 @@ module Client =
               "divDisplayedDocument"
               "divAttachments"
               "divUploadedFileDownload"
+              "divSentApplications"
             ]
         
         let show (elIds : list<string>) =
@@ -346,8 +380,6 @@ module Client =
             for hideElId in showHideMutualElements do
                 if not <| List.contains hideElId elIds
                 then JS.Document.GetElementById(hideElId)?style?display <- "none"
-            
-
 
         let setDocument () =
             async {
@@ -358,7 +390,7 @@ module Client =
                     varDocument.Value <- document
                     JS.Document.GetElementById("hiddenDocumentId")?value <- varDocument.Value.id |> string
                 | None ->
-                    varDocument.Value <- {id=0;name="";pages=[];email={subject="";body=""}}
+                    varDocument.Value <- {id=0;name="";pages=[];email={subject="";body=""};jobName=""}
             }
         
 
@@ -491,6 +523,47 @@ module Client =
             optionEl.TextContent <- value
             el?add(optionEl)
 
+        let btnApplyNowClicked () =
+            async {
+                let buttons =
+                    [ (JQuery("#btnApplyNowBottom"), JQuery("#faBtnApplyNowBottom"))
+                      (JQuery("#btnApplyNowTop"), JQuery("#faBtnApplyNowTop"))
+                    ]
+                buttons
+                |> List.iter (fun (bEl, faEl) ->
+                    bEl.Prop("disabled", true) |> ignore
+                    faEl.Css("color", "black") |> ignore
+                    faEl.AddClass("fa-spinner fa-spin") |> ignore
+                )
+
+                let! applyResult = Server.applyNow varEmployer.Value varDocument.Value varUserValues.Value
+
+                buttons
+                |> List.iter (fun (bEl, faEl) ->
+                    bEl.Prop("disabled", false) |> ignore
+                    faEl.RemoveClass("fa-spinner fa-spin") |> ignore
+                )
+                match applyResult with
+                | Bad xs ->
+                    do! Async.Sleep 700
+                    JS.Alert("Sorry, an error occurred.\nYour application has not been sent :-(")
+                | Ok _ ->
+                    buttons
+                    |> List.iter (fun (bEl, faEl) ->
+                        faEl.Css("color", "#08a81b") |> ignore
+                        faEl.AddClass("fa-check") |> ignore
+                    )
+
+                    JQuery("#divAddEmployer input[type='text'][data-bind]").Val("") |> ignore
+                    JQuery("#divAddEmployer input[type='radio'][data-bind='bossGender'][value='u']").Prop("checked", "checked") |> ignore
+
+                    do! Async.Sleep 3500
+
+                    buttons
+                    |> List.iter (fun (bEl, faEl) ->
+                        faEl.RemoveClass("fa-check") |> ignore
+                    )
+            }
             
         async {
             (*
@@ -506,6 +579,12 @@ module Client =
                 let li = JQuery(sprintf """<li><button class="btnLikeLink1">%s</button></li>""" entry).On("click", f)
                 JQuery(divMenu).Append(li)
 
+            addMenuEntry (t SentApplications) (fun _ _ ->
+                async {
+                    do! getSentApplications()
+                    show ["divSentApplications"]
+                } |> Async.Start
+            ) |> ignore
             addMenuEntry (t EditYourValues) (fun _ _ -> show ["divEditUserValues"]) |> ignore
             addMenuEntry (t EditEmail) (fun _ _ -> show ["divEmail"]) |> ignore
             addMenuEntry (t EditAttachments) (fun _ _ -> show ["divAttachments"]) |> ignore
@@ -513,7 +592,6 @@ module Client =
 
             let! userEmail = Server.getCurrentUserEmail()
             varUserEmail.Value <- userEmail
-            JS.Alert("courrent!")
         
             let! userValues = Server.getCurrentUserValues()
             varUserValues.Value <- userValues
@@ -590,7 +668,7 @@ module Client =
                                 if slctEl?length = 0
                                 then
                                     el?style?display <- "none"
-                                    varDocument.Value <- {name="";id=0;pages=[];email={subject="";body=""}}
+                                    varDocument.Value <- {name="";id=0;pages=[];email={subject="";body=""};jobName=""}
                                 do! setDocument()
                                 do! setPageButtons()
                                 do! fillDocumentValues()
@@ -846,7 +924,15 @@ module Client =
                     text "$meineTelefonnr"
                     br []
                     text "$datumHeute"
+                    br []
+                    text "$jobName"
                   ]
+              ]
+            divAttr
+              [ attr.id "divSentApplications"
+                attr.style "display: none"
+              ]
+              [ Doc.EmbedView varDivSentApplications.View
               ]
             divAttr
               [ attr.id "divEditUserValues"; attr.style "display: none" ]
@@ -869,7 +955,8 @@ module Client =
               [ attr.id "divAddEmployer"
                 attr.style "display: none"
               ]
-              [ h4 [text (t Employer)]
+              [ createInput (t JobName) "jobName" (fun (s : string) -> s <> "", "This field is required")
+                h4 [text (t Employer)]
                 divAttr
                   [ attr.``class`` "form-group row" ]
                   [ divAttr
@@ -909,17 +996,27 @@ module Client =
                       ]
                       [ buttonAttr
                           [ attr.``type`` "button"
-                            attr.``class`` "btn-block"
-                            on.click (fun _ _ -> Server.applyNow varEmployer.Value varDocument.Value varUserValues.Value |> Async.Start)
+                            attr.``class`` "btnLikeLink btn-block"
+                            attr.style "min-height: 40px; font-size: 20px"
+                            attr.id "btnApplyNowTop"
+                            on.click (fun _ _ ->
+                              btnApplyNowClicked () |> Async.Start
+                            )
                           ]
-                          [ text (t ApplyNow)
+                          [ iAttr
+                              [ attr.``class`` "fa fa-icon"
+                                attr.id "faBtnApplyNowTop"
+                                attr.style "color: #08a81b; margin-right: 10px"
+                              ]
+                              []
+                            text <| t ApplyNow
                           ]
                       ]
                   ]
                 createInput (t CompanyName) "company" (fun (s : string) -> s <> "", "This field is required")
-                createInput (t Street) "companyStreet" (fun (s : string) -> s <> "", "This field is required")
-                createInput (t Postcode) "companyPostcode" (fun (s : string) -> s <> "", "This field is required")
-                createInput (t City) "companyCity" (fun (s : string) -> s <> "", "This field is required")
+                createInput (t Street) "companyStreet" (fun (s : string) -> true, "")
+                createInput (t Postcode) "companyPostcode" (fun (s : string) -> true, "")
+                createInput (t City) "companyCity" (fun (s : string) -> true, "")
                 createRadio
                     (t Gender)
                     [ (t Male), "bossGender", "m", ""
@@ -927,16 +1024,28 @@ module Client =
                       (t UnknownGender), "bossGender", "u", "checked"
                     ]
                 createInput (t Degree) "bossDegree" (fun s -> true, "")
-                createInput (t FirstName) "bossFirstName" (fun s -> s <> "", "This field is required")
-                createInput (t LastName) "bossLastName" (fun (s : string) -> s <> "", "This field is required")
+                createInput (t FirstName) "bossFirstName" (fun s -> true, "")
+                createInput (t LastName) "bossLastName" (fun (s : string) -> true, "")
                 createInput (t Email) "bossEmail" (fun (s : string) -> s <> "", "This field is required")
                 createInput (t Phone) "bossPhone" (fun s -> true, "")
                 createInput (t MobilePhone) "bossMobilePhone" (fun s -> true, "")
-                inputAttr
+                buttonAttr
                   [ attr.``type`` "button"
                     attr.``class`` "btnLikeLink btn-block"
-                    attr.value (t ApplyNow)
-                    on.click (fun _ _ -> Server.applyNow varEmployer.Value varDocument.Value varUserValues.Value |> Async.Start)] []
+                    attr.style "min-height: 40px; font-size: 20px"
+                    attr.id "btnApplyNowBottom"
+                    on.click (fun _ _ ->
+                         btnApplyNowClicked () |> Async.Start
+                    )
+                  ]
+                  [ iAttr
+                      [ attr.``class`` "fa fa-icon"
+                        attr.id "faBtnApplyNowBottom"
+                        attr.style "color: #08a81b; margin-right: 10px"
+                      ]
+                      []
+                    text <| t ApplyNow
+                  ]
               ]
           ]
 

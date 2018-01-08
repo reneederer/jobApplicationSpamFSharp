@@ -148,9 +148,8 @@ module Site =
             ctx.Request.Files
             |> Seq.iteri
                 (fun i (x : HttpPostedFileBase) ->
-                    if x.FileName <> ""
+                    if x.FileName <> "" && x.ContentLength < 5000000
                     then
-                        failwith <| x.ContentLength.ToString()
                         let fileName =
                             if File.Exists(Path.Combine(dir, x.FileName))
                             then

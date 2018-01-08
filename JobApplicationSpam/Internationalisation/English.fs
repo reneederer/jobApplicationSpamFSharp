@@ -50,4 +50,6 @@ module English =
           JobName, "Apply as"
           AppliedAs, "Applied as"
           AppliedOnDate, "Applied on"
+          TheEmailOfYourEmployerDoesNotLookValid, "The email of your employer does not look valid."
+          FieldIsRequired, """Field "{0}" must not be empty."""
         ]

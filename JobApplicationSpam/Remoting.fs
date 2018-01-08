@@ -324,7 +324,7 @@ module Server =
                   ("$firmaPlz", employer.postcode)
                   ("$firmaStadt", employer.city)
                   ("$chefAnredeBriefkopf", match employer.gender with Gender.Male -> "Herrn" | Gender.Female -> "Frau" | Gender.Unknown -> "")
-                  ("$chefAnrede", employer.gender.ToString())
+                  ("$chefAnrede", match employer.gender with Gender.Male -> "Herr" | Gender.Female -> "Frau" | Gender.Unknown -> "")
                   ("$geehrter", match employer.gender with Gender.Male -> "geehrter" | Gender.Female -> "geehrte" | Gender.Unknown -> "")
                   ("$chefTitel", employer.degree)
                   ("$chefVorname", employer.firstName)
@@ -338,12 +338,16 @@ module Server =
                   ("$meinNachname", userValues.lastName)
                   ("$meineStrasse", userValues.street)
                   ("$meinePlz", userValues.postcode)
+                  ("$meinePostleitzahl", userValues.postcode)
                   ("$meineStadt", userValues.city)
                   ("$meineEmail", userEmail)
+                  ("$meineTelefonnummer", userValues.phone)
+                  ("$meinTelefon", userValues.phone)
                   ("$meinMobilTelefon", userValues.mobilePhone)
-                  ("$meineTelefonnr", userValues.phone)
+                  ("$meineMobilnummer", userValues.mobilePhone)
+                  ("$meineMobilnr", userValues.mobilePhone)
                   ("$datumHeute", DateTime.Today.ToString("dd.MM.yyyy"))
-                  ("$jobName", document.jobName)
+                  ("$beruf", document.jobName)
                 ]
         }
 
@@ -438,16 +442,17 @@ module Server =
                             yield Odt.odtToPdf odtPath
                         ]
                     let mergedPdfPath = Path.Combine(tmpPath, (sprintf "Bewerbung_%s_%s.pdf" userValues.firstName userValues.lastName))
-                    Odt.mergePdfs pdfPaths mergedPdfPath
-                    (*
+                    if pdfPaths <> [] then Odt.mergePdfs pdfPaths mergedPdfPath
                     sendEmail
                         userEmail
                         (userValues.firstName + " " + userValues.lastName)
                         "rene.ederer.nbg@gmail.com" //employer.email
-                        (Odt.replaceInString document.email.subject myList)
-                        (Odt.replaceInString (document.email.body.Replace("\\r\\n", "\r\n").Replace("\\n", "\n")) myList)
-                        [mergedPdfPath, sprintf "Bewerbung_%s_%s.pdf" userValues.firstName userValues.lastName]
-                        *)
+                        (Odt.replaceInString document.email.subject myList Ignore)
+                        (Odt.replaceInString (document.email.body.Replace("\\r\\n", "\r\n").Replace("\\n", "\n")) myList Ignore)
+                        (if pdfPaths = []
+                         then []
+                         else [mergedPdfPath, sprintf "Bewerbung_%s_%s.pdf" userValues.firstName userValues.lastName]
+                         )
                     transaction.Commit()
                     return ok ()
                 with

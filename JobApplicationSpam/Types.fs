@@ -157,6 +157,10 @@ module Types =
             | English -> "english"
             | Deutsch -> "deutsch"
 
+    type EmptyTextTagAction =
+    | Replace
+    | Ignore
+
     [<WebSharper.JavaScript>]
     type Word =
         | AddEmployerAndApply
@@ -206,3 +210,5 @@ module Types =
         | JobName
         | AppliedAs
         | AppliedOnDate
+        | TheEmailOfYourEmployerDoesNotLookValid
+        | FieldIsRequired

@@ -50,6 +50,8 @@ module Deutsch =
           JobName, "Bewerben als"
           AppliedAs, "Beworben als"
           AppliedOnDate, "Beworben am"
+          TheEmailOfYourEmployerDoesNotLookValid, "Die Email-Adresse des Arbeitgeber scheint fehlerhaft zu sein."
+          FieldIsRequired, """Feld "{0}" darf nicht leer sein."""
         ]
 
 

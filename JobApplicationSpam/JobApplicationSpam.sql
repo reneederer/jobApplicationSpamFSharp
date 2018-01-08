@@ -110,7 +110,7 @@ hallo div!</div>
 insert into htmlPageTemplate(name, odtPath, html) values('Lebenslauf', 'c:/users/rene/desktop/bewerbung_lebenslauf.odt', '<div id="insertDiv"><b>Lebenslauf...</b></div>');
 insert into document(userId, name, jobName) values(1, 'mein htmlTemplate', 'Fachinformatiker');
 insert into document(userId, name, jobName) values(1, 'mein zweites htmlTemplate', 'Automechaniker');
-insert into documentEmail(documentId, subject, body) values(1, 'Bewerbung als $beruf', 'Sehr $meinNachname \n$meineStrasse\n$chefAnrede<br>$chefNachname\nmit');
+insert into documentEmail(documentId, subject, body) values(1, 'Bewerbung als $beruf', 'Sehr $geehrter $chefAnrede $chefTitel $chefNachname,\n\nanbei sende ich Ihnen meine Bewerbungsunterlagen.\nÜber eine Einladung zu einem Bewerbungsgespräch freue ich mich sehr.\n\nMit freundlichen Grüßen\n\n\n$meinTitel $meinVorname $meinNachname\n$meineStrasse\n$meinePlz $meineStadt\n$meineMobilnummer');
 insert into documentEmail(documentId, subject, body) values(2, 'titel2', 'body2');
 insert into filePage(documentId, path, pageIndex, name) values(1, 'bewerbung_neu.odt', 1, 'Anschreiben');
 insert into filePage(documentId, path, pageIndex, name) values(1, 'labenwolf_zeugnis_small.pdf', 2, 'Labenwolf Zeugnis');

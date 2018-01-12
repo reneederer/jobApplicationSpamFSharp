@@ -208,7 +208,7 @@ module Server =
             else
                 let salt = generateSalt(64)
                 let hashedPassword = generateHash password1 salt 1000 64
-                let guid = Guid.NewGuid().ToString()
+                let guid = Guid.NewGuid().ToString("N")
                 let dict = Deutsch.dict |> Map.ofList
                 sendEmail
                     "rene.ederer.nbg@gmail.com"
@@ -518,22 +518,22 @@ module Server =
             }
      
     [<Remote>]
-    let getLastEditedDocumentId () =
+    let getLastEditedDocumentOffset () =
         match getCurrentUserId () |> Async.RunSynchronously with
         | None -> failwith "Nobody logged in"
         | Some userId ->
             async {
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
-                return Database.getLastEditedDocumentId dbConn userId
+                return Database.getLastEditedDocumentOffset dbConn userId
             }
 
     [<Remote>]
-    let setLastEditedDocumentId (userId) (documentId : int) =
+    let setLastEditedDocumentId (userId : int) (documentId : int) =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.setLastEditedDocumentId dbConn userId documentId
+            Database.setLastEditedDocumentId dbConn userId documentId
         }
 
 

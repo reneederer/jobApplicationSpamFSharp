@@ -174,10 +174,10 @@ module Client =
             ]
 
         let createRadioWithColumnSizes column1Size column2Size (labelText : string) (radioValuesList : list<string * string * string * string>) =
-          let radioGroup = Guid.NewGuid().ToString()    
+          let radioGroup = Guid.NewGuid().ToString("N")    
           div
             (radioValuesList |> List.mapi (fun i (radioText, bind, value, ``checked``) ->
-                let id = Guid.NewGuid().ToString()
+                let id = Guid.NewGuid().ToString("N")
                 divAttr
                   [attr.``class`` "form-group row"]
                   [ labelAttr
@@ -608,12 +608,8 @@ module Client =
             for documentName in documentNames do
                 addSelectOption slctDocumentNameEl documentName
 
-            let! oLastEditedDocumentId = Server.getLastEditedDocumentId()
-            match oLastEditedDocumentId with
-            | None ->
-                slctDocumentNameEl?selectedIndex <- 0
-            | Some lastEditedDocumentId ->
-                slctDocumentNameEl?selectedIndex <- lastEditedDocumentId - 1
+            let! lastEditedDocumentOffset = Server.getLastEditedDocumentOffset()
+            slctDocumentNameEl?selectedIndex <- lastEditedDocumentOffset
             do! setDocument()
             do! setPageButtons()
 

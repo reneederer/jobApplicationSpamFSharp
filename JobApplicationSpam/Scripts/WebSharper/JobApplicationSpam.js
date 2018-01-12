@@ -421,11 +421,11 @@
   function createRadioWithColumnSizes(column1Size,column2Size,labelText$1,radioValuesList)
   {
    var radioGroup,c;
-   radioGroup=(c=Guid.NewGuid(),Global.String(c));
+   radioGroup=(c=Guid.NewGuid(),Guid.ToString(c,"N"));
    return Doc.Element("div",[],List.mapi(function(i,t)
    {
     var id,c$1;
-    id=(c$1=Guid.NewGuid(),Global.String(c$1));
+    id=(c$1=Guid.NewGuid(),Guid.ToString(c$1,"N"));
     return Doc.Element("div",[AttrProxy.Create("class","form-group row")],[Doc.Element("label",[AttrProxy.Create("class",column1Size+" col-form-label")],[Doc.TextNode(i===0?labelText$1:"")]),Doc.Element("div",[AttrProxy.Create("class",column2Size)],[Doc.Element("input",[AttrProxy.Create("id",id),AttrProxy.Create("type","radio"),AttrProxy.Create("name",radioGroup),AttrProxy.Create("value",t[2]),AttrProxy.Create("data-"+"bind",t[1]),AttrProxy.Create("checked","checked")],[]),Doc.Element("label",[AttrProxy.Create("for",id)],[Doc.TextNode(t[0])])])]);
    },radioValuesList));
   }
@@ -1127,46 +1127,44 @@
          return Concurrency.Zero();
         }),Concurrency.Delay(function()
         {
-         return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getLastEditedDocumentId:-646436276",[]),function(a$3)
+         return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getLastEditedDocumentOffset:-836782155",[]),function(a$3)
          {
-          return Concurrency.Combine(a$3!=null&&a$3.$==1?(slctDocumentNameEl.selectedIndex=a$3.$0-1,Concurrency.Zero()):(slctDocumentNameEl.selectedIndex=0,Concurrency.Zero()),Concurrency.Delay(function()
+          slctDocumentNameEl.selectedIndex=a$3;
+          return Concurrency.Bind(setDocument(),function()
           {
-           return Concurrency.Bind(setDocument(),function()
+           return Concurrency.Bind(setPageButtons(),function()
            {
-            return Concurrency.Bind(setPageButtons(),function()
+            return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getHtmlPageTemplates:1297380307",[]),function(a$4)
             {
-             return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getHtmlPageTemplates:1297380307",[]),function(a$4)
+             var slctHtmlPageTemplateEl;
+             slctHtmlPageTemplateEl=Global.document.getElementById("slctHtmlPageTemplate");
+             return Concurrency.Combine(Concurrency.While(function()
              {
-              var slctHtmlPageTemplateEl;
-              slctHtmlPageTemplateEl=Global.document.getElementById("slctHtmlPageTemplate");
-              return Concurrency.Combine(Concurrency.While(function()
+              return Unchecked.Equals(slctHtmlPageTemplateEl,null);
+             },Concurrency.Delay(function()
+             {
+              return Concurrency.Bind(Concurrency.Sleep(10),function()
               {
-               return Unchecked.Equals(slctHtmlPageTemplateEl,null);
-              },Concurrency.Delay(function()
+               return Concurrency.Return(null);
+              });
+             })),Concurrency.Delay(function()
+             {
+              return Concurrency.Combine(Concurrency.For(a$4,function(a$5)
               {
-               return Concurrency.Bind(Concurrency.Sleep(10),function()
+               addSelectOption(slctHtmlPageTemplateEl,a$5.name);
+               return Concurrency.Zero();
+              }),Concurrency.Delay(function()
+              {
+               show(List.ofArray(["divAttachments"]));
+               return Concurrency.Bind(fillDocumentValues(),function()
                {
                 return Concurrency.Return(null);
                });
-              })),Concurrency.Delay(function()
-              {
-               return Concurrency.Combine(Concurrency.For(a$4,function(a$5)
-               {
-                addSelectOption(slctHtmlPageTemplateEl,a$5.name);
-                return Concurrency.Zero();
-               }),Concurrency.Delay(function()
-               {
-                show(List.ofArray(["divAttachments"]));
-                return Concurrency.Bind(fillDocumentValues(),function()
-                {
-                 return Concurrency.Return(null);
-                });
-               }));
               }));
-             });
+             }));
             });
            });
-          }));
+          });
          });
         }));
        }));

@@ -385,7 +385,7 @@ module Database =
                         """insert into FilePage(documentId, path, pageIndex, name)
                         values (:documentId, :path, :pageIndex, :name) returning id""", dbConn)
                 command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("path", Path.GetFileName(filePage.path))) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("path", filePage.path)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("pageIndex", filePage.pageIndex)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("name", filePage.name)) |> ignore
                 let pageId = command.ExecuteScalar() |> string |> Int32.Parse
@@ -546,20 +546,23 @@ module Database =
             yield { name = reader.GetString(0); oTemplateId = if reader.IsDBNull(0) then None else Some <| reader.GetInt32(1) } ]
 
     
-    let getLastEditedDocumentId (dbConn : NpgsqlConnection) (userId : int) =
-        use command = new NpgsqlCommand("select documentId from lastEditedDocumentId where userId = :userId limit 1", dbConn)
+    let getLastEditedDocumentOffset (dbConn : NpgsqlConnection) (userId : int) =
+        use command = new NpgsqlCommand("""select count(*)
+                                           from document d
+                                           join lasteditedDocumentId l
+                                             on d.userId = l.userId
+                                           where d.userId = :userId and d.Id < l.documentid
+                                           """, dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
-        let oDocumentId =
-            match command.ExecuteScalar() with
-            | null -> None
-            | documentIdStr -> Some (documentIdStr |> string |> Int32.Parse)
+        let documentOffset =
+            command.ExecuteScalar() |> string |> Int32.Parse
         command.Dispose()
         use command = new NpgsqlCommand("delete from lastEditedDocumentId where userId = :userId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.ExecuteNonQuery() |> ignore
-        oDocumentId
+        documentOffset
 
-    let setLastEditedDocumentId (dbConn : NpgsqlConnection) (userId : int) (documentId : int)=
+    let setLastEditedDocumentId (dbConn : NpgsqlConnection) (userId : int) (documentId : int) =
         use command = new NpgsqlCommand("delete from lastEditedDocumentId where userId = :userId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.ExecuteNonQuery() |> ignore
@@ -636,7 +639,7 @@ module Database =
         command.ExecuteScalar() |> string |> Int32.Parse
 
     let createLink dbConn (filePath : string) (name : string) =
-        let guid = Guid.NewGuid().ToString()
+        let guid = Guid.NewGuid().ToString("N")
         use command = new NpgsqlCommand("insert into link (path, guid, name) values(:path, :guid, :name)", dbConn)
         command.Parameters.Add(new NpgsqlParameter("path", filePath)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("guid", guid)) |> ignore

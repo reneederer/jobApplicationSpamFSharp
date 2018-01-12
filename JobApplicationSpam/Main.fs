@@ -194,8 +194,10 @@ module Site =
                                 x.SaveAs(Path.Combine(dir, fileName))
                                 (Path.Combine(dir, fileName), fileName)
                         try
-                            Server.addFilePage documentId filePath pageIndex name |> Async.RunSynchronously
-                            Server.setLastEditedDocumentId userId documentId |> Async.RunSynchronously
+                            async {
+                                do! Server.addFilePage documentId filePath pageIndex name
+                                do! Server.setLastEditedDocumentId userId documentId
+                            } |> Async.RunSynchronously
                         with
                         | e ->
                             reraise()

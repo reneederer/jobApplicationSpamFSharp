@@ -113,9 +113,9 @@ module Odt =
         process1.StartInfo.CreateNoWindow <- true
         process1.Start() |> ignore
         process1.WaitForExit()
-        if File.Exists(odtPath.Substring(0, odtPath.Length - 4) + ".pdf")
-        then
-            odtPath.Substring(0, odtPath.Length - 4) + ".pdf"
+        let outputPath = Path.ChangeExtension(odtPath, ".pdf")
+        if File.Exists outputPath
+        then outputPath
         else failwith "Could not convert odt file to pdf: " + odtPath
     
     let mergePdfs (pdfPaths : list<string>) (outputPath : string) =
@@ -123,7 +123,6 @@ module Odt =
         use outputDocument = new PdfDocument ()
         for pdfPath in pdfPaths do
             let inputDocument = PdfReader.Open(pdfPath, PdfDocumentOpenMode.Import)
-            let count = inputDocument.PageCount
             for page in inputDocument.Pages do
                 outputDocument.AddPage page |> ignore
         outputDocument.Save outputPath

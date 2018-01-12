@@ -333,7 +333,7 @@ module Database =
                             (documentId, path, pageIndex, name)
                             values (:documentId, :path, :pageIndex, :name)", dbConn)
                 command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
-                command.Parameters.Add(new NpgsqlParameter("path", Path.GetFileName(filePage.path))) |> ignore
+                command.Parameters.Add(new NpgsqlParameter("path", filePage.path)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("pageIndex", filePage.pageIndex)) |> ignore
                 command.Parameters.Add(new NpgsqlParameter("name", filePage.name)) |> ignore
                 command.ExecuteNonQuery() |> ignore

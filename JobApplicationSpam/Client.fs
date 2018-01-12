@@ -17,6 +17,7 @@ module Client =
     open Server
     open WebSharper.Html.Server.Attr
     open WebSharper.Formlets.Enhance
+    open WebSharper.Owin.EnvKey.WebSharper
 
     [<JavaScript>]
     let varLanguageDict = Var.Create<Map<Word, string>>(Deutsch.dict |> Map.ofList)
@@ -83,10 +84,6 @@ module Client =
               []
           ]
     
-    [<JavaScript>]
-    let showSentJobApplications () =
-        h1 [text "hallo"]
-    
 
     [<JavaScript>]
     let templates () = 
@@ -101,15 +98,6 @@ module Client =
         let getCurrentPageIndex () =
             let index = JQuery("#divAttachmentButtons").Find(".mainButton").Index(JQuery(".active")) + 1
             Math.Max (index, 1)
-
-        let getCookie str =
-            JS.Document.Cookie.Split([| "; "; ";" |], StringSplitOptions.None)
-                |> Array.tryFind(fun (x : string) -> x.StartsWith(str + "="))
-                |> Option.map (fun x -> x.Substring(str.Length + 1))
-
-
-        let setLanguage language =
-            JS.Document.Cookie <- JS.Document.Cookie + ";language=" + language.ToString()
 
         
         let getSentApplications () =
@@ -783,8 +771,12 @@ module Client =
                             async {
                                 match varDocument.Value.pages |> List.tryItem (getCurrentPageIndex() - 1) with
                                 | Some (FilePage filePage) ->
-                                    let! fullPath = Server.getFullPath filePage.path varDocument.Value.id
-                                    let! guid = Server.createLink fullPath
+                                    let fileName =
+                                        let extension = filePage.path.Substring(filePage.path.LastIndexOf('.') + 1)
+                                        if filePage.name.EndsWith ("." + extension)
+                                        then filePage.name
+                                        else filePage.name + "." + extension
+                                    let! guid = Server.createLink filePage.path fileName
                                     JS.Window.Location.Href <- sprintf "download/%s" guid
                                 | _ -> ()
                             } |> Async.Start
@@ -802,7 +794,12 @@ module Client =
                                 match varDocument.Value.pages |> List.tryItem (getCurrentPageIndex() - 1) with
                                 | Some (FilePage filePage) ->
                                     let! path = Server.replaceVariables filePage.path varUserValues.Value varEmployer.Value varDocument.Value
-                                    let! guid = Server.createLink path
+                                    let fileName =
+                                        let extension = filePage.path.Substring(filePage.path.LastIndexOf('.') + 1)
+                                        if filePage.name.EndsWith ("." + extension)
+                                        then filePage.name
+                                        else filePage.name + "." + extension
+                                    let! guid = Server.createLink path fileName
                                     JS.Window.Location.Href <- sprintf "download/%s" guid
                                 | _ -> ()
                             } |> Async.Start
@@ -873,79 +870,92 @@ module Client =
               ]
             divAttr
               [ attr.id "divCreateFilePage"; attr.style "display: none" ]
-              [ formAttr [attr.enctype "multipart/form-data"; attr.method "POST"; attr.action ""]
+              [ formAttr
+                  [ attr.method "POST"; attr.action "upload"; attr.enctype "multipart/form-data"
+                  ]
                   [ text (t PleaseChooseAFile)
                     br []
                     inputAttr
                       [ attr.``type`` "file"
-                        attr.name "file"
-                        on.change(fun _ _ -> JS.Document.GetElementById("flUpload")?style?visibility <- "visible")
+                        attr.name "myFile"
+                        attr.id "myFile"
+                        on.change(fun el _ ->
+                            async {
+                                let! maxUploadSize = Server.getMaxUploadSize ()
+                                if (el?files)?item(0)?size > maxUploadSize
+                                then
+                                    JS.Document.GetElementById("btnUpload")?style?visibility <- "hidden"
+                                    JS.Alert(t FileIsTooBig + "\n" + String.Format(t UploadLimit, (maxUploadSize / 1000000) |> string))
+                                else
+                                    JS.Document.GetElementById("btnUpload")?style?visibility <- "visible"
+                            } |> Async.Start
+                        )
                       ]
                       []
-                    inputAttr [ attr.``type`` "hidden"; attr.id "hiddenDocumentId"; attr.name "documentId"; ] []
-                    inputAttr [ attr.``type`` "hidden"; attr.id "hiddenNextPageIndex"; attr.name "pageIndex"] []
+                    inputAttr [ attr.``type`` "hidden"; attr.id "hiddenDocumentId"; attr.name "documentId"; attr.value "1" ] []
+                    inputAttr [ attr.``type`` "hidden"; attr.id "hiddenNextPageIndex"; attr.name "pageIndex"; attr.value "1" ] []
                     br []
                     br []
-                    buttonAttr [attr.``type`` "submit"; attr.id "flUpload"; attr.style "visibility: hidden" ] [text (t AddAttachment)]
-                    br []
-                    hr []
-                    br []
-                    b [ text
-                          ((t YouMightWantToReplaceSomeWordsInYourFileWithVariables) +
-                          (t VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication))
-                      ]
-                    br []
-                    br []
-                    text "$firmaName"
-                    br []
-                    text "$firmaStrasse"
-                    br []
-                    text "$firmaPlz"
-                    br []
-                    text "$firmaStadt"
-                    br []
-                    text "$chefAnredeBriefkopf"
-                    br []
-                    text "$chefAnrede"
-                    br []
-                    text "$geehrter"
-                    br []
-                    text "$chefTitel"
-                    br []
-                    text "$chefVorname"
-                    br []
-                    text "$chefNachname"
-                    br []
-                    text "$chefEmail"
-                    br []
-                    text "$chefTelefon"
-                    br []
-                    text "$chefMobil"
-                    br []
-                    text "$meinGeschlecht"
-                    br []
-                    text "$meinTitel"
-                    br []
-                    text "$meinVorname"
-                    br []
-                    text "$meinNachname"
-                    br []
-                    text "$meineStrasse"
-                    br []
-                    text "$meinePlz"
-                    br []
-                    text "$meineStadt"
-                    br []
-                    text "$meineEmail"
-                    br []
-                    text "$meinMobilTelefon"
-                    br []
-                    text "$meineTelefonnr"
-                    br []
-                    text "$datumHeute"
-                    br []
-                    text "$jobName"
+                    buttonAttr [attr.``type`` "submit"; attr.id "btnUpload"; attr.style "visibility: hidden" ] [text (t AddAttachment)]
                   ]
+                br []
+                hr []
+                br []
+                b [ text
+                      ((t YouMightWantToReplaceSomeWordsInYourFileWithVariables) +
+                      (t VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication))
+                  ]
+                br []
+                br []
+                text "$firmaName"
+                br []
+                text "$firmaStrasse"
+                br []
+                text "$firmaPlz"
+                br []
+                text "$firmaStadt"
+                br []
+                text "$chefAnredeBriefkopf"
+                br []
+                text "$chefAnrede"
+                br []
+                text "$geehrter"
+                br []
+                text "$chefTitel"
+                br []
+                text "$chefVorname"
+                br []
+                text "$chefNachname"
+                br []
+                text "$chefEmail"
+                br []
+                text "$chefTelefon"
+                br []
+                text "$chefMobil"
+                br []
+                text "$meinGeschlecht"
+                br []
+                text "$meinTitel"
+                br []
+                text "$meinVorname"
+                br []
+                text "$meinNachname"
+                br []
+                text "$meineStrasse"
+                br []
+                text "$meinePlz"
+                br []
+                text "$meineStadt"
+                br []
+                text "$meineEmail"
+                br []
+                text "$meinMobilTelefon"
+                br []
+                text "$meineTelefonnr"
+                br []
+                text "$datumHeute"
+                br []
+                text "$jobName"
               ]
             divAttr
               [ attr.id "divSentApplications"

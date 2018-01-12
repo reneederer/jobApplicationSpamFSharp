@@ -274,8 +274,6 @@ module Database =
         sentApplications
 
     let overwriteDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) =
-        if document.id <> 1
-        then failwith ("DocumentId is " + document.id.ToString())
         log.Debug(sprintf "%A %i" document userId)
         use command = new NpgsqlCommand("update document set name = :name where id = :documentId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("name", document.name)) |> ignore
@@ -589,7 +587,7 @@ module Database =
         ]
         |> Map.ofList
     
-    let addFilePage (dbConn : NpgsqlConnection) (documentId : int) (path : string) (pageIndex : int)  =
+    let addFilePage (dbConn : NpgsqlConnection) (documentId : int) (path : string) (pageIndex : int) (name : string) =
         log.Debug (sprintf "(documentId: %i, path: %s, pageIndex: %i)" documentId path pageIndex)
         use command = new NpgsqlCommand("update filePage set pageIndex = pageIndex + 1 where pageIndex >= :pageIndex and documentId = :documentId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("pageIndex", pageIndex)) |> ignore
@@ -601,7 +599,7 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("path", path)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("pageIndex", pageIndex)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("name", Path.GetFileName(path))) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("name", name)) |> ignore
         command.ExecuteNonQuery() |> ignore
         log.Debug (sprintf "(documentId: %i, path: %s, pageIndex: %i) = ()" documentId path pageIndex)
 
@@ -636,11 +634,12 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("documentIndex", documentIndex)) |> ignore
         command.ExecuteScalar() |> string |> Int32.Parse
 
-    let createLink dbConn (filePath : string) =
+    let createLink dbConn (filePath : string) (name : string) =
         let guid = Guid.NewGuid().ToString()
-        use command = new NpgsqlCommand("insert into link (path, guid) values(:path, :guid)", dbConn)
+        use command = new NpgsqlCommand("insert into link (path, guid, name) values(:path, :guid, :name)", dbConn)
         command.Parameters.Add(new NpgsqlParameter("path", filePath)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("guid", guid)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("name", name)) |> ignore
         command.ExecuteNonQuery() |> ignore
         guid
 
@@ -677,13 +676,40 @@ module Database =
         command.ExecuteNonQuery()
 
 
-    let getFilePathByGuid dbConn (guid : string) =
-        use command = new NpgsqlCommand("select path from link where guid = :guid limit 1", dbConn)
+    let getPathAndNameByGuid dbConn (guid : string) =
+        use command = new NpgsqlCommand("select path, name from link where guid = :guid limit 1", dbConn)
         command.Parameters.Add(new NpgsqlParameter("guid", guid)) |> ignore
-        command.ExecuteScalar() |> string
+        use reader = command.ExecuteReader()
+        if reader.Read()
+        then
+            reader.GetString(0), reader.GetString(1)
+        else failwith <| "Couldn't read link with guid: " + guid
 
     let deleteLink dbConn (guid : string) =
         use command = new NpgsqlCommand("delete from link where guid = :guid", dbConn)
         command.Parameters.Add(new NpgsqlParameter("guid", guid)) |> ignore
         command.ExecuteNonQuery() |> ignore
+
+    let getFilesWithExtension dbConn (extension : string) (userId : int) =
+        use command =
+            new NpgsqlCommand("""select path from filePage
+                                 join document on filePage.documentId = document.Id
+                                 where path like :extension
+                                 and userId = :userId"""
+                             , dbConn)
+        command.Parameters.Add(new NpgsqlParameter("extension", "%" + extension)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        use reader = command.ExecuteReader()
+        [ while reader.Read() do
+            yield reader.GetString(0) ]
+
+
+    let getFilePageNames dbConn (documentId : int) =
+        use command =
+            new NpgsqlCommand("""select name from filePage where documentId = :documentId"""
+                             , dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        use reader = command.ExecuteReader()
+        [ while reader.Read() do
+            yield reader.GetString(0) ]
 

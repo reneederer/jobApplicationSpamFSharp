@@ -29,6 +29,8 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <DocumentationFile>bin\$(AssemblyName).XML</DocumentationFile>
+    <StartArguments>
+    </StartArguments>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -80,11 +82,11 @@
     <Compile Include="Client.fs" />
     <Compile Include="Tests.fs" />
     <Compile Include="Main.fs" />
-    <Content Include="App.config" />
     <Content Include="log4net.config">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="packages.config" />
+    <Content Include="App.config" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Chessie">
@@ -132,8 +134,17 @@
     <Reference Include="log4net">
       <HintPath>..\packages\log4net.2.0.8\lib\net45-full\log4net.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.AspNet.Identity.Core">
+      <HintPath>..\packages\Microsoft.AspNet.Identity.Core.2.2.1\lib\net45\Microsoft.AspNet.Identity.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.AspNet.Identity.Owin">
+      <HintPath>..\packages\Microsoft.AspNet.Identity.Owin.2.2.1\lib\net45\Microsoft.AspNet.Identity.Owin.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Owin">
       <HintPath>..\packages\Microsoft.Owin.3.1.0\lib\net45\Microsoft.Owin.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Owin.Cors">
+      <HintPath>..\packages\Microsoft.Owin.Cors.3.1.0\lib\net45\Microsoft.Owin.Cors.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Owin.Diagnostics">
       <HintPath>..\packages\Microsoft.Owin.Diagnostics.3.1.0\lib\net45\Microsoft.Owin.Diagnostics.dll</HintPath>
@@ -144,6 +155,9 @@
     <Reference Include="Microsoft.Owin.Host.HttpListener">
       <HintPath>..\packages\Microsoft.Owin.Host.HttpListener.3.1.0\lib\net45\Microsoft.Owin.Host.HttpListener.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.Owin.Host.SystemWeb">
+      <HintPath>..\packages\Microsoft.Owin.Host.SystemWeb.3.1.0\lib\net45\Microsoft.Owin.Host.SystemWeb.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Owin.Hosting">
       <HintPath>..\packages\Microsoft.Owin.Hosting.3.1.0\lib\net45\Microsoft.Owin.Hosting.dll</HintPath>
     </Reference>
@@ -153,6 +167,7 @@
     <Reference Include="Microsoft.Win32.Primitives">
       <HintPath>..\packages\Microsoft.Win32.Primitives.4.3.0\lib\net46\Microsoft.Win32.Primitives.dll</HintPath>
     </Reference>
+    <Reference Include="mscorlib" />
     <Reference Include="mscorlib" />
     <Reference Include="mscorlib" />
     <Reference Include="Newtonsoft.Json">
@@ -176,6 +191,13 @@
     <Reference Include="PdfSharp.Charting">
       <HintPath>..\packages\PDFsharp.1.32.3057.0\lib\net20\PdfSharp.Charting.dll</HintPath>
     </Reference>
+    <Reference Include="Suave">
+      <HintPath>..\packages\Suave.2.2.1\lib\net40\Suave.dll</HintPath>
+    </Reference>
+    <Reference Include="Suave.OAuth">
+      <HintPath>..\packages\Suave.OAuth.0.11.0\lib\net461\Suave.OAuth.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
     <Reference Include="System" />
     <Reference Include="System" />
     <Reference Include="System.AppContext">
@@ -191,8 +213,17 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Data.Common">
+      <HintPath>..\packages\System.Data.Common.4.1.0\lib\net451\System.Data.Common.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Diagnostics.DiagnosticSource">
       <HintPath>..\packages\System.Diagnostics.DiagnosticSource.4.4.1\lib\net46\System.Diagnostics.DiagnosticSource.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Diagnostics.Process">
+      <HintPath>..\packages\System.Diagnostics.Process.4.1.0\lib\net461\System.Diagnostics.Process.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="System.Diagnostics.Tracing">
       <Private>True</Private>
@@ -200,6 +231,10 @@
     <Reference Include="System.Drawing" />
     <Reference Include="System.Globalization.Calendars">
       <HintPath>..\packages\System.Globalization.Calendars.4.3.0\lib\net46\System.Globalization.Calendars.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Globalization.Extensions">
+      <HintPath>..\packages\System.Globalization.Extensions.4.3.0\lib\net46\System.Globalization.Extensions.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="System.IO">
       <Private>True</Private>
@@ -230,6 +265,10 @@
     <Reference Include="System.Net.Http.Formatting">
       <HintPath>..\packages\Microsoft.AspNet.WebApi.Client.5.2.3\lib\net45\System.Net.Http.Formatting.dll</HintPath>
     </Reference>
+    <Reference Include="System.Net.Security">
+      <HintPath>..\packages\System.Net.Security.4.0.0\lib\net46\System.Net.Security.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Net.Sockets">
       <HintPath>..\packages\System.Net.Sockets.4.3.0\lib\net46\System.Net.Sockets.dll</HintPath>
     </Reference>
@@ -250,6 +289,11 @@
     </Reference>
     <Reference Include="System.Runtime.InteropServices.RuntimeInformation">
       <HintPath>..\packages\System.Runtime.InteropServices.RuntimeInformation.4.3.0\lib\net45\System.Runtime.InteropServices.RuntimeInformation.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Security.Claims">
+      <HintPath>..\packages\System.Security.Claims.4.0.1\lib\net46\System.Security.Claims.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="System.Security.Cryptography.Algorithms">
       <HintPath>..\packages\System.Security.Cryptography.Algorithms.4.3.1\lib\net463\System.Security.Cryptography.Algorithms.dll</HintPath>
@@ -284,6 +328,10 @@
     </Reference>
     <Reference Include="System.Web" />
     <Reference Include="System.Web" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Web.Cors">
+      <HintPath>..\packages\Microsoft.AspNet.Cors.5.0.0\lib\net45\System.Web.Cors.dll</HintPath>
+    </Reference>
     <Reference Include="System.Web.Http">
       <HintPath>..\packages\Microsoft.AspNet.WebApi.Core.5.2.3\lib\net45\System.Web.Http.dll</HintPath>
     </Reference>
@@ -342,6 +390,9 @@
     </Reference>
     <Reference Include="WebSharper.Sitelets">
       <HintPath>..\packages\WebSharper.4.1.0.171\lib\net40\WebSharper.Sitelets.dll</HintPath>
+    </Reference>
+    <Reference Include="WebSharper.Suave">
+      <HintPath>..\packages\WebSharper.Suave.4.1.33.111\lib\net45\WebSharper.Suave.dll</HintPath>
     </Reference>
     <Reference Include="WebSharper.UI">
       <HintPath>..\packages\WebSharper.UI.4.1.0.34\lib\net40\WebSharper.UI.dll</HintPath>

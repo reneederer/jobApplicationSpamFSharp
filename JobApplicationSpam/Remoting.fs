@@ -7,6 +7,7 @@ open System
 open JobApplicationSpam.Types
 open System.Configuration
 open Website
+open Microsoft.Owin.Cors
 
 
 module Server =
@@ -17,6 +18,12 @@ module Server =
     open WebSharper.Web.Remoting
 
     let log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().GetType())
+
+    [<Remote>]
+    let getMaxUploadSize () =
+        async {
+            return 5000000
+        }
 
     [<Remote>]
     let getEmailByUserId userId =
@@ -151,6 +158,7 @@ module Server =
     open System.Security.Cryptography
     open WebSharper.Html.Server.Tags
     open System.Net.Mime
+    open System.Security.Claims
 
     let generateSalt length =
         let (bytes : array<byte>) = Array.replicate length (0uy)
@@ -185,7 +193,7 @@ module Server =
             }
         | None ->
             async {
-            return fail "Email is unknown"
+                return fail "Email is unknown"
             }
 
 
@@ -363,14 +371,13 @@ module Server =
                 let! userEmail = getEmailByUserId userId
                 let guid = Guid.NewGuid().ToString("N")
                 let! map = replaceMap (userEmail |> Option.defaultValue "") userValues employer document
-                let fullPath = sprintf "Users/%i/%i/%s" userId document.id filePath
                 Directory.CreateDirectory(sprintf "tmp/%s" guid) |> ignore
                 if filePath.EndsWith(".odt") || filePath.EndsWith(".docx")
                 then
-                    return Odt.replaceInOdt fullPath (sprintf "tmp/%s/extracted/" guid) (sprintf "tmp/%s/replaced/" guid) map
+                    return Odt.replaceInOdt filePath (sprintf "tmp/%s/extracted/" guid) (sprintf "tmp/%s/replaced/" guid) map
                 else
                     let newFilePath = sprintf "tmp/%s/%s" guid (Path.GetFileName(filePath))
-                    File.Copy(fullPath, newFilePath, true)
+                    File.Copy(filePath, newFilePath, true)
                     Odt.replaceInFile newFilePath map Ignore
                     return newFilePath
             }
@@ -419,7 +426,7 @@ module Server =
                                     *)
                                 yield Odt.replaceInOdt pageTemplatePath "c:/users/rene/myodt/" tmpPath (myList @ lines)
                             | FilePage filePage ->
-                                let fullPath = sprintf "Users/%i/%i/%s" userId document.id filePage.path
+                                let fullPath = Path.Combine("Users", userId |> string, filePage.path)
                                 yield
                                     if filePage.path.EndsWith(".pdf")
                                     then
@@ -468,11 +475,11 @@ module Server =
         }
 
     [<Remote>]
-    let addFilePage documentId path pageIndex =
+    let addFilePage documentId path pageIndex name =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.addFilePage dbConn documentId path pageIndex
+            return Database.addFilePage dbConn documentId path pageIndex name
         }
 
     
@@ -575,19 +582,19 @@ module Server =
         }
     
     [<Remote>]
-    let createLink filePath =
+    let createLink filePath name =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.createLink dbConn filePath
+            return Database.createLink dbConn filePath name
         }
 
     [<Remote>]
-    let getFilePathByGuid guid =
+    let getPathAndNameByGuid guid =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.getFilePathByGuid dbConn guid
+            return Database.getPathAndNameByGuid dbConn guid
         }
 
     [<Remote>]
@@ -598,15 +605,6 @@ module Server =
             Database.deleteLink dbConn guid
         }
 
-    [<Remote>]
-    let getFullPath fileName documentId =
-        let oUserId = getCurrentUserId() |> Async.RunSynchronously
-        async {
-            match oUserId with
-            | Some userId ->
-                return sprintf "Users/%i/%i/%s" userId documentId fileName
-            | None -> return failwith "Nobody is logged in"
-        }
 
     [<Remote>]
     let getSentApplications (startDate : DateTime) (endDate : DateTime) =
@@ -621,3 +619,17 @@ module Server =
                 return failwith "Nobody is logged in"
         }
 
+    let filesWithSameExtension filePath userId =
+        async {
+            let extension = Path.GetExtension(filePath)
+            use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+            dbConn.Open()
+            return Database.getFilesWithExtension dbConn extension userId
+        }
+
+    let getFilePageNames (documentId : int) =
+        async {
+            use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+            dbConn.Open()
+            return Database.getFilePageNames dbConn documentId
+        }

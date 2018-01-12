@@ -214,3 +214,5 @@ module Types =
         | FieldIsRequired
         | SorryAnErrorOccurred
         | YourApplicationHasNotBeenSent
+        | FileIsTooBig
+        | UploadLimit

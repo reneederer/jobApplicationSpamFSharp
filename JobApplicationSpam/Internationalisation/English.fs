@@ -54,4 +54,6 @@ module English =
           FieldIsRequired, """Field "{0}" must not be empty."""
           SorryAnErrorOccurred, "Sorry, an error occurred."
           YourApplicationHasNotBeenSent, "\nYour application has not been sent :-("
+          FileIsTooBig, "The chosen file is too big."
+          UploadLimit, "The upload limit is {0} MB."
         ]

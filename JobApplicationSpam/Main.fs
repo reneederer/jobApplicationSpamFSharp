@@ -15,6 +15,7 @@ type EndPoint =
     | [<EndPoint "/about">] About
     | [<EndPoint "GET /confirmemail">] ConfirmEmail
     | [<EndPoint "/templates">] Templates
+    | [<EndPoint "/upload">] Upload
     | [<EndPoint "/logout">] Logout
     | [<EndPoint "/download">] Download of guid:string
 
@@ -100,6 +101,8 @@ module Site =
     open System.Web
     open WebSharper.UI.Next.Client
     open System
+    open System.IO
+    open WebSharper.JavaScript
 
 
     let homePage (ctx : Context<EndPoint>) =
@@ -136,42 +139,71 @@ module Site =
         ctx.UserSession.Logout() |> Async.RunSynchronously
         Content.RedirectPermanentToUrl "/"
     
+    let uploadPage (ctx : Context<EndPoint>) =
 
-    let templatesPage (ctx : Context<EndPoint>) =
+
+
+
         match ctx.Request.Post.["documentId"] |> Option.map Int32.TryParse
             , ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously |> Option.map Int32.TryParse
             , ctx.Request.Post.["pageIndex"] |> Option.map Int32.TryParse
             with
         | Some (true, documentId), Some (true, userId), Some (true, pageIndex) ->
-            let dir = Path.Combine(sprintf "./Users/%i/%i/" userId documentId)
+            let dir = Path.Combine("Users", userId.ToString())
             if not <| Directory.Exists dir then Directory.CreateDirectory dir |> ignore
+
+            let findFreeFileName file documentId =
+
+                let fileNameWithoutExtension = Path.GetFileNameWithoutExtension(file)
+                let extension = Path.GetExtension(file)
+                let files =
+                    Server.getFilePageNames documentId |> Async.RunSynchronously
+                    |> List.filter (fun x -> Path.GetExtension(x) = Path.GetExtension(extension))
+                    |> List.filter (fun x -> Path.GetFileNameWithoutExtension(x).StartsWith(fileNameWithoutExtension))
+
+                let rec findFreeFileName' i =
+                    let name = sprintf "%s%s%s" fileNameWithoutExtension (if i = 0 then "" else sprintf " (%i)" i) extension
+                    if List.contains name files
+                    then findFreeFileName' (i + 1)
+                    else name
+                findFreeFileName' 0
+
+            let maxFileSize = Server.getMaxUploadSize() |> Async.RunSynchronously
             ctx.Request.Files
-            |> Seq.iteri
-                (fun i (x : HttpPostedFileBase) ->
-                    if x.FileName <> "" && x.ContentLength < 5000000
+            |> Seq.iter
+                (fun (x : HttpPostedFileBase) ->
+                    if x.FileName <> "" && x.ContentLength < maxFileSize
                     then
-                        let fileName =
-                            if File.Exists(Path.Combine(dir, x.FileName))
-                            then
-                                let lastDotIndex =
-                                    let i = x.FileName.LastIndexOf(".")
-                                    if i = -1 then x.FileName.Length - 1
-                                    else i
-                                let before, after = x.FileName.Substring(0, lastDotIndex), x.FileName.Substring(lastDotIndex)
-                                before + Guid.NewGuid().ToString("N") + after
-                            else x.FileName
-                        ctx.Request.Cookies.Add(new HttpCookie("upload", fileName))
-                        let path = Path.Combine(dir, fileName)
-                        x.SaveAs path
+                        let (filePath, name) =
+                            let filesWithSameExtension = Server.filesWithSameExtension x.FileName userId |> Async.RunSynchronously
+                            let oSameFile =
+                                filesWithSameExtension
+                                |> Seq.tryFind
+                                    (fun file ->
+                                        use fileStream = new FileStream(file, FileMode.Open, FileAccess.Read)
+                                        Odt.areStreamsEqual x.InputStream fileStream
+                                    )
+                            match oSameFile with
+                            | Some file ->
+                                (file, findFreeFileName file documentId)
+                            | None ->
+                                let fileName =
+                                    if File.Exists(Path.Combine(dir, x.FileName))
+                                    then findFreeFileName x.FileName documentId
+                                    else x.FileName
+                                x.SaveAs(Path.Combine(dir, fileName))
+                                (Path.Combine(dir, fileName), fileName)
                         try
-                            Server.addFilePage documentId (x.FileName) pageIndex |> Async.RunSynchronously
+                            Server.addFilePage documentId filePath pageIndex name |> Async.RunSynchronously
                             Server.setLastEditedDocumentId userId documentId |> Async.RunSynchronously
                         with
                         | e ->
-                            File.Delete(path)
                             reraise()
                 )
         | _ -> ()
+        Content.RedirectPermanentToUrl "/templates"
+
+    let templatesPage (ctx : Context<EndPoint>) =
         Templating.main ctx EndPoint.About "Templates" [
             client <@ Client.templates() @>
         ]
@@ -199,7 +231,7 @@ module Site =
 
     let downloadPage (ctx : Context<EndPoint>) (guid : string) =
         async {
-            let! filePath = Server.getFilePathByGuid guid
+            let! (filePath, name) = Server.getPathAndNameByGuid guid
             //do! Server.deleteLink documentId guid
             let file = FileInfo(filePath)
             return
@@ -208,7 +240,7 @@ module Site =
                     |> Content.MapResponse (fun resp ->
                         { resp with
                             Headers = Seq.append resp.Headers 
-                                [Http.Header.Custom "Content-Disposition" ("attachment; filename=" + file.Name)]
+                                [Http.Header.Custom "Content-Disposition" ("attachment; filename=" + name)]
                         }
                     )
                 else Content.NotFound
@@ -223,6 +255,8 @@ module Site =
             | Some _, EndPoint.Register -> registerPage ctx
             | None, EndPoint.Register -> registerPage ctx
             | Some _, EndPoint.About -> aboutPage ctx
+            | Some _, EndPoint.Upload ->
+                uploadPage ctx
             | Some _, EndPoint.ConfirmEmail -> confirmEmailPage ctx
             | None, EndPoint.ConfirmEmail -> confirmEmailPage ctx
             | Some _ , EndPoint.Templates -> templatesPage ctx
@@ -232,6 +266,8 @@ module Site =
             | None, _ -> loginPage ctx
         )
 
+
+        
 module SelfHostedServer =
 
     open global.Owin
@@ -250,7 +286,7 @@ module SelfHostedServer =
             | [| rootDirectory; url |] ->
                 rootDirectory, url
             | [| url |] -> "..", url
-            | [| |] -> "..", "https://localhost:9000/"
+            | [| |] -> "..", "http://localhost:9000/"
             | _ -> eprintfn "Usage: JobApplicationSpam ROOT_DIRECTORY URL"; exit 1
 
         use server = WebApp.Start(url, fun appB ->

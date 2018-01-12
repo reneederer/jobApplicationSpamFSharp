@@ -8,7 +8,28 @@ module Odt =
     open PdfSharp.Pdf.IO
     open System.Text.RegularExpressions
     open Types
-    open WebSharper.UI.V
+
+
+    let areStreamsEqual (fs1 : Stream) (fs2 : Stream) =
+        let chunkSize = 2048
+        let mutable (b1 : array<byte>) = Array.zeroCreate (chunkSize)
+        let mutable (b2 : array<byte>) = Array.zeroCreate (chunkSize)
+
+        let rec areFileStreamsEqual () =
+
+            let length = fs1.Read(b1, 0, chunkSize)
+            fs2.Read(b2, 0, chunkSize) |> ignore
+            if (Array.take length b1) <> (Array.take length b2) then
+                false
+            elif length <> chunkSize then
+                true
+            else
+                areFileStreamsEqual ()
+
+        if fs1.Length <> fs2.Length
+        then false
+        else areFileStreamsEqual ()
+
 
     let private log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().GetType())
 
@@ -16,7 +37,6 @@ module Odt =
         let t =
             match emptyTextTagAction with
             | Replace ->
-                //let text = """$ha$ha<text:span text:style-name="llo">l</text:span>lo<text:span text:style-name="asf">abc</text:span>welt"""
                 let pattern = """\$.*?(<text:span text:style-name="\w*?">).*?(</text:span>)"""
                 let rec replaceTags (s : string) beginIndex endIndex =
                     if beginIndex < 0 || endIndex < 0

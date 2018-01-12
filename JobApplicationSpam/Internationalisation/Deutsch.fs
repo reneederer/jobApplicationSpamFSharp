@@ -54,6 +54,8 @@ module Deutsch =
           FieldIsRequired, """Feld "{0}" darf nicht leer sein."""
           SorryAnErrorOccurred, "Entschuldigung, es ist ein Fehler aufgetreten."
           YourApplicationHasNotBeenSent, "Deine Bewerbung konnte nicht versendet werden :-("
+          FileIsTooBig, "Die ausgewählte Datei ist zu groß."
+          UploadLimit, "Die maximale Dateigröße beträgt {0} MB."
         ]
 
 

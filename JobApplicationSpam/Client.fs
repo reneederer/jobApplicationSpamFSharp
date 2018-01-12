@@ -742,6 +742,7 @@ module Client =
                             slctEl?selectedIndex <- slctEl?options?length - 1
                             do! setDocument()
                             do! setPageButtons()
+                            show ["divAttachments"]
                             do! fillDocumentValues()
                         } |> Async.Start
                       )

@@ -40,6 +40,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <DocumentationFile>bin\$(AssemblyName).XML</DocumentationFile>
+    <StartArguments>.. http://localhost:9000</StartArguments>
   </PropertyGroup>
   <Target Name="IncludeContent" BeforeTargets="Compile">
     <ItemGroup>

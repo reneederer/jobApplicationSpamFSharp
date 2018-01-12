@@ -403,7 +403,7 @@ module Server =
                     let userEmail = Database.getEmailByUserId dbConn userId |> Option.defaultValue ""
                     Database.setUserValues dbConn userValues userId |> ignore
                     let! myList = replaceMap userEmail userValues employer document
-                    let tmpPath = sprintf "tmp/%s/" (Guid.NewGuid().ToString())
+                    let tmpPath = Path.Combine("tmp", Guid.NewGuid().ToString("N"))
                     let odtPaths =
                         [ for item in document.pages do
                             match item with
@@ -426,23 +426,22 @@ module Server =
                                     *)
                                 yield Odt.replaceInOdt pageTemplatePath "c:/users/rene/myodt/" tmpPath (myList @ lines)
                             | FilePage filePage ->
-                                let fullPath = Path.Combine("Users", userId |> string, filePage.path)
                                 yield
                                     if filePage.path.EndsWith(".pdf")
                                     then
-                                        fullPath
+                                        filePage.path
                                     elif filePage.path.EndsWith(".odt") || filePage.path.EndsWith(".docx")
                                     then
                                         let directoryGuid = Guid.NewGuid().ToString("N")
                                         Odt.replaceInOdt
-                                            fullPath
-                                            (Path.Combine(tmpPath, directoryGuid, "replacedOdt/"))
-                                            (Path.Combine(tmpPath, directoryGuid, "extractedOdt/"))
+                                            filePage.path
+                                            (Path.Combine(tmpPath, directoryGuid, "replacedOdt"))
+                                            (Path.Combine(tmpPath, directoryGuid, "extractedOdt"))
                                             myList
                                     else
-                                        let fileGuid = Guid.NewGuid().ToString("N")
-                                        let copiedPath = Path.Combine(tmpPath, fileGuid + filePage.path)
-                                        File.Copy(fullPath, copiedPath)
+                                        let copiedPath = Path.Combine(tmpPath, Guid.NewGuid().ToString("N"), Path.GetFileName(filePage.path))
+                                        Directory.CreateDirectory(Path.GetDirectoryName copiedPath) |> ignore
+                                        File.Copy(filePage.path, copiedPath)
                                         Odt.replaceInFile
                                             copiedPath
                                             myList

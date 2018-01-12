@@ -343,9 +343,10 @@ module Database =
     
     let saveNewDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) =
         log.Debug(sprintf "%A %i" document userId)
-        use command = new NpgsqlCommand("insert into document (userId, name) values (:userId, :name) returning id", dbConn)
+        use command = new NpgsqlCommand("insert into document (userId, name, jobName) values (:userId, :name, :jobName) returning id", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("name", document.name)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("jobName", document.jobName)) |> ignore
         let documentId = command.ExecuteScalar() |> string |> Int32.Parse
         command.Dispose()
         use command = new NpgsqlCommand("insert into documentEmail (documentId, subject, body) values (:documentId, :subject, :body)", dbConn)
@@ -604,7 +605,7 @@ module Database =
         log.Debug (sprintf "(documentId: %i, path: %s, pageIndex: %i) = ()" documentId path pageIndex)
 
     let addNewDocument (dbConn : NpgsqlConnection) (userId : int) (name : string) =
-        use command = new NpgsqlCommand("insert into document (userId, name) values (:userId, :name)", dbConn)
+        use command = new NpgsqlCommand("insert into document (userId, name, jobName) values (:userId, :name, '')", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("name", name)) |> ignore
         command.ExecuteNonQuery() |> ignore

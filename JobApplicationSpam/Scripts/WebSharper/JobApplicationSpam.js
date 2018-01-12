@@ -1259,6 +1259,7 @@
       {
        return Concurrency.Bind(setPageButtons(),function()
        {
+        show(List.ofArray(["divAttachments"]));
         return Concurrency.Bind(fillDocumentValues(),function()
         {
          return Concurrency.Return(null);

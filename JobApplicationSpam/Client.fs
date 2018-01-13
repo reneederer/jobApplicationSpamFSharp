@@ -915,7 +915,7 @@ module Client =
                 br []
                 h4 [ text (t YouMightWantToReplaceSomeWordsInYourFileWithVariables) ]
                 br []
-                text <| t VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication ]
+                text <| t VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication
                 br []
                 br []
                 text "$firmaName"

@@ -1385,28 +1385,28 @@
    return[true,""];
   }),createRadio(Client.t(Word.Gender),List.ofArray([[Client.t(Word.Male),"userGender","m",""],[Client.t(Word.Female),"userGender","f",""]])),createInput(Client.t(Word.FirstName),"userFirstName",function(s)
   {
-   return[s!=="","This field is required"];
+   return[s!=="",Client.t(Word.FieldIsRequired)];
   }),createInput(Client.t(Word.LastName),"userLastName",function(s)
   {
-   return[s!=="","This field is required"];
+   return[s!=="",Client.t(Word.FieldIsRequired)];
   }),createInput(Client.t(Word.Street),"userStreet",function(s)
   {
-   return[s!=="","This field is required"];
+   return[s!=="",Client.t(Word.FieldIsRequired)];
   }),createInput(Client.t(Word.Postcode),"userPostcode",function(s)
   {
-   return[s!=="","This field is required"];
+   return[s!=="",Client.t(Word.FieldIsRequired)];
   }),createInput(Client.t(Word.City),"userCity",function(s)
   {
-   return[s!=="","This field is required"];
+   return[s!=="",Client.t(Word.FieldIsRequired)];
   }),createInput(Client.t(Word.Phone),"userPhone",function(s)
   {
-   return[s!=="","This field is required"];
+   return[s!=="",Client.t(Word.FieldIsRequired)];
   }),createInput(Client.t(Word.MobilePhone),"userMobilePhone",function(s)
   {
-   return[s!=="","This field is required"];
+   return[s!=="",Client.t(Word.FieldIsRequired)];
   })]),Doc.Element("div",[AttrProxy.Create("id","divAddEmployer"),AttrProxy.Create("style","display: none")],[createInput(Client.t(Word.JobName),"jobName",function(s)
   {
-   return[s!=="","This field is required"];
+   return[s!=="",Client.t(Word.FieldIsRequired)];
   }),Doc.Element("h4",[],[Doc.TextNode(Client.t(Word.Employer))]),Doc.Element("div",[AttrProxy.Create("class","form-group row")],[Doc.Element("div",[AttrProxy.Create("class","col-lg-3")],[Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("class","btn-block"),AttrProxy.Create("id","btnLoadFromWebsite"),AttrProxy.Create("value",Client.t(Word.LoadFromWebsite)),AttrModule.Handler("click",function()
   {
    return function()
@@ -1438,7 +1438,7 @@
    };
   })],[Doc.Element("i",[AttrProxy.Create("class","fa fa-icon"),AttrProxy.Create("id","faBtnApplyNowTop"),AttrProxy.Create("style","color: #08a81b; margin-right: 10px")],[]),Doc.TextNode(Client.t(Word.ApplyNow))])])]),createInput(Client.t(Word.CompanyName),"company",function(s)
   {
-   return[s!=="","This field is required"];
+   return[s!=="",Client.t(Word.FieldIsRequired)];
   }),createInput(Client.t(Word.Street),"companyStreet",function()
   {
    return[true,""];
@@ -1459,7 +1459,7 @@
    return[true,""];
   }),createInput(Client.t(Word.Email),"bossEmail",function(s)
   {
-   return[s!=="","This field is required"];
+   return[s!=="",Client.t(Word.FieldIsRequired)];
   }),createInput(Client.t(Word.Phone),"bossPhone",function()
   {
    return[true,""];

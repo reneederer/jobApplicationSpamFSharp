@@ -88,10 +88,69 @@ module Website =
         }
 
 
+    let readMeineStadt (doc : HtmlDocument) = 
+        try
+            let node =
+                doc
+                    .GetElementbyId("ms-job-detail-bewerbung")
+
+            let text =
+                node
+                    .Descendants("p")
+                    .ElementAt(2)
+                    .InnerHtml
+            let pattern = @"\s*(.*?)\s*<br\/?>\s*(.*?)\s*<span>(\d{5})</span>\s*<span>\s*(?:&nbsp;)*\s*(.*?)\s*</span>"
+            let m = Regex.Match(text, pattern, RegexOptions.Singleline)
+            let company = m.Groups.[1].Value
+            let street = m.Groups.[2].Value
+            let postcode = m.Groups.[3].Value
+            let city = m.Groups.[4].Value
+
+            let phone, email =
+                let mutable phone1 = ""
+                let mutable email1 = ""
+                try
+                let divs = node.Element("div").Elements("div").ElementAt(1).Elements("div")
+                phone1 <- divs.First().InnerHtml.Trim()
+                email1 <- divs.ElementAt(1).FirstChild.Attributes.["href"].Value.Replace("<!-- meinestadt -->", "").Replace("[AT]", "@").Replace("[PUNKT]", ".").Substring(8)
+                phone1, email1
+                with
+                | e ->
+                    phone1, email1
+
+
+            { company = company |> System.Net.WebUtility.HtmlDecode
+              street = street |> System.Net.WebUtility.HtmlDecode
+              postcode = postcode |> System.Net.WebUtility.HtmlDecode
+              city = city |> System.Net.WebUtility.HtmlDecode
+              gender = Gender.Unknown
+              degree = ""
+              firstName = ""
+              lastName = ""
+              email = email |> System.Net.WebUtility.HtmlDecode
+              phone = phone |> System.Net.WebUtility.HtmlDecode
+              mobilePhone = ""
+            }
+        with
+        | e ->
+            reraise()
+            { company = ""
+              street = ""
+              postcode = ""
+              city = ""
+              gender = Gender.Unknown
+              degree = ""
+              firstName = ""
+              lastName = ""
+              email = ""
+              phone = ""
+              mobilePhone = ""
+            }
 
 
     let websiteMap : Map<string, (HtmlDocument -> Employer)> =
-        ["^.*jobboerse.*$", readJobboerse]
+        [ "^.*jobboerse.*$", readJobboerse
+          "^.*meinestadt.*$", readMeineStadt]
         |> Map.ofList
 
     let read url =
@@ -105,23 +164,21 @@ module Website =
             let doc = HtmlWeb().Load(url)
             [ for currentWebsiteFun in matchingWebsiteFuns do
                 yield
-                    //HtmlWeb().Load(url)
-                    //|> currentWebsiteFun
                     doc |> currentWebsiteFun
             ]
             |> List.head
         with
         | e ->
-
-        { company = ""
-          street = ""
-          postcode = ""
-          city = ""
-          gender = Gender.Unknown
-          degree = ""
-          firstName = ""
-          lastName = ""
-          email = ""
-          phone = ""
-          mobilePhone = ""
-        }
+            reraise()
+            { company = ""
+              street = ""
+              postcode = ""
+              city = ""
+              gender = Gender.Unknown
+              degree = ""
+              firstName = ""
+              lastName = ""
+              email = ""
+              phone = ""
+              mobilePhone = ""
+            }

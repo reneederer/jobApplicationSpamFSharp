@@ -7,7 +7,7 @@ module English =
           EditYourValues, "Edit your values"
           EditEmail, "Edit email"
           EditAttachments, "Edit attachments"
-          YourApplicationDocuments, "Your applicationDocuments"
+          YourApplicationDocuments, "Your application documents"
           LoadFromWebsite, "LoadFromWebsite"
           ApplyNow, "Apply now"
           CompanyName, "Company name"

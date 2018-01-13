@@ -716,11 +716,17 @@ module Client =
               ]
             divAttr
               [ attr.id "divNewDocument"; attr.style "display: none" ]
-              [ text (t DocumentName)
+              [ br []
+                h4 [ text (t AddDocument)]
                 br []
-                inputAttr [attr.id "txtNewDocumentName"; attr.autofocus "autofocus" ] []
-                br []
-                br []
+                labelAttr
+                  [ attr.``for`` "txtNewDocumentName" ]
+                  [ text <| t DocumentName ]
+                inputAttr
+                  [ attr.id "txtNewDocumentName"
+                    attr.``class`` "form-control"
+                  ]
+                  []
                 inputAttr
                   [ attr.``type`` "button"
                     attr.``class`` "btnLikeLink"
@@ -728,18 +734,22 @@ module Client =
                     on.click (fun _ _ ->
                         async {
                             let newDocumentName = JS.Document.GetElementById("txtNewDocumentName")?value |> string
-                            varDocument.Value <- { varDocument.Value with name = newDocumentName }
-                            let! newDocumentId = Server.saveNewDocument varDocument.Value
-                            varDocument.Value <- { varDocument.Value with id = newDocumentId }
-                            let slctEl = JS.Document.GetElementById("slctDocumentName")
-                            addSelectOption slctEl newDocumentName
-                            JS.Document.GetElementById("divNewDocument")?style?display <- "none"
-                            JS.Document.GetElementById("btnDeleteDocument")?style?display <- "inline"
-                            slctEl?selectedIndex <- slctEl?options?length - 1
-                            do! setDocument()
-                            do! setPageButtons()
-                            show ["divAttachments"]
-                            do! fillDocumentValues()
+                            if newDocumentName.Trim() = ""
+                            then
+                                JS.Alert(String.Format(t FieldIsRequired, t DocumentName))
+                            else
+                                varDocument.Value <- { varDocument.Value with name = newDocumentName }
+                                let! newDocumentId = Server.saveNewDocument varDocument.Value
+                                varDocument.Value <- { varDocument.Value with id = newDocumentId }
+                                let slctEl = JS.Document.GetElementById("slctDocumentName")
+                                addSelectOption slctEl newDocumentName
+                                JS.Document.GetElementById("divNewDocument")?style?display <- "none"
+                                JS.Document.GetElementById("btnDeleteDocument")?style?display <- "inline"
+                                slctEl?selectedIndex <- slctEl?options?length - 1
+                                do! setDocument()
+                                do! setPageButtons()
+                                show ["divAttachments"]
+                                do! fillDocumentValues()
                         } |> Async.Start
                       )
                   ]
@@ -814,10 +824,15 @@ module Client =
             divAttr
               [ attr.id "divChoosePageType"; attr.style "display: none" ]
               [ inputAttr
-                  [ attr.``type`` "radio"; attr.name "rbgrpPageType"; attr.id "rbHtmlPage"; on.click (fun _ _ -> show ["divAttachments";"divChoosePageType"; "divCreateHtmlPage"]) ]
+                  [ attr.``type`` "radio"
+                    attr.disabled "true"
+                    attr.name "rbgrpPageType"
+                    attr.id "rbHtmlPage"
+                    on.click (fun _ _ -> show ["divAttachments";"divChoosePageType"; "divCreateHtmlPage"]) ]
                   []
                 labelAttr
-                  [ attr.``for`` "rbHtmlPage" ]
+                  [ attr.``for`` "rbHtmlPage"
+                  ]
                   [ text (t CreateOnline) ]
                 br []
                 inputAttr
@@ -898,10 +913,9 @@ module Client =
                 br []
                 hr []
                 br []
-                b [ text
-                      ((t YouMightWantToReplaceSomeWordsInYourFileWithVariables) +
-                      (t VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication))
-                  ]
+                h4 [ text (t YouMightWantToReplaceSomeWordsInYourFileWithVariables) ]
+                br []
+                text <| t VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication ]
                 br []
                 br []
                 text "$firmaName"
@@ -969,19 +983,19 @@ module Client =
                   [ (t Male), "userGender", "m", ""
                     (t Female), "userGender", "f", ""
                   ]
-                createInput (t FirstName) "userFirstName" (fun s -> s <> "", "This field is required")
-                createInput (t LastName) "userLastName" (fun s -> s <> "", "This field is required")
-                createInput (t Street) "userStreet" (fun s -> s <> "", "This field is required")
-                createInput (t Postcode) "userPostcode" (fun (s : string) -> s <> "", "This field is required")
-                createInput (t City) "userCity" (fun (s : string) -> s <> "", "This field is required")
-                createInput (t Phone) "userPhone" (fun (s : string) -> s <> "", "This field is required")
-                createInput (t MobilePhone) "userMobilePhone" (fun (s : string) -> s <> "", "This field is required")
+                createInput (t FirstName) "userFirstName" (fun s -> s <> "", t FieldIsRequired)
+                createInput (t LastName) "userLastName" (fun s -> s <> "", t FieldIsRequired)
+                createInput (t Street) "userStreet" (fun s -> s <> "", t FieldIsRequired)
+                createInput (t Postcode) "userPostcode" (fun (s : string) -> s <> "", t FieldIsRequired)
+                createInput (t City) "userCity" (fun (s : string) -> s <> "", t FieldIsRequired)
+                createInput (t Phone) "userPhone" (fun (s : string) -> s <> "", t FieldIsRequired)
+                createInput (t MobilePhone) "userMobilePhone" (fun (s : string) -> s <> "", t FieldIsRequired)
               ]
             divAttr
               [ attr.id "divAddEmployer"
                 attr.style "display: none"
               ]
-              [ createInput (t JobName) "jobName" (fun (s : string) -> s <> "", "This field is required")
+              [ createInput (t JobName) "jobName" (fun (s : string) -> s <> "", t FieldIsRequired)
                 h4 [text (t Employer)]
                 divAttr
                   [ attr.``class`` "form-group row" ]
@@ -1040,7 +1054,7 @@ module Client =
                           ]
                       ]
                   ]
-                createInput (t CompanyName) "company" (fun (s : string) -> s <> "", "This field is required")
+                createInput (t CompanyName) "company" (fun (s : string) -> s <> "", t FieldIsRequired)
                 createInput (t Street) "companyStreet" (fun (s : string) -> true, "")
                 createInput (t Postcode) "companyPostcode" (fun (s : string) -> true, "")
                 createInput (t City) "companyCity" (fun (s : string) -> true, "")
@@ -1053,7 +1067,7 @@ module Client =
                 createInput (t Degree) "bossDegree" (fun s -> true, "")
                 createInput (t FirstName) "bossFirstName" (fun s -> true, "")
                 createInput (t LastName) "bossLastName" (fun (s : string) -> true, "")
-                createInput (t Email) "bossEmail" (fun (s : string) -> s <> "", "This field is required")
+                createInput (t Email) "bossEmail" (fun (s : string) -> s <> "", t FieldIsRequired)
                 createInput (t Phone) "bossPhone" (fun s -> true, "")
                 createInput (t MobilePhone) "bossMobilePhone" (fun s -> true, "")
                 buttonAttr

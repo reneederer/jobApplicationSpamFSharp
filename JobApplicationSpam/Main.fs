@@ -103,6 +103,7 @@ module Site =
     open System
     open System.IO
     open WebSharper.JavaScript
+    open System.Configuration
 
 
     let homePage (ctx : Context<EndPoint>) =
@@ -140,16 +141,12 @@ module Site =
         Content.RedirectPermanentToUrl "/"
     
     let uploadPage (ctx : Context<EndPoint>) =
-
-
-
-
         match ctx.Request.Post.["documentId"] |> Option.map Int32.TryParse
             , ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously |> Option.map Int32.TryParse
             , ctx.Request.Post.["pageIndex"] |> Option.map Int32.TryParse
             with
         | Some (true, documentId), Some (true, userId), Some (true, pageIndex) ->
-            let dir = Path.Combine("Users", userId.ToString())
+            let dir = Path.Combine(ConfigurationManager.AppSettings.["usersDirectory"], userId.ToString())
             if not <| Directory.Exists dir then Directory.CreateDirectory dir |> ignore
 
             let findFreeFileName file documentId =

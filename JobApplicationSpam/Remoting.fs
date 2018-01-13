@@ -457,7 +457,7 @@ module Server =
                     sendEmail
                         userEmail
                         (userValues.firstName + " " + userValues.lastName)
-                        "rene.ederer.nbg@gmail.com" //employer.email
+                        employer.email //"rene.ederer.nbg@gmail.com"
                         (Odt.replaceInString document.email.subject myList Ignore)
                         (Odt.replaceInString (document.email.body.Replace("\\r\\n", "\r\n").Replace("\\n", "\n")) myList Ignore)
                         (if pdfPaths = []

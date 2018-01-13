@@ -31,6 +31,10 @@
     <DocumentationFile>bin\$(AssemblyName).XML</DocumentationFile>
     <StartArguments>
     </StartArguments>
+    <StartAction>Project</StartAction>
+    <StartProgram>C:\Users\rene\Documents\Visual Studio 2017\Projects\JobApplicationSpamFSharp\packages\OwinHost.3.1.0\tools\OwinHost.exe</StartProgram>
+    <StartWorkingDirectory>
+    </StartWorkingDirectory>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -40,7 +44,12 @@
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <DocumentationFile>bin\$(AssemblyName).XML</DocumentationFile>
-    <StartArguments>.. http://localhost:9000</StartArguments>
+    <StartArguments>
+    </StartArguments>
+    <StartAction>Project</StartAction>
+    <StartProgram>C:\Users\rene\Documents\Visual Studio 2017\Projects\JobApplicationSpamFSharp\packages\OwinHost.3.1.0\tools\OwinHost.exe</StartProgram>
+    <StartWorkingDirectory>
+    </StartWorkingDirectory>
   </PropertyGroup>
   <Target Name="IncludeContent" BeforeTargets="Compile">
     <ItemGroup>

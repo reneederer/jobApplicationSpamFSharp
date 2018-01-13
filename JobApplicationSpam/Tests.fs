@@ -10,7 +10,7 @@ open System.IO
 open Types
 
 module MyTests =
-    log4net.Config.XmlConfigurator.Configure(new FileInfo(@"C:\Users\rene\Documents\Visual Studio 2017\Projects\jobApplicationSpamFSharp\JobApplicationSpam\log4net.config")) |> ignore
+    log4net.Config.XmlConfigurator.Configure(new FileInfo(@"log4net.config")) |> ignore
     
     let mutable dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
     dbConn.Open()

@@ -310,7 +310,7 @@ module Server =
             Database.deleteDocument dbConn documentId
             let filePaths = Database.getDeletableFilePaths dbConn documentId
             for filePath in filePaths do
-                File.Delete filePath
+                File.Delete <| Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], filePath)
             Database.deleteDeletableDocumentFilePages dbConn documentId |> ignore
         }
 
@@ -370,13 +370,18 @@ module Server =
                 let! userEmail = getEmailByUserId userId
                 let guid = Guid.NewGuid().ToString("N")
                 let! map = replaceMap (userEmail |> Option.defaultValue "") userValues employer document
-                Directory.CreateDirectory(Path.Combine(ConfigurationManager.AppSettings.["tmpDirectory"], guid)) |> ignore
+                Directory.CreateDirectory(Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "tmp", guid)) |> ignore
                 if filePath.EndsWith(".odt") || filePath.EndsWith(".docx")
                 then
-                    return Odt.replaceInOdt filePath (sprintf "tmp/%s/extracted/" guid) (sprintf "tmp/%s/replaced/" guid) map
+                    return
+                        Odt.replaceInOdt
+                            filePath
+                            (Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], sprintf "tmp/%s/extracted/" guid))
+                            (Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], sprintf "tmp/%s/replaced/" guid))
+                            map
                 else
-                    let newFilePath = Path.Combine(ConfigurationManager.AppSettings.["tmpDirectory"], guid, (Path.GetFileName(filePath)))
-                    File.Copy(filePath, newFilePath, true)
+                    let newFilePath = Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "tmp", guid, (Path.GetFileName(filePath)))
+                    File.Copy(Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], filePath), newFilePath, true)
                     Odt.replaceInFile newFilePath map Ignore
                     return newFilePath
             }
@@ -402,7 +407,7 @@ module Server =
                     let userEmail = Database.getEmailByUserId dbConn userId |> Option.defaultValue ""
                     Database.setUserValues dbConn userValues userId |> ignore
                     let! myList = replaceMap userEmail userValues employer document
-                    let tmpPath = Path.Combine(ConfigurationManager.AppSettings.["tmpDirectory"], Guid.NewGuid().ToString("N"))
+                    let tmpPath = Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "tmp", Guid.NewGuid().ToString("N"))
                     let odtPaths =
                         [ for item in document.pages do
                             match item with
@@ -428,19 +433,19 @@ module Server =
                                 yield
                                     if filePage.path.EndsWith(".pdf")
                                     then
-                                        filePage.path
+                                        Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], filePage.path)
                                     elif filePage.path.EndsWith(".odt") || filePage.path.EndsWith(".docx")
                                     then
                                         let directoryGuid = Guid.NewGuid().ToString("N")
                                         Odt.replaceInOdt
-                                            filePage.path
+                                            (Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], filePage.path))
                                             (Path.Combine(tmpPath, directoryGuid, "extractedOdt"))
                                             (Path.Combine(tmpPath, directoryGuid, "replacedOdt"))
                                             myList
                                     else
                                         let copiedPath = Path.Combine(tmpPath, Guid.NewGuid().ToString("N"), Path.GetFileName(filePage.path))
                                         Directory.CreateDirectory(Path.GetDirectoryName copiedPath) |> ignore
-                                        File.Copy(filePage.path, copiedPath)
+                                        File.Copy(Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], filePage.path), copiedPath)
                                         Odt.replaceInFile
                                             copiedPath
                                             myList
@@ -456,7 +461,7 @@ module Server =
                     sendEmail
                         userEmail
                         (userValues.firstName + " " + userValues.lastName)
-                        employer.email //"rene.ederer.nbg@gmail.com"
+                        "rene.ederer.nbg@gmail.com" //employer.email
                         (Odt.replaceInString document.email.subject myList Ignore)
                         (Odt.replaceInString (document.email.body.Replace("\\r\\n", "\r\n").Replace("\\n", "\n")) myList Ignore)
                         (if pdfPaths = []
@@ -584,7 +589,7 @@ module Server =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.createLink dbConn filePath name
+            return Database.createLink dbConn (Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], filePath)) name
         }
 
     [<Remote>]

@@ -106,6 +106,7 @@ module Odt =
         replacedOdtPath
     
     let odtToPdf (odtPath : string) =
+        log.Debug (sprintf "(odtPath = %s)" odtPath)
         use process1 = new System.Diagnostics.Process()
         process1.StartInfo.FileName <- ConfigurationManager.AppSettings.["python"]
         process1.StartInfo.UseShellExecute <- false
@@ -115,10 +116,15 @@ module Odt =
         process1.WaitForExit()
         let outputPath = Path.ChangeExtension(odtPath, ".pdf")
         if File.Exists outputPath
-        then outputPath
-        else failwith "Could not convert odt file to pdf: " + odtPath
+        then
+            log.Debug (sprintf "(odtPath = %s) = %s" odtPath outputPath)
+            outputPath
+        else
+            log.Error (sprintf "(odtPath = %s) failed to Convert" odtPath)
+            failwith "Could not convert odt file to pdf: " + odtPath
     
     let mergePdfs (pdfPaths : list<string>) (outputPath : string) =
+        log.Debug (sprintf "(pdfPaths = %A, outputPath = %s)" pdfPaths outputPath)
         Directory.CreateDirectory(Path.GetDirectoryName(outputPath)) |> ignore
         use outputDocument = new PdfDocument ()
         for pdfPath in pdfPaths do
@@ -126,4 +132,5 @@ module Odt =
             for page in inputDocument.Pages do
                 outputDocument.AddPage page |> ignore
         outputDocument.Save outputPath
+        log.Debug (sprintf "(pdfPaths = %A, outputPath = %s) = ()" pdfPaths outputPath)
 

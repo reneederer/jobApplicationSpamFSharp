@@ -146,8 +146,9 @@ module Site =
             , ctx.Request.Post.["pageIndex"] |> Option.map Int32.TryParse
             with
         | Some (true, documentId), Some (true, userId), Some (true, pageIndex) ->
-            let dir = Path.Combine(ConfigurationManager.AppSettings.["usersDirectory"], userId.ToString())
-            if not <| Directory.Exists dir then Directory.CreateDirectory dir |> ignore
+            let relativeDir = Path.Combine("users", userId.ToString())
+            let absoluteDir = Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], relativeDir)
+            if not <| Directory.Exists absoluteDir then Directory.CreateDirectory absoluteDir |> ignore
 
             let findFreeFileName file documentId =
 
@@ -177,7 +178,11 @@ module Site =
                                 filesWithSameExtension
                                 |> Seq.tryFind
                                     (fun file ->
-                                        use fileStream = new FileStream(file, FileMode.Open, FileAccess.Read)
+                                        use fileStream =
+                                            new FileStream
+                                                (Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], file)
+                                                , FileMode.Open
+                                                , FileAccess.Read)
                                         Odt.areStreamsEqual x.InputStream fileStream
                                     )
                             match oSameFile with
@@ -185,11 +190,11 @@ module Site =
                                 (file, findFreeFileName file documentId)
                             | None ->
                                 let fileName =
-                                    if File.Exists(Path.Combine(dir, x.FileName))
+                                    if File.Exists(Path.Combine(absoluteDir, x.FileName))
                                     then findFreeFileName x.FileName documentId
                                     else x.FileName
-                                x.SaveAs(Path.Combine(dir, fileName))
-                                (Path.Combine(dir, fileName), fileName)
+                                x.SaveAs(Path.Combine(absoluteDir, fileName))
+                                (Path.Combine(relativeDir, fileName), fileName)
                         try
                             async {
                                 do! Server.addFilePage documentId filePath pageIndex name

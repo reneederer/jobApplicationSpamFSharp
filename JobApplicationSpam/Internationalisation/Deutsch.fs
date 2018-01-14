@@ -29,7 +29,7 @@ module Deutsch =
           UploadFile, "Datei hochladen"
           PleaseChooseAFile, "Bitte eine Datei aussuchen"
           AddAttachment, "Anhang hinzufügen"
-          YouMightWantToReplaceSomeWordsInYourFileWithVariables, "Du kannst Worte oder Phrasen in deiner Datei durch Variablen ersetzen, zum Beispiel den Namen der Firma, bei der du dich bewirbst."
+          YouMightWantToReplaceSomeWordsInYourFileWithVariables, "Du kannst Worte oder Phrasen in deiner Datei durch Variablen ersetzen."
           VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication, "Jedesmal, wenn du eine Bewerbung versendest, werden die Variablen automatisch durch die richtigen Werte ersetzt."
           Male, "männlich"
           Female, "weiblich"
@@ -38,8 +38,7 @@ module Deutsch =
           DocumentName, "Name der Bewerbungsmappe"
           AddHtmlAttachment, "Html Anhang hinzufügen"
           Employer, "Arbeitgeber"
-          JustDownload, "Nur downloaden"
-          DownloadWithReplacedVariables, "Variablen ersetzen und downloaden"
+          Download, "downloaden"
           ReallyDeleteDocument, """Document "{0}" wirklich löschen?"""
           ReallyDeletePage, """Seite "{0}" wirklich löschen?"""
           PleaseConfirmYourEmailAddressEmailSubject, "Bitte bestätige deine Email-Adresse"
@@ -56,6 +55,7 @@ module Deutsch =
           YourApplicationHasNotBeenSent, "Deine Bewerbung konnte nicht versendet werden :-("
           FileIsTooBig, "Die ausgewählte Datei ist zu groß."
           UploadLimit, "Die maximale Dateigröße beträgt {0} MB."
+          ReplaceVariables, "Variablen ersetzen"
         ]
 
 

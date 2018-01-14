@@ -83,7 +83,7 @@ module Client =
 
     [<JavaScript>]
     let templates () = 
-        let varDocument = Var.Create {name="";id=0;pages=[];email={subject="";body=""};jobName=""}
+        let varDocument = Var.Create emptyDocument
         let documentEmailSubject : IRef<string> = varDocument.Lens (fun x -> x.email.subject) (fun x v -> { x with email = {x.email with subject = v }})
         let documentEmailBody : IRef<string> = varDocument.Lens (fun x -> x.email.body) (fun x v -> { x with email = {x.email with body = v }})
         let documentJobName : IRef<string> = varDocument.Lens (fun x -> x.jobName) (fun x v -> { x with jobName = v })
@@ -357,7 +357,6 @@ module Client =
                                              before, current, after
                                          )
                                   varDocument.Value <- { varDocument.Value with pages = beforePages @ (currentPage :: afterPages) }
-                                  fillDocumentValues() |> Async.Start
                             )
                         el.RemoveEventListener("input", eventAction, true)
                         el.AddEventListener("input", eventAction, true)
@@ -425,7 +424,6 @@ module Client =
                                         let! _ = overwriteDocument varDocument.Value
                                         do! setDocument()
                                         do! setPageButtons()
-                                        do! fillDocumentValues()
                                         show ["divAttachments"]
                                     } |> Async.Start
                             )
@@ -452,7 +450,6 @@ module Client =
                                     do! setDocument()
                                     do! setPageButtons()
                                     show ["divAttachments"]
-                                    do! fillDocumentValues()
                                 } |> Async.Start
                             )
                           )
@@ -480,7 +477,6 @@ module Client =
                                     do! setDocument()
                                     do! setPageButtons()
                                     show ["divAttachments"]
-                                    do! fillDocumentValues()
                                 } |> Async.Start
                             )
                           )
@@ -634,7 +630,6 @@ module Client =
             for htmlPageTemplate in htmlPageTemplates do
                 addSelectOption slctHtmlPageTemplateEl htmlPageTemplate.name
             show [ "divAttachments" ]
-            do! fillDocumentValues()
         } |> Async.Start
 
         divAttr
@@ -684,10 +679,10 @@ module Client =
                                 if slctEl?length = 0
                                 then
                                     el?style?display <- "none"
-                                    varDocument.Value <- {name="";id=0;pages=[];email={subject="";body=""};jobName=""}
+                                    varDocument.Value <- emptyDocument
                                 do! setDocument()
                                 do! setPageButtons()
-                                do! fillDocumentValues()
+                                show ["divAttachments"]
                         } |> Async.Start
                     )
                   ]
@@ -784,48 +779,44 @@ module Client =
               ]
             divAttr
               [ attr.id "divUploadedFileDownload"; attr.style "display: none"]
-              [ buttonAttr
-                  [ attr.``type`` "button"
-                    on.click
-                        (fun _ _ ->
-                            async {
-                                match varDocument.Value.pages |> List.tryItem (getCurrentPageIndex() - 1) with
-                                | Some (FilePage filePage) ->
-                                    let fileName =
-                                        let extension = filePage.path.Substring(filePage.path.LastIndexOf('.') + 1)
-                                        if filePage.name.EndsWith ("." + extension)
-                                        then filePage.name
-                                        else filePage.name + "." + extension
-                                    let! guid = Server.createLink filePage.path fileName
-                                    JS.Window.Location.Href <- sprintf "download/%s" guid
-                                | _ -> ()
-                            } |> Async.Start
-                        )
+              [ inputAttr
+                  [ attr.``type`` "checkbox"
+                    //attr.``checked`` "false"
+                    attr.value "false"
+                    attr.id "chkReplaceVariables"
                   ]
-                  [ text (t JustDownload)
+                  []
+                labelAttr
+                  [ attr.``for`` "chkReplaceVariables" ]
+                  [ text (t ReplaceVariables)
                   ]
-                br []
                 br []
                 buttonAttr
                   [ attr.``type`` "button"
                     on.click
                         (fun _ _ ->
-                            async {
+                                let chkReplaceVariables = JQuery("#chkReplaceVariables")
                                 match varDocument.Value.pages |> List.tryItem (getCurrentPageIndex() - 1) with
                                 | Some (FilePage filePage) ->
-                                    let! path = Server.replaceVariables filePage.path varUserValues.Value varEmployer.Value varDocument.Value
-                                    let fileName =
-                                        let extension = filePage.path.Substring(filePage.path.LastIndexOf('.') + 1)
-                                        if filePage.name.EndsWith ("." + extension)
-                                        then filePage.name
-                                        else filePage.name + "." + extension
-                                    let! guid = Server.createLink path fileName
-                                    JS.Window.Location.Href <- sprintf "download/%s" guid
-                                | _ -> ()
-                            } |> Async.Start
+                                    async {
+                                        let! path =
+                                            if chkReplaceVariables.Prop("checked")
+                                            then
+                                                Server.replaceVariables filePage.path varUserValues.Value varEmployer.Value varDocument.Value
+                                            else async { return filePage.path }
+                                        let fileName =
+                                            let extension = filePage.path.Substring(filePage.path.LastIndexOf('.') + 1)
+                                            if filePage.name.EndsWith ("." + extension)
+                                            then filePage.name
+                                            else filePage.name + "." + extension
+                                        let! guid = Server.createLink path fileName
+                                        JS.Window.Location.Href <- sprintf "download/%s" guid
+                                    } |> Async.Start
+                                | Some (HtmlPage _) -> ()
+                                | None -> ()
                         )
                   ]
-                  [ text (t DownloadWithReplacedVariables)
+                  [ text (t Download)
                   ]
               ]
             divAttr
@@ -927,7 +918,6 @@ module Client =
                 hr []
                 br []
                 h4 [ text (t YouMightWantToReplaceSomeWordsInYourFileWithVariables) ]
-                br []
                 text <| t VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication
                 br []
                 br []

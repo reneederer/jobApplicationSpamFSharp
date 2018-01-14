@@ -245,8 +245,7 @@ module Types =
         | AddDocument
         | DocumentName
         | AddHtmlAttachment
-        | JustDownload
-        | DownloadWithReplacedVariables
+        | Download
         | ReallyDeleteDocument
         | ReallyDeletePage
         | PleaseConfirmYourEmailAddressEmailSubject
@@ -263,3 +262,4 @@ module Types =
         | YourApplicationHasNotBeenSent
         | FileIsTooBig
         | UploadLimit
+        | ReplaceVariables

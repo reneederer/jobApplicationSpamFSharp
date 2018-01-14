@@ -38,8 +38,7 @@ module English =
           DocumentName, "Document name: "
           AddHtmlAttachment, "Add Html attachment"
           Employer, "Employer"
-          JustDownload, "Just Download"
-          DownloadWithReplacedVariables, "Download with replaced variables"
+          Download, "Download"
           ReallyDeletePage, """Really delete page "{0}"?"""
           ReallyDeleteDocument, """Really delete document "{0}"?"""
           PleaseConfirmYourEmailAddressEmailSubject, "Please confirm your email address"
@@ -56,4 +55,5 @@ module English =
           YourApplicationHasNotBeenSent, "\nYour application has not been sent :-("
           FileIsTooBig, "The chosen file is too big."
           UploadLimit, "The upload limit is {0} MB."
+          ReplaceVariables, "Replace variables"
         ]

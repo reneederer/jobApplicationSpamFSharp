@@ -162,6 +162,53 @@ module Types =
     | Ignore
 
     [<WebSharper.JavaScript>]
+    let emptyUserValues =
+        { gender = Gender.Unknown
+          degree = ""
+          firstName = ""
+          lastName = ""
+          street = ""
+          postcode = ""
+          city = ""
+          phone = ""
+          mobilePhone = ""
+        }
+
+    [<WebSharper.JavaScript>]
+    let emptyEmployer =
+        { company = ""
+          gender = Gender.Unknown
+          degree = ""
+          firstName = ""
+          lastName = ""
+          street = ""
+          postcode = ""
+          city = ""
+          email = ""
+          phone = ""
+          mobilePhone = ""
+        }
+
+
+    [<WebSharper.JavaScript>]
+    let emptyDocument =
+        { id=0
+          name=""
+          pages=[]
+          email=
+            { subject=""
+              body=""
+            }
+          jobName=""
+        }   
+
+
+    type DataBinding =
+        | TextBinding of IRef<string>
+        | GenderBinding of IRef<Gender>
+    
+
+    [<WebSharper.JavaScript>]
     type Word =
         | AddEmployerAndApply
         | EditYourValues

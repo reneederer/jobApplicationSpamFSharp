@@ -7,7 +7,6 @@ open System
 open JobApplicationSpam.Types
 open System.Configuration
 open Website
-open Microsoft.Owin.Cors
 
 
 module Server =

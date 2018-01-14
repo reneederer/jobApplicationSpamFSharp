@@ -29,10 +29,10 @@ create table sentStatusValue(id int primary key, status varchar(50));
 create table sentStatus(id serial primary key, sentApplicationId int, statusChangedOn date, dueOn timestamp, sentStatusValueId int, statusMessage varchar(200), foreign key(sentApplicationId) references sentApplication(id), foreign key(sentStatusValueId) references sentStatusValue(id));
 create table link(id serial primary key, path varchar(100), guid varchar(36), name varchar(100));
 
+insert into users(email, password, salt, guid) values('rene.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null);
 insert into users(email, password, salt, guid) values('ren.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null);
 insert into users(email, password, salt, guid) values('helmut.goerke@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', 'someguid');
 insert into users(email, password, salt, guid) values('r', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null);
-insert into users(email, password, salt, guid) values('rene.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null);
 
 insert into userValues(userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone) values(1, 'm', '', 'René', 'Ederer', 'Raabstr. 24A', '90429', 'Nürnberg', 'kein Telefon', 'kein Handy');
 insert into userValues(userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone) values(2, 'm', '', 'Helmut', 'Görke', 'Raabstr. 24A', '90429', 'Nürnberg', '0911 918273', '01520 2723494');
@@ -45,39 +45,41 @@ insert into employer(userId, company, street, postcode, city, gender, degree, fi
 insert into employer(userId, company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'engineering people GmbH', 'Südwestpark 60', '90449', 'Nürnberg',  'm', '', 'Haluk', 'Acar','haluk.acar@engineering-people.de', '+49 911 239560316', '');
 insert into employer(userId, company, gender, street, postcode, city, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'BFI Informationssysteme GmbH', 'Ötterichweg 7', '90411', 'Nürnberg', 'm', '', 'Michael', 'Schlund', 'Michael.Schlund@bfi-info.de', '0911 9457668', '');
 */
-
 insert into htmlPageTemplate(name, odtPath, html) values('Anschreiben nach DIN 5008', 'c:/users/rene/desktop/bewerbung_neu.odt',
 '<div id="divInsert">
 <div id="divTemplate" class="page1">
     <div style="width: 100%; background-color: white">
-        <input class="resizing" autofocus "autofocus" style="font-family: Arial; font-size: 12pt; font-weight: normal" data-bind="userDegree" data-variable-value="userDegree" placeholder="Dein Titel" />
-        <input class="resizing" value="test" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-variable-value="userFirstName" data-bind="userFirstName" placeholder="Dein Vorname" />
-        <input class="resizing" style="border:none; outline: none; letter-spacing: 0px; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind="userLastName" data-variable-value="userLasssstName" placeholder="Dein Nachname" />
+        <input type=text data-bind-ref="employerGender" data-bind-value="m" />
+        <input type=text data-bind-ref="employerGender" data-bind-value="u" />
+        <input type=text data-bind-ref="employerGender" data-bind-value="f" />
+        <input class="resizing" autofocus "autofocus" style="font-family: Arial; font-size: 12pt; font-weight: normal" data-bind-ref="userDegree" data-variable-value="userDegree" placeholder="Dein Titel" />
+        <input class="resizing" value="test" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-variable-value="userFirstName" data-bind-ref="userFirstName" placeholder="Dein Vorname" />
+        <input class="resizing" style="border:none; outline: none; letter-spacing: 0px; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind-ref="userLastName" data-variable-value="userLasssstName" placeholder="Dein Nachname" />
         <br />
-        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind="userStreet" style= "width:150px" data-variable-value="userStreet" placeholder="Deine Straße" />
+        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind-ref="userStreet" style= "width:150px" data-variable-value="userStreet" placeholder="Deine Straße" />
         <br />
-        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind="userPostcode" data-variable-value="userPostcode" placeholder="Deine Postleitzahl" />
-        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind="userCity" data-variable-value="userCity" placeholder="Deine Stadt" />
-        <br />
-        <br />
+        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind-ref="userPostcode" data-variable-value="userPostcode" placeholder="Deine Postleitzahl" />
+        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind-ref="userCity" data-variable-value="userCity" placeholder="Deine Stadt" />
         <br />
         <br />
-        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind="bossDegree" placeholder="Chef-Titel" />
-        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind="bossFirstName" placeholder="Chef-Vorname" />
-        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind="bossLastName" placeholder="Chef-Nachname" />
         <br />
-        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind="companyStreet" placeholder="Firma-Strasse" />
         <br />
-        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind="companyPostcode" placeholder="Firma-Postleitzahl" />
-        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind="companyCity" placeholder="Firma-Stadt" />
+        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind-ref="employerDegree" placeholder="Chef-Titel" />
+        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind-ref="employerFirstName" placeholder="Chef-Vorname" />
+        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind-ref="employerLastName" placeholder="Chef-Nachname" />
+        <br />
+        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind-ref="employerStreet" placeholder="Firma-Strasse" />
+        <br />
+        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind-ref="employerPostcode" placeholder="Firma-Postleitzahl" />
+        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind-ref="employerCity" placeholder="Firma-Stadt" />
         <br />
 <span style= "float:right">
-<input type="text" readonly="readonly" class="resizing" style="font-family: Arial; font-size: 12pt; font-weight: normal; border: none; outline: none;padding:0px; margin:0px" data-bind="userCity" />,&nbsp
+<input type="text" readonly="readonly" class="resizing" style="font-family: Arial; font-size: 12pt; font-weight: normal; border: none; outline: none;padding:0px; margin:0px" data-bind-ref="userCity" />,&nbsp
 <input type="text" readonly="readonly" class="resizing" style="font-family: Arial; font-size: 12pt; font-weight: normal" data-variable-value="today" />
 </span>
         <br />
         <br />
-        <input class="resizing" data-bind="subject" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: bold" placeholder="Betreff" />
+        <input class="resizing" data-bind-ref="documentEmailSubject" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: bold" placeholder="Betreff" />
         <br />
         <br />
     </div>
@@ -91,21 +93,21 @@ insert into htmlPageTemplate(name, odtPath, html) values('Anschreiben nach DIN 5
         <br />
         <br />
         <br />
-<input type="text" readonly="readonly" class="resizing" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-bind="userDegree" />&nbsp;
-<input type="text" readonly="readonly" class="resizing" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-bind="userFirstName" />&nbsp;
-<input type="text" readonly="readonly" class="resizing" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-bind="userLastName" />
+<input type="text" readonly="readonly" class="resizing" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-bind-ref="userDegree" />&nbsp;
+<input type="text" readonly="readonly" class="resizing" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-bind-ref="userFirstName" />&nbsp;
+<input type="text" readonly="readonly" class="resizing" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-bind-ref="userLastName" />
 </div>
 </div>
 </div>');
 insert into htmlPageTemplate(name, odtPath, html) values('Deckblatt', 'c:/users/rene/desktop/bewerbung_deckblatt.odt',
 '<div id="insertDiv">
 <h1>Deckblatt</h1>
-<input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal" data-bind="bossFirstName" placeholder="Chef-Vorname" />
+<input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal" data-bind-ref="employerFirstName" placeholder="Chef-Vorname" />
 <image src="null" width="400" height="100" />
-<input type="text" class="resizing" data-bind="userFirstName"></input>
+<input type="text" class="resizing" data-bind-ref="userFirstName"></input>
 <input type="text" data-page-mainText="xainText"></input>
 <br />
-<input type="text" class="resizing" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-bind="userLastName" placeholder="Dein Name" />
+<input type="text" class="resizing" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-bind-ref="userLastName" placeholder="Dein Name" />
 hallo div!</div>
 ');
 insert into htmlPageTemplate(name, odtPath, html) values('Lebenslauf', 'c:/users/rene/desktop/bewerbung_lebenslauf.odt', '<div id="insertDiv"><b>Lebenslauf...</b></div>');
@@ -144,3 +146,4 @@ insert into sentStatus(sentApplicationId, statusChangedOn, dueOn, sentStatusValu
     values(3, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 1, '');
 
 */
+

@@ -13,11 +13,7 @@ module Client =
     open WebSharper.JQuery
     open System
     open WebSharper.UI.Next.Client.HtmlExtensions
-    open WebSharper.UI.Next.Html.Tags
     open Server
-    open WebSharper.Html.Server.Attr
-    open WebSharper.Formlets.Enhance
-    open WebSharper.Owin.EnvKey.WebSharper
 
     [<JavaScript>]
     let varLanguageDict = Var.Create<Map<Word, string>>(Deutsch.dict |> Map.ofList)
@@ -88,9 +84,36 @@ module Client =
     [<JavaScript>]
     let templates () = 
         let varDocument = Var.Create {name="";id=0;pages=[];email={subject="";body=""};jobName=""}
-        let varUserValues : Var<UserValues> = Var.Create<UserValues>({gender=Gender.Female;degree="";firstName="";lastName="";street="";postcode="";city="";phone="";mobilePhone=""})
+        let documentEmailSubject : IRef<string> = varDocument.Lens (fun x -> x.email.subject) (fun x v -> { x with email = {x.email with subject = v }})
+        let documentEmailBody : IRef<string> = varDocument.Lens (fun x -> x.email.body) (fun x v -> { x with email = {x.email with body = v }})
+        let documentJobName : IRef<string> = varDocument.Lens (fun x -> x.jobName) (fun x v -> { x with jobName = v })
+
+        let varUserValues : Var<UserValues> = Var.Create emptyUserValues
+        let userGender : IRef<Gender> = varUserValues.Lens (fun x -> x.gender) (fun x v -> { x with gender = v })
+        let userDegree : IRef<string> = varUserValues.Lens (fun x -> x.degree) (fun x v -> { x with degree = v })
+        let userFirstName : IRef<string> = varUserValues.Lens (fun x -> x.firstName) (fun x v -> { x with firstName = v })
+        let userLastName : IRef<string> = varUserValues.Lens (fun x -> x.lastName) (fun x v -> { x with lastName = v })
+        let userStreet : IRef<string> = varUserValues.Lens (fun x -> x.street) (fun x v -> { x with street = v })
+        let userPostcode : IRef<string> = varUserValues.Lens (fun x -> x.postcode) (fun x v -> { x with postcode = v })
+        let userCity : IRef<string> = varUserValues.Lens (fun x -> x.city) (fun x v -> { x with city = v })
+        let userPhone : IRef<string> = varUserValues.Lens (fun x -> x.phone) (fun x v -> { x with phone = v })
+        let userMobilePhone : IRef<string> = varUserValues.Lens (fun x -> x.mobilePhone) (fun x v -> { x with mobilePhone = v })
+
         let varUserEmail = Var.CreateWaiting<string>()
+
         let varEmployer = Var.Create<Employer>({company="";gender=Gender.Unknown;degree="";firstName="";lastName="";street="";postcode="";city="";email="";phone="";mobilePhone=""})
+        let employerCompany : IRef<string> = varEmployer.Lens (fun x -> x.company) (fun x v -> { x with company = v })
+        let employerGender : IRef<Gender> = varEmployer.Lens (fun x -> x.gender) (fun x v -> { x with gender = v })
+        let employerDegree : IRef<string> = varEmployer.Lens (fun x -> x.degree) (fun x v -> { x with degree = v })
+        let employerFirstName : IRef<string> = varEmployer.Lens (fun x -> x.firstName) (fun x v -> { x with firstName = v })
+        let employerLastName : IRef<string> = varEmployer.Lens (fun x -> x.lastName) (fun x v -> { x with lastName = v })
+        let employerStreet : IRef<string> = varEmployer.Lens (fun x -> x.street) (fun x v -> { x with street = v })
+        let employerPostcode : IRef<string> = varEmployer.Lens (fun x -> x.postcode) (fun x v -> { x with postcode = v })
+        let employerCity : IRef<string> = varEmployer.Lens (fun x -> x.city) (fun x v -> { x with city = v })
+        let employerEmail : IRef<string> = varEmployer.Lens (fun x -> x.email) (fun x v -> { x with email = v })
+        let employerPhone : IRef<string> = varEmployer.Lens (fun x -> x.phone) (fun x v -> { x with phone = v })
+        let employerMobilePhone : IRef<string> = varEmployer.Lens (fun x -> x.mobilePhone) (fun x v -> { x with mobilePhone = v })
+
         let varDisplayedDocument = Var.Create(div [] :> Doc)
         let varLanguage = Var.Create English
         let varDivSentApplications = Var.Create(div [] :> Doc)
@@ -132,21 +155,23 @@ module Client =
         
 
 
-        let createInputWithColumnSizes column1Size column2Size labelText dataBind (validFun : string -> (bool * string)) =
+        let createInputWithColumnSizes1 column1Size column2Size labelText (ref : IRef<string>) (validFun : string -> string) =
+          let guid = Guid.NewGuid().ToString("N")
           divAttr
             [attr.``class`` "form-group row"]
             [ labelAttr
-                [attr.``class`` (column1Size + " col-form-label"); attr.``for`` dataBind]
+                [attr.``class`` (column1Size + " col-form-label"); attr.``for`` guid]
                 [text labelText]
               divAttr
                 [ attr.``class`` column2Size]
-                [ inputAttr
-                    [ attr.id dataBind
-                      attr.``data-`` "bind" dataBind
+                [ Doc.Input
+                    [ attr.id guid
                       attr.``class`` "form-control"
                       attr.``type`` "text"
                       on.blur (fun el _ ->
-                        let (valid, textInvalid) = validFun el?value
+                        let validResult = validFun el?value
+                        ()
+                        (*
                         if valid
                         then
                             JQuery(el).RemoveClass("is-invalid") |> ignore
@@ -157,10 +182,11 @@ module Client =
                             JQuery(el).AddClass("is-invalid") |> ignore
                             JQuery(el).Parent().Next().Toggle(true) |> ignore
                             JQuery(el).Parent().Next().First().Html(textInvalid) |> ignore
+                            *)
                       )
 
                     ]
-                    []
+                    ref
                 ]
               divAttr
                 [ attr.``class`` column1Size
@@ -173,11 +199,12 @@ module Client =
                 ]
             ]
 
-        let createRadioWithColumnSizes column1Size column2Size (labelText : string) (radioValuesList : list<string * string * string * string>) =
+
+        let createRadioWithColumnSizes1 column1Size column2Size (labelText : string) (radioValuesList : list<string * 'a * (IRef<'a>) * string>) =
           let radioGroup = Guid.NewGuid().ToString("N")    
           div
-            (radioValuesList |> List.mapi (fun i (radioText, bind, value, ``checked``) ->
-                let id = Guid.NewGuid().ToString("N")
+            (radioValuesList |> List.mapi (fun i (radioText, value, ref, ``checked``) ->
+                let guid = Guid.NewGuid().ToString("N")
                 divAttr
                   [attr.``class`` "form-group row"]
                   [ labelAttr
@@ -186,36 +213,41 @@ module Client =
                     divAttr
                       [ attr.``class`` column2Size
                       ]
-                      [ inputAttr
-                          [ attr.id id
+                      [ Doc.Radio
+                          [ attr.id guid
                             attr.``type`` "radio"
                             attr.name radioGroup
-                            attr.value value
-                            attr.``data-`` "bind" bind
-                            attr.``checked`` "checked"
+                            attr.``checked`` ``checked``
                           ]
-                          []
+                          value
+                          ref
                         labelAttr
-                          [ attr.``for`` id]
+                          [ attr.``for`` guid]
                           [ text radioText ]
                       ]
                   ] :> Doc
             )
             )
-        let createTextareaWithColumnSizes column1Size column2Size labelText dataBind minHeight =
+        let createTextareaWithColumnSizes column1Size column2Size labelText ref minHeight =
+          let guid = Guid.NewGuid().ToString("N")
           divAttr
             [attr.``class`` "form-group row"]
             [ labelAttr
-                [attr.``class`` (column1Size + " col-form-label"); attr.``for`` dataBind]
+                [attr.``class`` (column1Size + " col-form-label"); attr.``for`` guid]
                 [text labelText]
               divAttr
                 [attr.``class`` column2Size]
-                [ textareaAttr [attr.id dataBind; attr.``data-`` "bind" dataBind; attr.``class`` "form-control"; attr.style ("wrap: soft; white-space: nowrap; overflow: auto; min-height: " + minHeight)] []
+                [ Doc.InputArea
+                    [ attr.id guid
+                      attr.``class`` "form-control"
+                      attr.style ("wrap: soft; white-space: nowrap; overflow: auto; min-height: " + minHeight)
+                    ]
+                    ref
                 ]
             ]
 
-        let createInput = createInputWithColumnSizes "col-lg-3" "col-lg-9"
-        let createRadio = createRadioWithColumnSizes "col-lg-3" "col-lg-9"
+        let createInput = createInputWithColumnSizes1 "col-lg-3" "col-lg-9"
+        let createRadio = createRadioWithColumnSizes1 "col-lg-3" "col-lg-9"
         let createTextArea = createTextareaWithColumnSizes "col-lg-3" "col-lg-9"
             
 
@@ -228,84 +260,69 @@ module Client =
                     | HtmlPage htmlPage ->
                         let myMap = htmlPage.map |> Map.ofList
                         JQuery(pageMapElements).Each
-                            (fun (n, (el : Dom.Element)) ->
-                                let jEl = JQuery(el)
+                            (fun (_, el) ->
                                 let key = el.GetAttribute("data-page-key")
                                 if myMap.ContainsKey key
                                 then
-                                    jEl.Val(myMap.[key]) |> ignore
+                                    el?value <- myMap.[key]
                                 else
-                                    jEl.Val(el.GetAttribute("data-page-value") |> string) |> ignore
+                                    el?value <- el.GetAttribute("data-page-value")
                         ) |> ignore
                     | FilePage filePage ->
                         ()
 
-                let map = // itemName * (itemType * getter * setter)
-                    [ "userGender", ("radio", (fun () -> varUserValues.Value.gender.ToString()), (fun v -> varUserValues.Value <- { varUserValues.Value with gender = Gender.fromString v }))
-                      "userDegree", ("text", (fun () -> varUserValues.Value.degree), (fun v -> varUserValues.Value <- { varUserValues.Value with degree = v }))
-                      "userFirstName", ("text", (fun () -> varUserValues.Value.firstName), (fun v -> varUserValues.Value <- { varUserValues.Value with firstName = v }))
-                      "userLastName", ("text", (fun () -> varUserValues.Value.lastName), (fun v -> varUserValues.Value <- { varUserValues.Value with lastName = v }))
-                      "userStreet", ("text", (fun () -> varUserValues.Value.street), (fun v -> varUserValues.Value <- { varUserValues.Value with street= v }))
-                      "userPostcode", ("text", (fun () -> varUserValues.Value.postcode), (fun v -> varUserValues.Value <- { varUserValues.Value with postcode = v }))
-                      "userCity", ("text", (fun () -> varUserValues.Value.city), (fun v -> varUserValues.Value <- { varUserValues.Value with city = v }))
-                      "userEmail", ("text", (fun () -> varUserEmail.Value), (fun v -> varUserEmail.Value <- v))
-                      "userPhone", ("text", (fun () -> varUserValues.Value.phone), (fun v -> varUserValues.Value <- { varUserValues.Value with phone = v }))
-                      "userMobilePhone", ("text", (fun () -> varUserValues.Value.mobilePhone), (fun v -> varUserValues.Value <- { varUserValues.Value with mobilePhone = v }))
-                      "company", ("text", (fun () -> varEmployer.Value.company), (fun v -> varEmployer.Value <- { varEmployer.Value with company = v }))
-                      "companyStreet", ("text", (fun () -> varEmployer.Value.street), (fun v -> varEmployer.Value <- { varEmployer.Value with street = v }))
-                      "companyPostcode", ("text", (fun () -> varEmployer.Value.postcode), (fun v -> varEmployer.Value <- { varEmployer.Value with postcode = v }))
-                      "companyCity", ("text", (fun () -> varEmployer.Value.city), (fun v -> varEmployer.Value <- { varEmployer.Value with city = v }))
-                      "bossGender", ("radio", (fun () -> varEmployer.Value.gender.ToString()), (fun v -> varEmployer.Value <- { varEmployer.Value with gender = Gender.fromString(v) }))
-                      "bossDegree", ("text", (fun () -> varEmployer.Value.degree), (fun v -> varEmployer.Value <- { varEmployer.Value with degree = v }))
-                      "bossFirstName", ("text", (fun () -> varEmployer.Value.firstName), (fun v -> varEmployer.Value <- { varEmployer.Value with firstName = v }))
-                      "bossLastName", ("text", (fun () -> varEmployer.Value.lastName), (fun v -> varEmployer.Value <- { varEmployer.Value with lastName = v }))
-                      "bossEmail", ("text", (fun () -> varEmployer.Value.email), (fun v -> varEmployer.Value <- { varEmployer.Value with email = v }))
-                      "bossPhone", ("text", (fun () -> varEmployer.Value.phone), (fun v -> varEmployer.Value <- { varEmployer.Value with phone = v }))
-                      "bossMobilePhone", ("text", (fun () -> varEmployer.Value.mobilePhone), (fun v -> varEmployer.Value <- { varEmployer.Value with mobilePhone = v }))
-                      "emailSubject", ("text", (fun () -> varDocument.Value.email.subject), (fun v -> varDocument.Value <- { varDocument.Value with email = { varDocument.Value.email with subject = v} }))
-                      "emailBody", ("text", (fun () -> varDocument.Value.email.body), (fun v -> varDocument.Value <- { varDocument.Value with email = {varDocument.Value.email with body  = v } }))
-                      "jobName", ("text", (fun () -> varDocument.Value.jobName), (fun v -> varDocument.Value <- { varDocument.Value with jobName = v }))
+                let refMap : Map<string, DataBinding> =
+                    [ "userGender", GenderBinding userGender
+                      "userDegree", TextBinding userDegree
+                      "userFirstName", TextBinding userFirstName
+                      "userLastName", TextBinding userLastName
+                      "userStreet", TextBinding userStreet
+                      "userPostcode", TextBinding userPostcode
+                      "userCity", TextBinding userCity
+                      "userPhone",TextBinding userPhone
+                      "userMobilePhone", TextBinding userMobilePhone
+                      "employerCompany", TextBinding employerCompany
+                      "employerStreet", TextBinding employerStreet
+                      "employerPostcode", TextBinding employerPostcode
+                      "employerCity", TextBinding employerCity
+                      "employerDegree", TextBinding employerDegree
+                      "employerFirstName", TextBinding employerFirstName
+                      "employerLastName", TextBinding employerLastName
+                      "employerEmail", TextBinding employerEmail
+                      "employerPhone", TextBinding employerPhone
+                      "employerMobilePhone", TextBinding employerMobilePhone
+                      "documentEmailSubject", TextBinding documentEmailSubject
+                      "documentEmailBody", TextBinding documentEmailBody
+                      "documentJobName", TextBinding documentJobName
                     ]
                     |> Map.ofList
-                
-                for item in map do
-                    match item.Value with
-                    | "radio", get, set ->
-                            JQuery(sprintf "[data-bind='%s']" item.Key).Each
-                               (fun i el -> if get() = el?value then el?``checked`` <- true) |> ignore
-                    | "text", get, set ->
-                            JQuery(sprintf "[data-bind='%s']" item.Key).Each
-                                (fun i el -> el?value <- get ()) |> ignore
-                    | s, _, _ -> failwith ("Unknown input type: " + s)
-                        
 
-                JQuery(JS.Document.QuerySelectorAll("[data-bind]"))
-                    .Each
-                        (fun (n, (el : Dom.Element)) ->
-                            let eventAction =
-                                (fun () ->
-                                    let elValue = JQuery(el).Val() |> string
-                                    let bindValue = JQuery(el).Data("bind").ToString()
-                                    map.[bindValue] |> fun (_, _, set) -> set elValue |> ignore
-                                    let updateElements = JQuery(sprintf "[data-bind='%s']" bindValue)
-                                    updateElements.Each
-                                        (fun (n, updateElement) ->
-                                            if updateElement <> el
-                                            then
-                                                match map.[bindValue] with
-                                                | "radio", get, set ->
-                                                    updateElement?``checked`` <- (elValue = updateElement?value)
-                                                | "text", get, set ->
-                                                    updateElement?value <- elValue
-                                                | s, get, set ->
-                                                    failwith ("Unknown input type: " + s) 
-                                        ) |> ignore
+                
+                JQuery("[data-bind-ref]").Each(
+                    fun i el ->
+                        let attributes =
+                            [ for i = 0 to el.Attributes.Length - 1 do
+                                if not <| (el.Attributes.[i].Name).StartsWith "data-bind"
+                                then
+                                    yield Attr.Create el.Attributes.[i].Name el.Attributes.[i].Value
+                            ]
+                        match refMap.[el.GetAttribute("data-bind-ref")] with
+                        | TextBinding ref ->
+                            Doc.RunReplace
+                                el
+                                (Doc.Input
+                                   attributes
+                                   ref
                                 )
-                            el.RemoveEventListener("input", eventAction, true)
-                            el.AddEventListener("input", eventAction, true)
-                            el.RemoveEventListener("click", eventAction, true)
-                            el.AddEventListener("click", eventAction, true)
-                        ) |> ignore
+                        | GenderBinding ref ->
+                            Doc.RunReplace
+                                el
+                                (Doc.Radio
+                                   attributes
+                                   (Gender.fromString (el.GetAttribute "data-bind-value"))
+                                   ref
+                                )
+                ) |> ignore
             }
 
         let loadPageTemplate() : Async<unit> =
@@ -378,7 +395,7 @@ module Client =
                     varDocument.Value <- document
                     JS.Document.GetElementById("hiddenDocumentId")?value <- varDocument.Value.id |> string
                 | None ->
-                    varDocument.Value <- {id=0;name="";pages=[];email={subject="";body=""};jobName=""}
+                    varDocument.Value <- emptyDocument
             }
         
 
@@ -513,25 +530,22 @@ module Client =
         
         let btnApplyNowClicked () =
             async {
-                let bossEmail = JQuery("#divAddEmployer input[data-bind='bossEmail']").First().Val() |> string
-                let jobName = JQuery("#divAddEmployer input[data-bind='jobName']").First().Val() |> string
                 let emailRegexStr = """^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$"""
                 let regex = RegExp(emailRegexStr)
-                if not <| regex?test(bossEmail)
+                if not <| regex?test(employerEmail.Value)
                 then
                     JS.Alert(t TheEmailOfYourEmployerDoesNotLookValid)
-                elif jobName.Trim() = ""
+                elif documentJobName.Value.Trim() = ""
                 then
                     JS.Alert(String.Format(t FieldIsRequired, (t JobName)))
                 else
                     let btnLoadFromWebsite = JQuery("#btnLoadFromWebsite")
-                    let buttons =
-                        [ (JQuery("#btnApplyNowBottom"), JQuery("#faBtnApplyNowBottom"))
-                          (JQuery("#btnApplyNowTop"), JQuery("#faBtnApplyNowTop"))
+                    let fontAwesomeEls =
+                        [ JQuery("#faBtnApplyNowBottom")
+                          JQuery("#faBtnApplyNowTop")
                         ]
-                    buttons
-                    |> List.iter (fun (bEl, faEl) ->
-                        bEl.Prop("disabled", true) |> ignore
+                    fontAwesomeEls
+                    |> List.iter (fun faEl ->
                         faEl.Css("color", "black") |> ignore
                         faEl.AddClass("fa-spinner fa-spin") |> ignore
                         )
@@ -540,9 +554,8 @@ module Client =
 
                     let! applyResult = Server.applyNow varEmployer.Value varDocument.Value varUserValues.Value
 
-                    buttons
-                    |> List.iter (fun (bEl, faEl) ->
-                        bEl.Prop("disabled", false) |> ignore
+                    fontAwesomeEls
+                    |> List.iter (fun faEl ->
                         faEl.RemoveClass("fa-spinner fa-spin") |> ignore
                     )
                     btnLoadFromWebsite.Prop("disabled", false) |> ignore
@@ -552,8 +565,8 @@ module Client =
                         do! Async.Sleep 700
                         JS.Alert(t SorryAnErrorOccurred + "\n" + t YourApplicationHasNotBeenSent)
                     | Ok _ ->
-                        buttons
-                        |> List.iter (fun (bEl, faEl) ->
+                        fontAwesomeEls
+                        |> List.iter (fun faEl ->
                             faEl.Css("color", "#08a81b") |> ignore
                             faEl.AddClass("fa-check") |> ignore
                         )
@@ -563,8 +576,8 @@ module Client =
 
                         do! Async.Sleep 3500
 
-                        buttons
-                        |> List.iter (fun (bEl, faEl) ->
+                        fontAwesomeEls
+                        |> List.iter (fun faEl ->
                             faEl.RemoveClass("fa-check") |> ignore
                         )
             }
@@ -818,14 +831,14 @@ module Client =
             divAttr
               [ attr.id "divEmail"; attr.style "display: none"]
               [ h4 [text (t Email) ]
-                createInput (t EmailSubject) "emailSubject" (fun (s : string) -> s <> "", "Required")
-                createTextArea (t EmailBody) "emailBody" "400px"
+                createInput (t EmailSubject) documentEmailSubject (fun s -> "")
+                (createTextArea (t EmailBody) documentEmailBody "400px")
               ]
             divAttr
               [ attr.id "divChoosePageType"; attr.style "display: none" ]
               [ inputAttr
                   [ attr.``type`` "radio"
-                    attr.disabled "true"
+                    //attr.disabled "true"
                     attr.name "rbgrpPageType"
                     attr.id "rbHtmlPage"
                     on.click (fun _ _ -> show ["divAttachments";"divChoosePageType"; "divCreateHtmlPage"]) ]
@@ -977,25 +990,25 @@ module Client =
             divAttr
               [ attr.id "divEditUserValues"; attr.style "display: none" ]
               [ h4 [ text (t YourValues) ]
-                createInput (t Degree) "userDegree" (fun s -> true, "")
+                createInput (t Degree) userDegree (fun s -> "")
                 createRadio
                   (t Gender)
-                  [ (t Male), "userGender", "m", ""
-                    (t Female), "userGender", "f", ""
+                  [ (t Male), Gender.Male, userGender, ""
+                    (t Female), Gender.Female, userGender, ""
                   ]
-                createInput (t FirstName) "userFirstName" (fun s -> s <> "", t FieldIsRequired)
-                createInput (t LastName) "userLastName" (fun s -> s <> "", t FieldIsRequired)
-                createInput (t Street) "userStreet" (fun s -> s <> "", t FieldIsRequired)
-                createInput (t Postcode) "userPostcode" (fun (s : string) -> s <> "", t FieldIsRequired)
-                createInput (t City) "userCity" (fun (s : string) -> s <> "", t FieldIsRequired)
-                createInput (t Phone) "userPhone" (fun (s : string) -> s <> "", t FieldIsRequired)
-                createInput (t MobilePhone) "userMobilePhone" (fun (s : string) -> s <> "", t FieldIsRequired)
+                createInput (t FirstName) userFirstName (fun s -> "")
+                createInput (t LastName) userLastName (fun s -> "")
+                createInput (t Street) userStreet (fun s -> "")
+                createInput (t Postcode) userPostcode (fun s -> "")
+                createInput (t City) userCity (fun s -> "")
+                createInput (t Phone) userPhone (fun s -> "")
+                createInput (t MobilePhone) userMobilePhone (fun s -> "")
               ]
             divAttr
               [ attr.id "divAddEmployer"
                 attr.style "display: none"
               ]
-              [ createInput (t JobName) "jobName" (fun (s : string) -> s <> "", t FieldIsRequired)
+              [ createInput (t JobName) documentJobName (fun s -> "")
                 h4 [text (t Employer)]
                 divAttr
                   [ attr.``class`` "form-group row" ]
@@ -1011,7 +1024,6 @@ module Client =
                                 async {
                                     let! employer = Server.readWebsite (JS.Document.GetElementById("txtReadEmployerFromWebsite")?value)
                                     varEmployer.Value <- employer
-                                    do! fillDocumentValues()
                                 } |> Async.Start
                             )
                           ]
@@ -1022,6 +1034,12 @@ module Client =
                       [ inputAttr
                           [ attr.id "txtReadEmployerFromWebsite"
                             attr.``type`` "text"
+                            on.paste (fun el _ ->
+                                async {
+                                    let! employer = Server.readWebsite el?value
+                                    varEmployer.Value <- employer
+                                } |> Async.Start
+                            )
                             attr.``class`` "form-control"
                             attr.value "https://jobboerse.arbeitsagentur.de/vamJB/stellenangeboteFinden.html?execution=e4s1&_eventId_detailView&bencs=ECCL4bGU%2BoeU3dXfDx34zLzb40uikic%2B2KKQU5eGJmbIR%2B7U88EatZPz4c6thxWn&bencs=m4%2BYgQaq%2BX3rqfQIFvibQOfuTdWSRPhHFObxFs%2BMsVl5i8Ha2yIwL1W5WT0iPA4PxFEqmlYn%2F%2BS1r%2FuIRfNrBw%3D%3D&bencs=6PQaRUFDQLZ%2BGNPAPRG8v%2BzbdKHav8zjyetSZpAojmXOPuJQd%2F4O3ojlMh1kXaLryb44mxmmwUNC%2F0m3Nq0xAXci%2FOEbKO0KpeEsoXm%2BGVaRIDnp67LAL434DTMOym9f&bencs=ScHZtBeeBMNt7ILR4tjstoAti5XHVScqFoc6%2FRQffzYt%2FJrTwlVXtA8Y77YD%2Fth0"
                             on.click (fun el _ -> el?select())
@@ -1054,22 +1072,22 @@ module Client =
                           ]
                       ]
                   ]
-                createInput (t CompanyName) "company" (fun (s : string) -> s <> "", t FieldIsRequired)
-                createInput (t Street) "companyStreet" (fun (s : string) -> true, "")
-                createInput (t Postcode) "companyPostcode" (fun (s : string) -> true, "")
-                createInput (t City) "companyCity" (fun (s : string) -> true, "")
+                createInput (t CompanyName) employerCompany (fun (s : string) -> "")
+                createInput (t Street) employerStreet (fun (s : string) -> "")
+                createInput (t Postcode) employerPostcode (fun (s : string) -> "")
+                createInput (t City) employerCity (fun (s : string) -> "")
                 createRadio
                     (t Gender)
-                    [ (t Male), "bossGender", "m", ""
-                      (t Female), "bossGender", "f", ""
-                      (t UnknownGender), "bossGender", "u", "checked"
+                    [ (t Male), Gender.Male, employerGender, ""
+                      (t Female), Gender.Female, employerGender, ""
+                      (t UnknownGender), Gender.Unknown, employerGender, "checked"
                     ]
-                createInput (t Degree) "bossDegree" (fun s -> true, "")
-                createInput (t FirstName) "bossFirstName" (fun s -> true, "")
-                createInput (t LastName) "bossLastName" (fun (s : string) -> true, "")
-                createInput (t Email) "bossEmail" (fun (s : string) -> s <> "", t FieldIsRequired)
-                createInput (t Phone) "bossPhone" (fun s -> true, "")
-                createInput (t MobilePhone) "bossMobilePhone" (fun s -> true, "")
+                createInput (t Degree) employerDegree (fun s -> "")
+                createInput (t FirstName) employerFirstName (fun s -> "")
+                createInput (t LastName) employerLastName (fun (s : string) -> "")
+                createInput (t Email) employerEmail (fun (s : string) -> "")
+                createInput (t Phone) employerPhone (fun s -> "")
+                createInput (t MobilePhone) employerMobilePhone (fun s -> "")
                 buttonAttr
                   [ attr.``type`` "button"
                     attr.``class`` "btnLikeLink btn-block"

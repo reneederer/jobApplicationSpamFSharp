@@ -24,7 +24,8 @@ module Client =
 
     [<JavaScript>]
     let login () =
-        div
+        formAttr
+          [ attr.action "/login"; attr.method "POST" ]
           [ h4 [text (t Login) ]
             divAttr
               [ attr.``class`` "form-group" ]
@@ -32,7 +33,7 @@ module Client =
                   [ attr.``for`` "txtLoginEmail" ] 
                   [text "Email"]
                 inputAttr
-                  [ attr.``class`` "form-control"; attr.id "txtLoginEmail" ]
+                  [ attr.``class`` "form-control"; attr.name "txtLoginEmail"; attr.id "txtLoginEmail" ]
                   []
               ]
             divAttr
@@ -41,41 +42,20 @@ module Client =
                   [ attr.``for`` "txtLoginPassword" ] 
                   [text "Password"]
                 inputAttr
-                  [ attr.``type`` "password"; attr.``class`` "form-control"; attr.id "txtLoginPassword" ]
+                  [ attr.``type`` "password"; attr.``class`` "form-control"; attr.name "txtLoginPassword"; attr.id "txtLoginPassword" ]
                   []
               ]
             inputAttr
-              [ attr.``type`` "button"
+              [ attr.``type`` "submit"
                 attr.value "Login"
-                on.click (fun _ ev ->
-                  async {
-                    let! loginResult = Server.login (JQuery("#txtLoginEmail").Val() |> string) (JQuery("#txtLoginPassword").Val() |> string)
-                    match loginResult with
-                    | Ok (v, _) ->
-                      JS.Window.Location.Href <- ""
-                      ()
-                    | Bad xs -> JS.Alert(String.concat ", " xs)
-                  } |> Async.Start
-                  ev.PreventDefault()
-                  ev.StopPropagation()
-              )
+                attr.name "btnLogin"
               ]
               []
             inputAttr
-              [ attr.``type`` "button"
+              [ attr.``type`` "submit"
                 attr.style "margin-left: 30px;"
+                attr.name "btnRegister"
                 attr.value "Register"
-                on.click (fun _ _ ->
-                  async {
-                      let! registerResult =
-                          Server.register
-                            (JS.Document.GetElementById("txtLoginEmail")?value)
-                            (JS.Document.GetElementById("txtLoginPassword")?value)
-                      match registerResult with
-                      | Ok _ -> JS.Alert(t PleaseConfirmYourEmailAddressEmailSubject)
-                      | Bad xs -> JS.Alert(String.concat ", " xs)
-                  } |> Async.Start
-                )
               ]
               []
           ]
@@ -1031,7 +1011,7 @@ module Client =
                                 } |> Async.Start
                             )
                             attr.``class`` "form-control"
-                            attr.value "https://jobboerse.arbeitsagentur.de/vamJB/stellenangeboteFinden.html?execution=e4s1&_eventId_detailView&bencs=ECCL4bGU%2BoeU3dXfDx34zLzb40uikic%2B2KKQU5eGJmbIR%2B7U88EatZPz4c6thxWn&bencs=m4%2BYgQaq%2BX3rqfQIFvibQOfuTdWSRPhHFObxFs%2BMsVl5i8Ha2yIwL1W5WT0iPA4PxFEqmlYn%2F%2BS1r%2FuIRfNrBw%3D%3D&bencs=6PQaRUFDQLZ%2BGNPAPRG8v%2BzbdKHav8zjyetSZpAojmXOPuJQd%2F4O3ojlMh1kXaLryb44mxmmwUNC%2F0m3Nq0xAXci%2FOEbKO0KpeEsoXm%2BGVaRIDnp67LAL434DTMOym9f&bencs=ScHZtBeeBMNt7ILR4tjstoAti5XHVScqFoc6%2FRQffzYt%2FJrTwlVXtA8Y77YD%2Fth0"
+                            attr.value "https://jobboerse.arbeitsagentur.de"
                             on.click (fun el _ -> el?select())
                           ]
                           []

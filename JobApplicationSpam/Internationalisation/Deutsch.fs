@@ -41,6 +41,7 @@ module Deutsch =
           Download, "downloaden"
           ReallyDeleteDocument, """Document "{0}" wirklich löschen?"""
           ReallyDeletePage, """Seite "{0}" wirklich löschen?"""
+          WeHaveSentYouAnEmail, "Wir haben dir eine Email geschickt."
           PleaseConfirmYourEmailAddressEmailSubject, "Bitte bestätige deine Email-Adresse"
           PleaseConfirmYourEmailAddressEmailBody, "Hallo!\n\nBitte besuche den folgenden Link, um deine Email-Adresse zu bestätigen.\nhttp://bewerbungsspam.de/confirmemail?email={0}&guid={1}\n\nDein Team von www.bewerbungsspam.de"
           Login, "Einloggen"

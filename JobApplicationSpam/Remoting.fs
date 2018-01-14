@@ -84,6 +84,8 @@ module Server =
     let sendEmail fromAddress fromName toAddress subject body (attachmentPathsAndNames : list<string * string>) =
         use smtpClient = new SmtpClient(ConfigurationManager.AppSettings.["email_server"], ConfigurationManager.AppSettings.["email_port"] |> Int32.TryParse |> snd)
         smtpClient.EnableSsl <- true
+        //smtpClient.UseDefaultCredentials <- false
+        //smtpClient.DeliveryMethod <- SmtpDeliveryMethod.Network
         smtpClient.Credentials <- new System.Net.NetworkCredential(ConfigurationManager.AppSettings.["email_username"], ConfigurationManager.AppSettings.["email_password"])
         let fromAddress = new MailAddress(fromAddress, fromName, System.Text.Encoding.UTF8)
         let toAddress = new MailAddress(toAddress)
@@ -158,6 +160,7 @@ module Server =
     open WebSharper.Html.Server.Tags
     open System.Net.Mime
     open System.Security.Claims
+    open System.Text.RegularExpressions
 
     let generateSalt length =
         let (bytes : array<byte>) = Array.replicate length (0uy)
@@ -172,52 +175,47 @@ module Server =
 
     [<Remote>]
     let login (email : string) (password : string) =
-        use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
-        dbConn.Open()
-        match Database.getIdPasswordSaltAndGuid dbConn email with
-        | Some (userId, hashedPassword, salt, None) ->
-            if generateHash password salt 1000 64 = hashedPassword
-            then
-                GetContext().UserSession.LoginUser(string userId) |> Async.RunSynchronously
-                async {
-                    return ok <| string userId
-                }
-            else
-                async {
-                    return fail "Email or password wrong."
-                }
-        |  Some (_, _, _, Some guid) ->
-            async {
-                return fail "Please confirm your email"
-            }
-        | None ->
-            async {
-                return fail "Email is unknown"
-            }
+        async {
+            use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+            dbConn.Open()
+            match Database.getIdPasswordSaltAndGuid dbConn email with
+            | Some (userId, hashedPassword, salt, None) ->
+                if generateHash password salt 1000 64 = hashedPassword
+                then return ok <| string userId
+                else return fail "Email oder Passwort ist falsch."
+            |  Some (_, _, _, Some guid) -> return fail "Bitte bestätige deine Email-Adresse."
+            | None -> return fail  "Email oder Passwort ist falsch."
+        }
 
 
     [<Remote>]
     let register (email : string) (password1 : string) =
         async {
-            use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
-            dbConn.Open()
-            if Database.userEmailExists dbConn email
-            then
-                return fail "Email already exists"
+            let emailRegexStr = """^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$"""
+            if not <| Regex.IsMatch(email, emailRegexStr)
+            then return fail "Email-Adresse scheint unzulässig zu sein."
+            elif password1 = ""
+            then return fail "Passwort darf nicht leer sein."
             else
-                let salt = generateSalt(64)
-                let hashedPassword = generateHash password1 salt 1000 64
-                let guid = Guid.NewGuid().ToString("N")
-                let dict = Deutsch.dict |> Map.ofList
-                sendEmail
-                    "rene.ederer.nbg@gmail.com"
-                    "bewerbungsspam.de"
-                    email
-                    dict.[PleaseConfirmYourEmailAddressEmailSubject]
-                    (String.Format(dict.[PleaseConfirmYourEmailAddressEmailBody], email, guid))
-                    []
-                Database.insertNewUser dbConn email hashedPassword salt guid |> ignore
-                return ok "Please confirm your email"
+                use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+                dbConn.Open()
+                if Database.userEmailExists dbConn email
+                then
+                    return fail "Diese Email-Adresse ist schon registriert."
+                else
+                    let salt = generateSalt(64)
+                    let hashedPassword = generateHash password1 salt 1000 64
+                    let guid = Guid.NewGuid().ToString("N")
+                    let dict = Deutsch.dict |> Map.ofList
+                    sendEmail
+                        "rene.ederer.nbg@gmail.com"
+                        "bewerbungsspam.de"
+                        email
+                        dict.[PleaseConfirmYourEmailAddressEmailSubject]
+                        (String.Format(dict.[PleaseConfirmYourEmailAddressEmailBody], email, guid))
+                        []
+                    Database.insertNewUser dbConn email hashedPassword salt guid |> ignore
+                    return ok "Please confirm your email"
         }
 
     [<Remote>]
@@ -353,6 +351,7 @@ module Server =
                   ("$meineStadt", userValues.city)
                   ("$meineEmail", userEmail)
                   ("$meineTelefonnummer", userValues.phone)
+                  ("$meineTelefonnr", userValues.phone)
                   ("$meinTelefon", userValues.phone)
                   ("$meinMobilTelefon", userValues.mobilePhone)
                   ("$meineMobilnummer", userValues.mobilePhone)
@@ -461,7 +460,7 @@ module Server =
                     sendEmail
                         userEmail
                         (userValues.firstName + " " + userValues.lastName)
-                        "rene.ederer.nbg@gmail.com" //employer.email
+                        employer.email
                         (Odt.replaceInString document.email.subject myList Ignore)
                         (Odt.replaceInString (document.email.body.Replace("\\r\\n", "\r\n").Replace("\\n", "\n")) myList Ignore)
                         (if pdfPaths = []

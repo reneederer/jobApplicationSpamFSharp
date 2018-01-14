@@ -196,8 +196,8 @@ module Types =
           name=""
           pages=[]
           email=
-            { subject=""
-              body=""
+            { subject = "Bewerbung als $beruf"
+              body = "Sehr $geehrter $chefAnrede $chefTitel $chefNachname,\n\nanbei sende ich Ihnen meine Bewerbungsunterlagen.\nÜber eine Einladung zu einem Bewerbungsgespräch würde ich mich sehr freuen.\n\nMit freundlichen Grüßen\n\n$meinTitel $meinVorname $meinNachname\n$meineStrasse\n$meinePlz $meineStadt\nTelefon: $meineTelefonnr\nMobil: $meineMobilnr"
             }
           jobName=""
         }   
@@ -248,6 +248,7 @@ module Types =
         | Download
         | ReallyDeleteDocument
         | ReallyDeletePage
+        | WeHaveSentYouAnEmail
         | PleaseConfirmYourEmailAddressEmailSubject
         | PleaseConfirmYourEmailAddressEmailBody
         | Login

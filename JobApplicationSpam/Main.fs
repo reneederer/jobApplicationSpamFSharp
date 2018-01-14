@@ -104,6 +104,8 @@ module Site =
     open System.IO
     open WebSharper.JavaScript
     open System.Configuration
+    open Client
+    open WebSharper.Formlets.Controls
 
 
     let homePage (ctx : Context<EndPoint>) =
@@ -113,9 +115,48 @@ module Site =
         ]
     
     let loginPage (ctx : Context<EndPoint>) =
-        Templating.main ctx EndPoint.Login "Login" [
-            client <@ Client.login () @>
-        ]
+        match ctx.Request.Post.["btnLogin"], ctx.Request.Post.["btnRegister"], ctx.Request.Post.["txtLoginEmail"], ctx.Request.Post.["txtLoginPassword"] with
+        | Some _, None, Some email, Some password -> //login
+            let loginResult = Server.login email password |> Async.RunSynchronously
+            match loginResult with
+            | Ok (_, _) ->
+                let userId = Server.getUserIdByEmail email |> Async.RunSynchronously |> Option.get
+                ctx.UserSession.LoginUser (string userId, true) |> Async.RunSynchronously
+                Content.RedirectPermanentToUrl "/"
+            | Bad xs ->
+                Templating.main ctx EndPoint.Login "Login failed" [
+                    h1 [text "Login"]
+                    client <@ Client.login () @>
+                    br []
+                    br []
+                    text (xs |> String.concat ", ")
+                ]
+        | None, Some _, Some email, Some password -> //register
+            let registerResult = Server.register email password |> Async.RunSynchronously
+            match registerResult with
+            | Ok (_, _) ->
+                Templating.main ctx EndPoint.Login "Login" [
+                    h1 [text "Login"]
+                    client <@ Client.login () @>
+                    br []
+                    br []
+                    text "Wir haben dir eine Email geschickt."
+                    br []
+                    text "Bitte bestaetige deine Email-Adresse."
+                ]
+            | Bad xs ->
+                Templating.main ctx EndPoint.Login "Registration failed" [
+                    h1 [text "Login"]
+                    client <@ Client.login () @>
+                    br []
+                    br []
+                    text (xs |> String.concat ", ")
+                ]
+        | _ ->
+            Templating.main ctx EndPoint.Login "Login" [
+                client <@ Client.login () @>
+            ]
+    
 
     let registerPage (ctx : Context<EndPoint>) =
         Templating.main ctx EndPoint.Register "Register" [
@@ -208,7 +249,7 @@ module Site =
         Content.RedirectPermanentToUrl "/templates"
 
     let templatesPage (ctx : Context<EndPoint>) =
-        Templating.main ctx EndPoint.About "Templates" [
+        Templating.main ctx EndPoint.Templates "Bewerbungsspam" [
             client <@ Client.templates() @>
         ]
     
@@ -254,7 +295,6 @@ module Site =
         Application.MultiPage (fun (ctx : Context<EndPoint>) endpoint ->
             match (ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously, endpoint) with
             | Some _, EndPoint.Home -> templatesPage ctx
-            | Some _, EndPoint.Login -> loginPage ctx
             | Some _, EndPoint.ShowSentJobApplications -> showSentJobApplications ctx
             | Some _, EndPoint.Register -> registerPage ctx
             | None, EndPoint.Register -> registerPage ctx
@@ -267,7 +307,7 @@ module Site =
             | Some _ , EndPoint.Logout -> logoutPage ctx
             | Some _ , EndPoint.Download guid ->
                 downloadPage ctx guid
-            | None, _ -> loginPage ctx
+            | _ -> loginPage ctx
         )
 
 
@@ -280,7 +320,6 @@ module SelfHostedServer =
     open Microsoft.Owin.FileSystems
     open WebSharper.Owin
     open LetsEncrypt.Owin
-    open System.Web.Http
 
     [<EntryPoint>]
     let main args =

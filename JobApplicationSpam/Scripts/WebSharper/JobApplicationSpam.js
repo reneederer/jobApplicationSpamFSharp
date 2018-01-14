@@ -210,48 +210,51 @@
   return m==="english"?Language.English:m==="deutsch"?Language.Deutsch:Language.English;
  };
  Word.ReplaceVariables={
-  $:52
+  $:53
  };
  Word.UploadLimit={
-  $:51
+  $:52
  };
  Word.FileIsTooBig={
-  $:50
+  $:51
  };
  Word.YourApplicationHasNotBeenSent={
-  $:49
+  $:50
  };
  Word.SorryAnErrorOccurred={
-  $:48
+  $:49
  };
  Word.FieldIsRequired={
-  $:47
+  $:48
  };
  Word.TheEmailOfYourEmployerDoesNotLookValid={
-  $:46
+  $:47
  };
  Word.AppliedOnDate={
-  $:45
+  $:46
  };
  Word.AppliedAs={
-  $:44
+  $:45
  };
  Word.JobName={
-  $:43
+  $:44
  };
  Word.SentApplications={
-  $:42
+  $:43
  };
  Word.Register={
-  $:41
+  $:42
  };
  Word.Login={
-  $:40
+  $:41
  };
  Word.PleaseConfirmYourEmailAddressEmailBody={
-  $:39
+  $:40
  };
  Word.PleaseConfirmYourEmailAddressEmailSubject={
+  $:39
+ };
+ Word.WeHaveSentYouAnEmail={
   $:38
  };
  Word.ReallyDeletePage={
@@ -388,7 +391,7 @@
   SC$1.$cctor=Global.ignore;
   SC$1.emptyUserValues=UserValues.New(Gender.Unknown,"","","","","","","","");
   SC$1.emptyEmployer=Employer.New("","","","",Gender.Unknown,"","","","","","");
-  SC$1.emptyDocument=Document.New(0,"",List.T.Empty,DocumentEmail.New("",""),"");
+  SC$1.emptyDocument=Document.New(0,"",List.T.Empty,DocumentEmail.New("Bewerbung als $beruf","Sehr $geehrter $chefAnrede $chefTitel $chefNachname,\n\nanbei sende ich Ihnen meine Bewerbungsunterlagen.\nÜber eine Einladung zu einem Bewerbungsgespräch würde ich mich sehr freuen.\n\nMit freundlichen Grüßen\n\n$meinTitel $meinVorname $meinNachname\n$meineStrasse\n$meinePlz $meineStadt\nTelefon: $meineTelefonnr\nMobil: $meineMobilnr"),"");
  };
  Deutsch.dict=function()
  {
@@ -398,7 +401,7 @@
  SC$2.$cctor=function()
  {
   SC$2.$cctor=Global.ignore;
-  SC$2.dict=List.ofArray([[Word.AddEmployerAndApply,"Bewerben"],[Word.EditYourValues,"Deine Daten"],[Word.EditEmail,"Email"],[Word.EditAttachments,"Anhänge"],[Word.YourApplicationDocuments,"Deine Bewerbungsmappen"],[Word.LoadFromWebsite,"Von Website lesen"],[Word.ApplyNow,"Jetzt bewerben"],[Word.CompanyName,"Firmenname"],[Word.Street,"Straße"],[Word.Postcode,"Postleitzahl"],[Word.City,"Stadt"],[Word.Gender,"Geschlecht"],[Word.Degree,"Titel"],[Word.FirstName,"Vorname"],[Word.LastName,"Nachname"],[Word.Email,"Email"],[Word.Phone,"Telefonnummer"],[Word.MobilePhone,"Mobilnummer"],[Word.YourValues,"Deine Daten"],[Word.EmailSubject,"Betreff"],[Word.EmailBody,"Text"],[Word.YourAttachments,"Anhänge"],[Word.CreateOnline,"Online erstellen"],[Word.UploadFile,"Datei hochladen"],[Word.PleaseChooseAFile,"Bitte eine Datei aussuchen"],[Word.AddAttachment,"Anhang hinzufügen"],[Word.YouMightWantToReplaceSomeWordsInYourFileWithVariables,"Du kannst Worte oder Phrasen in deiner Datei durch Variablen ersetzen."],[Word.VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication,"Jedesmal, wenn du eine Bewerbung versendest, werden die Variablen automatisch durch die richtigen Werte ersetzt."],[Word.Male,"männlich"],[Word.Female,"weiblich"],[Word.UnknownGender,"unbekannt"],[Word.AddDocument,"Bewerbungsmappe hinzufügen"],[Word.DocumentName,"Name der Bewerbungsmappe"],[Word.AddHtmlAttachment,"Html Anhang hinzufügen"],[Word.Employer,"Arbeitgeber"],[Word.Download,"downloaden"],[Word.ReallyDeleteDocument,"Document \"{0}\" wirklich löschen?"],[Word.ReallyDeletePage,"Seite \"{0}\" wirklich löschen?"],[Word.PleaseConfirmYourEmailAddressEmailSubject,"Bitte bestätige deine Email-Adresse"],[Word.PleaseConfirmYourEmailAddressEmailBody,"Hallo!\n\nBitte besuche den folgenden Link, um deine Email-Adresse zu bestätigen.\nhttp://bewerbungsspam.de/confirmemail?email={0}&guid={1}\n\nDein Team von www.bewerbungsspam.de"],[Word.Login,"Einloggen"],[Word.Register,"Registrieren"],[Word.SentApplications,"Versandte Bewerbungen"],[Word.JobName,"Bewerben als"],[Word.AppliedAs,"Beworben als"],[Word.AppliedOnDate,"Beworben am"],[Word.TheEmailOfYourEmployerDoesNotLookValid,"Die Email-Adresse des Arbeitgeber scheint fehlerhaft zu sein."],[Word.FieldIsRequired,"Feld \"{0}\" darf nicht leer sein."],[Word.SorryAnErrorOccurred,"Entschuldigung, es ist ein Fehler aufgetreten."],[Word.YourApplicationHasNotBeenSent,"Deine Bewerbung konnte nicht versendet werden :-("],[Word.FileIsTooBig,"Die ausgewählte Datei ist zu groß."],[Word.UploadLimit,"Die maximale Dateigröße beträgt {0} MB."],[Word.ReplaceVariables,"Variablen ersetzen"]]);
+  SC$2.dict=List.ofArray([[Word.AddEmployerAndApply,"Bewerben"],[Word.EditYourValues,"Deine Daten"],[Word.EditEmail,"Email"],[Word.EditAttachments,"Anhänge"],[Word.YourApplicationDocuments,"Deine Bewerbungsmappen"],[Word.LoadFromWebsite,"Von Website lesen"],[Word.ApplyNow,"Jetzt bewerben"],[Word.CompanyName,"Firmenname"],[Word.Street,"Straße"],[Word.Postcode,"Postleitzahl"],[Word.City,"Stadt"],[Word.Gender,"Geschlecht"],[Word.Degree,"Titel"],[Word.FirstName,"Vorname"],[Word.LastName,"Nachname"],[Word.Email,"Email"],[Word.Phone,"Telefonnummer"],[Word.MobilePhone,"Mobilnummer"],[Word.YourValues,"Deine Daten"],[Word.EmailSubject,"Betreff"],[Word.EmailBody,"Text"],[Word.YourAttachments,"Anhänge"],[Word.CreateOnline,"Online erstellen"],[Word.UploadFile,"Datei hochladen"],[Word.PleaseChooseAFile,"Bitte eine Datei aussuchen"],[Word.AddAttachment,"Anhang hinzufügen"],[Word.YouMightWantToReplaceSomeWordsInYourFileWithVariables,"Du kannst Worte oder Phrasen in deiner Datei durch Variablen ersetzen."],[Word.VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication,"Jedesmal, wenn du eine Bewerbung versendest, werden die Variablen automatisch durch die richtigen Werte ersetzt."],[Word.Male,"männlich"],[Word.Female,"weiblich"],[Word.UnknownGender,"unbekannt"],[Word.AddDocument,"Bewerbungsmappe hinzufügen"],[Word.DocumentName,"Name der Bewerbungsmappe"],[Word.AddHtmlAttachment,"Html Anhang hinzufügen"],[Word.Employer,"Arbeitgeber"],[Word.Download,"downloaden"],[Word.ReallyDeleteDocument,"Document \"{0}\" wirklich löschen?"],[Word.ReallyDeletePage,"Seite \"{0}\" wirklich löschen?"],[Word.WeHaveSentYouAnEmail,"Wir haben dir eine Email geschickt."],[Word.PleaseConfirmYourEmailAddressEmailSubject,"Bitte bestätige deine Email-Adresse"],[Word.PleaseConfirmYourEmailAddressEmailBody,"Hallo!\n\nBitte besuche den folgenden Link, um deine Email-Adresse zu bestätigen.\nhttp://bewerbungsspam.de/confirmemail?email={0}&guid={1}\n\nDein Team von www.bewerbungsspam.de"],[Word.Login,"Einloggen"],[Word.Register,"Registrieren"],[Word.SentApplications,"Versandte Bewerbungen"],[Word.JobName,"Bewerben als"],[Word.AppliedAs,"Beworben als"],[Word.AppliedOnDate,"Beworben am"],[Word.TheEmailOfYourEmployerDoesNotLookValid,"Die Email-Adresse des Arbeitgeber scheint fehlerhaft zu sein."],[Word.FieldIsRequired,"Feld \"{0}\" darf nicht leer sein."],[Word.SorryAnErrorOccurred,"Entschuldigung, es ist ein Fehler aufgetreten."],[Word.YourApplicationHasNotBeenSent,"Deine Bewerbung konnte nicht versendet werden :-("],[Word.FileIsTooBig,"Die ausgewählte Datei ist zu groß."],[Word.UploadLimit,"Die maximale Dateigröße beträgt {0} MB."],[Word.ReplaceVariables,"Variablen ersetzen"]]);
  };
  Client.templates=function()
  {
@@ -1423,7 +1426,7 @@
      });
     })),null);
    };
-  }),AttrProxy.Create("class","form-control"),AttrProxy.Create("value","https://jobboerse.arbeitsagentur.de/vamJB/stellenangeboteFinden.html?execution=e4s1&_eventId_detailView&bencs=ECCL4bGU%2BoeU3dXfDx34zLzb40uikic%2B2KKQU5eGJmbIR%2B7U88EatZPz4c6thxWn&bencs=m4%2BYgQaq%2BX3rqfQIFvibQOfuTdWSRPhHFObxFs%2BMsVl5i8Ha2yIwL1W5WT0iPA4PxFEqmlYn%2F%2BS1r%2FuIRfNrBw%3D%3D&bencs=6PQaRUFDQLZ%2BGNPAPRG8v%2BzbdKHav8zjyetSZpAojmXOPuJQd%2F4O3ojlMh1kXaLryb44mxmmwUNC%2F0m3Nq0xAXci%2FOEbKO0KpeEsoXm%2BGVaRIDnp67LAL434DTMOym9f&bencs=ScHZtBeeBMNt7ILR4tjstoAti5XHVScqFoc6%2FRQffzYt%2FJrTwlVXtA8Y77YD%2Fth0"),AttrModule.Handler("click",function(el)
+  }),AttrProxy.Create("class","form-control"),AttrProxy.Create("value","https://jobboerse.arbeitsagentur.de"),AttrModule.Handler("click",function(el)
   {
    return function()
    {
@@ -1475,35 +1478,7 @@
  };
  Client.login=function()
  {
-  return Doc.Element("div",[],[Doc.Element("h4",[],[Doc.TextNode(Client.t(Word.Login))]),Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","txtLoginEmail")],[Doc.TextNode("Email")]),Doc.Element("input",[AttrProxy.Create("class","form-control"),AttrProxy.Create("id","txtLoginEmail")],[])]),Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","txtLoginPassword")],[Doc.TextNode("Password")]),Doc.Element("input",[AttrProxy.Create("type","password"),AttrProxy.Create("class","form-control"),AttrProxy.Create("id","txtLoginPassword")],[])]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("value","Login"),AttrModule.Handler("click",function()
-  {
-   return function(ev)
-   {
-    var b;
-    Concurrency.Start((b=null,Concurrency.Delay(function()
-    {
-     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.login:2110856612",[Global.String(Global.jQuery("#txtLoginEmail").val()),Global.String(Global.jQuery("#txtLoginPassword").val())]),function(a)
-     {
-      return a.$==1?(Global.alert(Strings.concat(", ",a.$0)),Concurrency.Zero()):(Global.location.href="",Concurrency.Zero());
-     });
-    })),null);
-    ev.preventDefault();
-    return ev.stopPropagation();
-   };
-  })],[]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("style","margin-left: 30px;"),AttrProxy.Create("value","Register"),AttrModule.Handler("click",function()
-  {
-   return function()
-   {
-    var b;
-    return Concurrency.Start((b=null,Concurrency.Delay(function()
-    {
-     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.register:2110856612",[Global.document.getElementById("txtLoginEmail").value,Global.document.getElementById("txtLoginPassword").value]),function(a)
-     {
-      return a.$==1?(Global.alert(Strings.concat(", ",a.$0)),Concurrency.Zero()):(Global.alert(Client.t(Word.PleaseConfirmYourEmailAddressEmailSubject)),Concurrency.Zero());
-     });
-    })),null);
-   };
-  })],[])]);
+  return Doc.Element("form",[AttrProxy.Create("action","/login"),AttrProxy.Create("method","POST")],[Doc.Element("h4",[],[Doc.TextNode(Client.t(Word.Login))]),Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","txtLoginEmail")],[Doc.TextNode("Email")]),Doc.Element("input",[AttrProxy.Create("class","form-control"),AttrProxy.Create("name","txtLoginEmail"),AttrProxy.Create("id","txtLoginEmail")],[])]),Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","txtLoginPassword")],[Doc.TextNode("Password")]),Doc.Element("input",[AttrProxy.Create("type","password"),AttrProxy.Create("class","form-control"),AttrProxy.Create("name","txtLoginPassword"),AttrProxy.Create("id","txtLoginPassword")],[])]),Doc.Element("input",[AttrProxy.Create("type","submit"),AttrProxy.Create("value","Login"),AttrProxy.Create("name","btnLogin")],[]),Doc.Element("input",[AttrProxy.Create("type","submit"),AttrProxy.Create("style","margin-left: 30px;"),AttrProxy.Create("name","btnRegister"),AttrProxy.Create("value","Register")],[])]);
  };
  Client.t=function(w)
  {

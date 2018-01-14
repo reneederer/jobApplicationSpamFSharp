@@ -29,7 +29,6 @@ create table sentStatusValue(id int primary key, status varchar(50));
 create table sentStatus(id serial primary key, sentApplicationId int, statusChangedOn date, dueOn timestamp, sentStatusValueId int, statusMessage varchar(200), foreign key(sentApplicationId) references sentApplication(id), foreign key(sentStatusValueId) references sentStatusValue(id));
 create table link(id serial primary key, path varchar(100), guid varchar(36), name varchar(100));
 
-/*
 insert into users(email, password, salt, guid) values('rene.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null);
 insert into users(email, password, salt, guid) values('ren.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null);
 insert into users(email, password, salt, guid) values('helmut.goerke@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', 'someguid');
@@ -37,7 +36,7 @@ insert into users(email, password, salt, guid) values('r', 'r99n/4/4NGGeD7pn4I1S
 
 insert into userValues(userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone) values(1, 'm', '', 'René', 'Ederer', 'Raabstr. 24A', '90429', 'Nürnberg', 'kein Telefon', 'kein Handy');
 insert into userValues(userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone) values(2, 'm', '', 'Helmut', 'Görke', 'Raabstr. 24A', '90429', 'Nürnberg', '0911 918273', '01520 2723494');
-*/
+
 /*
 insert into employer(userId, company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'BJC BEST JOB IT SERVICES GmbH', 'Alte Rabenstraße 32', '20148', 'Hamburg', 'f', '', 'Katrin', 'Thoms', 'Katrin.Thoms@bjc-its.de', '+49 (40) 5 14 00 7180', '');
 insert into employer(userId, company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'Deutsche Anwaltshotline AG', 'Am Plärrer 7', '90443', 'Nürnberg', 'm', '', 'Jonas', 'Zimmermann', 'mail@deutsche-anwaltshotline.de', '+49 911 3765690', '');
@@ -112,7 +111,6 @@ insert into htmlPageTemplate(name, odtPath, html) values('Deckblatt', 'c:/users/
 hallo div!</div>
 ');
 insert into htmlPageTemplate(name, odtPath, html) values('Lebenslauf', 'c:/users/rene/desktop/bewerbung_lebenslauf.odt', '<div id="insertDiv"><b>Lebenslauf...</b></div>');
-/*
 insert into document(userId, name, jobName) values(1, 'mein htmlTemplate', 'Fachinformatiker');
 insert into document(userId, name, jobName) values(1, 'mein zweites htmlTemplate', 'Automechaniker');
 insert into documentEmail(documentId, subject, body) values(1, 'Bewerbung als $beruf', 'Sehr $geehrter $chefAnrede $chefTitel $chefNachname,\n\nanbei sende ich Ihnen meine Bewerbungsunterlagen.\nÜber eine Einladung zu einem Bewerbungsgespräch freue ich mich sehr.\n\nMit freundlichen Grüßen\n\n\n$meinTitel $meinVorname $meinNachname\n$meineStrasse\n$meinePlz $meineStadt\n$meineMobilnummer');
@@ -127,7 +125,6 @@ insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 2, 3, 'm
 insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 3, 4, 'mein dritter Lebenslauf');
 insert into filePage(documentId, path, pageIndex, name) values(2, 'labenwolf_zeugnis_small.pdf', 5, 'LabenwolfZeugnis');
 insert into pageMap(documentId, pageIndex, key, value) values (1, 2, 'mainText', 'nur ein gruß');
-*/
 
 insert into sentStatusValue(id, status) values(1, 'Waiting for reply after sending job application');
 insert into sentStatusValue(id, status) values(2, 'Appointment for job interview');

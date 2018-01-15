@@ -396,7 +396,7 @@
  {
   var $1;
   SC$1.$cctor=Global.ignore;
-  SC$1.newLine=String.fromCharCode(13)+String.fromCharCode(10);
+  SC$1.newLine=String.fromCharCode(13);
   SC$1.emptyUserValues=UserValues.New(Gender.Unknown,"","","","","","","","");
   SC$1.emptyEmployer=Employer.New("","","","",Gender.Unknown,"","","","","","");
   SC$1.emptyDocument=Document.New(0,"",List.T.Empty,DocumentEmail.New("Bewerbung als $beruf",($1=[Types.newLine()],"Sehr $geehrter $chefAnrede $chefTitel $chefNachname,"+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0)))+(""+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0))))+("anbei sende ich Ihnen meine Bewerbungsunterlagen."+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0))))+("Über eine Einladung zu einem Bewerbungsgespräch würde ich mich sehr freuen."+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0))))+(""+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0))))+("Mit freundlichen Grüßen"+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0))))+(""+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0))))+("$meinTitel $meinVorname $meinNachname"+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0))))+("$meineStrasse"+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0))))+("$meinePlz $meineStadt"+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0))))+("Telefon: $meineTelefonnr"+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0))))+"Mobil: $meineMobilnr")),"");
@@ -679,7 +679,7 @@
     slctDocumentNameEl=Global.document.getElementById("slctDocumentName");
     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getDocumentOffset:-1633111335",[slctDocumentNameEl.selectedIndex]),function(a)
     {
-     return a==null?(Var.Set(varDocument,Types.emptyDocument()),Concurrency.Zero()):(Var.Set(varDocument,a.$0),Global.document.getElementById("hiddenDocumentId").value=String(varDocument.c.id),Concurrency.Zero());
+     return a==null?(Var.Set(varDocument,Types.emptyDocument()),Global.document.getElementById("btnAddPage").style.visibility="hidden",Concurrency.Zero()):(Var.Set(varDocument,a.$0),Global.document.getElementById("hiddenDocumentId").value=String(varDocument.c.id),Global.document.getElementById("btnAddPage").style.visibility="visible",Concurrency.Zero());
     });
    });
   }
@@ -1266,7 +1266,7 @@
      }):Concurrency.Zero();
     })),null);
    };
-  })],[Doc.Element("i",[AttrProxy.Create("class","fa fa-trash"),AttrProxy.Create("aria-hidden","true")],[])])]),Doc.Element("hr",[],[]),Doc.Element("div",[AttrProxy.Create("id","divAttachments"),AttrProxy.Create("style","display: none")],[Doc.Element("h4",[],[Doc.TextNode(Client.t(Word.YourAttachments))]),Doc.Element("div",[AttrProxy.Create("id","divAttachmentButtons")],[Doc.Element("button",[AttrProxy.Create("id","btnAddPage"),AttrProxy.Create("style","margin:0;"),AttrProxy.Create("class","btnLikeLink"),AttrModule.Handler("click",function()
+  })],[Doc.Element("i",[AttrProxy.Create("class","fa fa-trash"),AttrProxy.Create("aria-hidden","true")],[])])]),Doc.Element("hr",[],[]),Doc.Element("div",[AttrProxy.Create("id","divAttachments"),AttrProxy.Create("style","display: none")],[Doc.Element("h4",[],[Doc.TextNode(Client.t(Word.YourAttachments))]),Doc.Element("div",[AttrProxy.Create("id","divAttachmentButtons")],[Doc.Element("button",[AttrProxy.Create("id","btnAddPage"),AttrProxy.Create("style","margin:0; visibility : hidden"),AttrProxy.Create("class","btnLikeLink"),AttrModule.Handler("click",function()
   {
    return function()
    {

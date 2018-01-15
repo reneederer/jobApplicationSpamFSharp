@@ -1,8 +1,13 @@
 ﻿;set client_encoding to 'UTF8';
+
 drop table if exists link cascade;
 drop table if exists sentStatus cascade;
 drop table if exists sentStatusValue cascade;
 drop table if exists sentApplication cascade;
+drop table if exists sentFilePage cascade;
+drop table if exists sentDocument cascade;
+drop table if exists sentUserValues cascade;
+drop table if exists sentDocumentEmail cascade;
 drop table if exists pageMap cascade;
 drop table if exists lastEditedDocumentId cascade;
 drop table if exists htmlPage cascade;
@@ -14,28 +19,38 @@ drop table if exists employer cascade;
 drop table if exists userValues cascade;
 drop table if exists users cascade;
 
-create table users (id serial primary key, email varchar(200) unique not null, password varchar(200) not null, salt varchar(200) not null, guid varchar(128) null);
-create table userValues(id serial primary key, userId int unique not null, gender varchar(1) not null, degree varchar(20) not null, firstName varchar(50) not null, lastName varchar(50) not null, street varchar(50) not null, postcode varchar(20) not null, city varchar(50) not null, phone varchar(30) not null, mobilePhone varchar(30) not null, foreign key(userId) references users(id));
-create table employer(id serial primary key, userId int not null, company varchar(100) not null, street varchar(30) not null, postcode varchar(10) not null, city varchar(30) not null, gender varchar(20) not null, degree varchar(20) not null, firstName varchar(50) not null, lastName varchar(50) not null, email varchar(200) not null, phone varchar(30) not null, mobilePhone varchar(30) not null, foreign key(userId) references users(id));
-create table htmlPageTemplate(id serial primary key, name varchar(50) unique not null, odtPath varchar(100) unique not null, html text not null);
-create table document(id serial primary key, userId int not null, name varchar(100) not null, jobName varchar(100) not null, foreign key(userId) references users(id));
-create table lastEditedDocumentId(userId int unique primary key not null, documentId int not null, foreign key(userId) references users(id), foreign key(documentId) references document(id));
-create table filePage(id serial primary key, documentId int not null, path varchar(300) not null, pageIndex int not null, name varchar(50) not null, foreign key(documentId) references document(id), constraint filePage_unique unique(documentId, pageIndex));
-create table htmlPage(id serial primary key, documentId int not null, templateId int null, pageIndex int not null, name varchar(50) not null, foreign key(documentId) references document(id), foreign key(templateId) references htmlPageTemplate(id), constraint htmlPage_unique unique(documentId, pageIndex));
-create table documentEmail(id serial primary key, documentId int not null unique, subject varchar(200) not null, body text not null, foreign key(documentId) references document(id));
-create table pageMap(id serial primary key, documentId int not null, pageIndex int not null, key varchar(100) not null, value text not null, foreign key(documentId) references document(id), constraint pageMap_unique unique(documentId, pageIndex, key));
-create table sentApplication(id serial primary key, userId int not null, employerId int not null, appliedAs varchar(60) not null, foreign key(employerId) references employer(id), foreign key(userId) references users(id));
-create table sentStatusValue(id int primary key, status varchar(50));
-create table sentStatus(id serial primary key, sentApplicationId int, statusChangedOn date, dueOn timestamp, sentStatusValueId int, statusMessage varchar(200), foreign key(sentApplicationId) references sentApplication(id), foreign key(sentStatusValueId) references sentStatusValue(id));
-create table link(id serial primary key, path varchar(100), guid varchar(36), name varchar(100));
 
-/*
+create table users (id serial primary key, email text unique not null, password text not null, salt text not null, guid text null);
+create table userValues(id serial primary key, userId int unique not null, gender text not null, degree text not null, firstName text not null, lastName text not null, street text not null, postcode text not null, city text not null, phone text not null, mobilePhone text not null, foreign key(userId) references users(id));
+create table employer(id serial primary key, userId int not null, company text not null, street text not null, postcode text not null, city text not null, gender text not null, degree text not null, firstName text not null, lastName text not null, email text not null, phone text not null, mobilePhone text not null, foreign key(userId) references users(id));
+create table htmlPageTemplate(id serial primary key, name text unique not null, odtPath text unique not null, html text not null);
+create table document(id serial primary key, userId int not null, name text not null, jobName text not null, foreign key(userId) references users(id));
+create table lastEditedDocumentId(userId int unique primary key not null, documentId int not null, foreign key(userId) references users(id), foreign key(documentId) references document(id));
+create table filePage(id serial primary key, documentId int not null, path text not null, pageIndex int not null, name text not null, foreign key(documentId) references document(id), constraint filePage_unique unique(documentId, pageIndex));
+create table htmlPage(id serial primary key, documentId int not null, templateId int null, pageIndex int not null, name text not null, foreign key(documentId) references document(id), foreign key(templateId) references htmlPageTemplate(id), constraint htmlPage_unique unique(documentId, pageIndex));
+create table documentEmail(id serial primary key, documentId int not null unique, subject text not null, body text not null, foreign key(documentId) references document(id));
+create table pageMap(id serial primary key, documentId int not null, pageIndex int not null, key text not null, value text not null, foreign key(documentId) references document(id), constraint pageMap_unique unique(documentId, pageIndex, key));
+
+create table sentDocumentEmail(id serial primary key, subject text not null, body text not null);
+create table sentUserValues(id serial primary key, email text not null, gender text not null, degree text not null, firstName text not null, lastName text not null, street text not null, postcode text not null, city text not null, phone text not null, mobilePhone text not null);
+create table sentDocument(id serial primary key, employerId int not null, sentDocumentEmailId int not null, sentUserValuesId int not null, jobName text not null, foreign key(sentUserValuesId) references sentUserValues(id) on update cascade, foreign key(employerId) references employer(id), foreign key(sentDocumentEmailId) references sentDocumentEmail(id) on update cascade);
+create table sentFilePage(id serial primary key, sentDocumentId int not null, path text not null, pageIndex int not null, foreign key(sentDocumentId) references sentDocument(id) on update cascade);
+
+create table sentApplication(id serial primary key, userId int not null, sentDocumentId int not null, foreign key(userId) references users(id), foreign key(sentDocumentId) references sentDocument(id) on update cascade);
+create table sentStatusValue(id int primary key, status text);
+create table sentStatus(id serial primary key, sentApplicationId int, statusChangedOn date, dueOn timestamp, sentStatusValueId int, statusMessage text, foreign key(sentApplicationId) references sentApplication(id), foreign key(sentStatusValueId) references sentStatusValue(id));
+create table link(id serial primary key, path text, guid text, name text);
+
+
 insert into users(email, password, salt, guid) values('rene.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null);
+/*
 insert into users(email, password, salt, guid) values('ren.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null);
 insert into users(email, password, salt, guid) values('helmut.goerke@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', 'someguid');
 insert into users(email, password, salt, guid) values('r', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null);
 
+*/
 insert into userValues(userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone) values(1, 'm', '', 'René', 'Ederer', 'Raabstr. 24A', '90429', 'Nürnberg', 'kein Telefon', 'kein Handy');
+/*
 insert into userValues(userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone) values(2, 'm', '', 'Helmut', 'Görke', 'Raabstr. 24A', '90429', 'Nürnberg', '0911 918273', '01520 2723494');
 */
 /*

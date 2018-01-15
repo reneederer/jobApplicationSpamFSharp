@@ -373,8 +373,10 @@ module Client =
                 | Some document ->
                     varDocument.Value <- document
                     JS.Document.GetElementById("hiddenDocumentId")?value <- varDocument.Value.id |> string
+                    JS.Document.GetElementById("btnAddPage")?style?visibility <- "visible"
                 | None ->
                     varDocument.Value <- emptyDocument
+                    JS.Document.GetElementById("btnAddPage")?style?visibility <- "hidden"
             }
         
 
@@ -698,7 +700,7 @@ module Client =
                   ]
                   [ buttonAttr
                       [ attr.id "btnAddPage"
-                        attr.style "margin:0;"
+                        attr.style "margin:0; visibility : hidden"
                         attr.``class`` "btnLikeLink"
                         on.click
                           (fun el _ ->

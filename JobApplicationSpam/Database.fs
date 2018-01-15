@@ -225,12 +225,51 @@ module Database =
             failwith <| "Email does not exist or guid was already null: " + email
         log.Debug(sprintf "%s = ()" email)
 
-    let insertSentApplication (dbConn : NpgsqlConnection) (userId : int) (employerId : int) (applyAs : string) =
-        log.Debug(sprintf "%i %i %s" userId employerId applyAs)
-        use command = new NpgsqlCommand("insert into sentApplication(userId, employerId, appliedAs) values(:userId, :employerId, :appliedAs) returning id", dbConn)
+    let insertSentApplication dbConn (userId : int) (employerId : int) (email : DocumentEmail) (userEmailAndValues : string * UserValues) (sentFilePages : list<string (*path*) * int (*pageIndex*)>) (jobName : string) =
+        use command = new NpgsqlCommand("""insert into sentDocumentEmail(subject, body) values(:subject, :body) returning id""", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("subject", email.subject)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("body", email.body)) |> ignore
+        let sentDocumentEmailId = command.ExecuteScalar() |> string |> Int32.Parse
+        command.Dispose()
+
+        let userValues = snd userEmailAndValues
+        use command = new NpgsqlCommand("""insert into sentUserValues(email, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone)
+                                           values(:email, :gender, :degree, :firstName, :lastName, :street, :postcode, :city, :phone, :mobilePhone) returning id""", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("email", fst userEmailAndValues)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("gender", userValues.gender.ToString())) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("degree", userValues.degree)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("firstName", userValues.firstName)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("lastName", userValues.lastName)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("street", userValues.street)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("postcode", userValues.postcode)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("city", userValues.city)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("phone", userValues.phone)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("mobilePhone", userValues.mobilePhone)) |> ignore
+        let sentUserValuesId = command.ExecuteScalar() |> string |> Int32.Parse
+        command.Dispose()
+
+        use command = new NpgsqlCommand("""insert into sentDocument(employerId, sentDocumentEmailId, sentUserValuesId, jobName)
+                                           values(:employerId, :sentDocumentEmailId, :sentUserValuesId, :jobName) returning id""", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("employerId",employerId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("sentDocumentEmailId", sentDocumentEmailId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("sentUserValuesId", sentUserValuesId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("jobName", jobName)) |> ignore
+        let sentDocumentId = command.ExecuteScalar() |> string |> Int32.Parse
+        command.Dispose()
+
+
+        for (path, pageIndex) in sentFilePages do
+            use command = new NpgsqlCommand("""insert into sentFilePage(sentDocumentId, path, pageIndex)
+                                               values (:sentDocumentId, :path, :pageIndex)""", dbConn)
+            command.Parameters.Add(new NpgsqlParameter("sentDocumentId", sentDocumentId)) |> ignore
+            command.Parameters.Add(new NpgsqlParameter("path", path)) |> ignore
+            command.Parameters.Add(new NpgsqlParameter("pageIndex", pageIndex)) |> ignore
+            command.ExecuteNonQuery() |> ignore
+            command.Dispose()
+
+        use command = new NpgsqlCommand("insert into sentApplication(userId, sentDocumentId) values(:userId, :sentDocumentId) returning id", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("employerId", employerId)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("appliedAs", applyAs)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("sentDocumentId", sentDocumentId)) |> ignore
         let sentApplicationId = command.ExecuteScalar() |> string |> Int32.Parse
         command.Dispose()
 
@@ -239,22 +278,23 @@ module Database =
                 """insert into sentStatus(sentApplicationId, statusChangedOn, dueOn, sentStatusValueId, statusMessage)
                 values(:sentApplicationId, current_date, null, 1, '') """, dbConn)
         command.Parameters.Add(new NpgsqlParameter("sentApplicationId", sentApplicationId)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("employerId", employerId)) |> ignore
         command.ExecuteNonQuery() |> ignore
         command.Dispose()
-        log.Debug(sprintf "%i %i %s = ()" userId employerId applyAs)
+
+
+
 
     let getSentApplications (dbConn : NpgsqlConnection) (userId : int) (startDate : DateTime) (endDate : DateTime) =
         log.Debug(sprintf "%i %s %s" userId (startDate.Date.ToString()) (endDate.Date.ToString()))
         use command =
             new NpgsqlCommand(
-                """select company, appliedAs, statusChangedOn
+                """select employer.company, sentDocument.jobName, sentStatus.statusChangedOn
                    from sentApplication
                    join sentStatus
                      on sentApplication.id = sentStatus.sentApplicationId
+                   join sentDocument on sentApplication.sentDocumentId = sentDocument.id
                    join employer
-                     on employer.id = sentApplication.employerId
+                     on employer.id = sentDocument.employerId
                    where sentApplication.userId = :userId
                      and sentStatusValueId = 1
                    """
@@ -275,8 +315,9 @@ module Database =
 
     let overwriteDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) =
         log.Debug(sprintf "%A %i" document userId)
-        use command = new NpgsqlCommand("update document set name = :name where id = :documentId", dbConn)
+        use command = new NpgsqlCommand("update document set (name, jobName) = (:name, :jobName) where id = :documentId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("name", document.name)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("jobName", document.jobName)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
         command.ExecuteNonQuery() |> ignore
         command.Dispose()

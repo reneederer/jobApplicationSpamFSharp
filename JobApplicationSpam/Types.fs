@@ -8,7 +8,7 @@ module Types =
     open System
 
     [<WebSharper.JavaScript>]
-    let newLine = string (char 13) + string (char 10)
+    let newLine = string (char 13)
 
     [<WebSharper.JavaScript>]
     type Gender =

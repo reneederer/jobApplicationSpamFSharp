@@ -399,12 +399,23 @@ module Server =
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
                 Database.setUserValues dbConn userValues userId |> ignore
+                Database.overwriteDocument dbConn document userId |> ignore
                 use transaction = dbConn.BeginTransaction()
+                use command = new NpgsqlCommand("set constraints all deferred", dbConn)
+                command.ExecuteNonQuery() |> ignore
                 try
-                    let documentId = Database.overwriteDocument dbConn document userId
-                    let employerId = Database.addEmployer dbConn employer userId
-                    Database.insertSentApplication dbConn userId employerId document.jobName
                     let userEmail = Database.getEmailByUserId dbConn userId |> Option.defaultValue ""
+                    let employerId = Database.addEmployer dbConn employer userId
+                    if userEmail <> employer.email || true
+                    then
+                        Database.insertSentApplication
+                            dbConn
+                            userId
+                            employerId
+                            document.email
+                            (userEmail, userValues)
+                            (document.pages |> List.choose(fun x -> match x with FilePage p -> Some (p.path, p.pageIndex) | HtmlPage _ -> None))
+                            document.jobName
                     let! myList = replaceMap userEmail userValues employer document
                     let tmpPath = Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "tmp", Guid.NewGuid().ToString("N"))
                     let odtPaths =
@@ -451,6 +462,11 @@ module Server =
                                             Ignore
                                         copiedPath
                         ]
+
+
+
+
+
                     let pdfPaths =
                         [ for odtPath in odtPaths do
                             yield Odt.odtToPdf odtPath

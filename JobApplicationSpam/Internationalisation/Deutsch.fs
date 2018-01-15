@@ -8,7 +8,7 @@ module Deutsch =
           EditEmail, "Email"
           EditAttachments, "Anhänge"
           YourApplicationDocuments, "Deine Bewerbungsmappen"
-          LoadFromWebsite, "Von Website lesen"
+          LoadFromWebsite, "Werte holen"
           ApplyNow, "Jetzt bewerben"
           CompanyName, "Firmenname"
           Street, "Straße"

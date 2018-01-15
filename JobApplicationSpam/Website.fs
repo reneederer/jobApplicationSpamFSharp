@@ -119,13 +119,11 @@ module Website =
                     let! response = httpClient.GetAsync(url) |> Async.AwaitTask
                     response.EnsureSuccessStatusCode() |> ignore
                     let responseUri = response.RequestMessage.RequestUri.ToString()
-                    Console.WriteLine("responseUri:" + responseUri)
                     let responseCookies = cookies.GetCookies(new Uri(responseUri)).Cast<Cookie>();
                     return responseUri,responseCookies
                 } |> Async.RunSynchronously
             let doc = HtmlWeb().Load(newUrl)
             let csrfTokenValue = doc.DocumentNode.Descendants("input").Where(fun x -> x.GetAttributeValue("name", "") = "CSRFToken").First().GetAttributeValue("value", "")
-            System.Console.WriteLine(csrfTokenValue)
             let data =
                 [ KeyValuePair("sieSuchen.wert.wert", "leer")
                   KeyValuePair("suchbegriff.wert", refNr)
@@ -219,13 +217,13 @@ module Website =
         |> Map.ofList
 
     let read (str : string) =
-        let r =
+        try
             websiteMap
             |> Map.tryPick (fun k v -> if Regex.IsMatch(str, k) then Some v else None)
-            |> Option.defaultValue (fun _ -> ok { emptyEmployer with company = "hallo" })
+            |> Option.defaultValue (fun _ -> ok emptyEmployer)
             <| Identifier str
-        Console.WriteLine(sprintf "%A" r)
-        r
+        with
+        | e -> ok emptyEmployer
         
             
         

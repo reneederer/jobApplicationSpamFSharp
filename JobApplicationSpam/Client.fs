@@ -13,6 +13,7 @@ module Client =
     open WebSharper.JQuery
     open System
     open WebSharper.UI.Next.Client.HtmlExtensions
+    open WebSharper.UI.Next.Html.Tags
 
     [<JavaScript>]
     let varLanguageDict = Var.Create<Map<Word, string>>(Deutsch.dict |> Map.ofList)
@@ -611,9 +612,14 @@ module Client =
             show [ "divAttachments" ]
         } |> Async.Start
 
-        let readFromWebsite url =
+        let readFromWebsite () =
             async {
-                let! employerResult = Server.readWebsite url
+                JS.Document.GetElementById("btnReadFromWebsite")?disabled <- true
+                JS.Document.GetElementById("faReadFromWebsite")?style?visibility <- "visible"
+                do! Async.Sleep 200
+                let! employerResult = Server.readWebsite (JS.Document.GetElementById("txtReadEmployerFromWebsite")?value)
+                JS.Document.GetElementById("btnReadFromWebsite")?disabled <- false
+                JS.Document.GetElementById("faReadFromWebsite")?style?visibility <- "hidden"
                 match employerResult with
                 | Ok (employer, _) ->
                     varEmployer.Value <- employer
@@ -994,27 +1000,33 @@ module Client =
                   [ divAttr
                       [ attr.``class`` "col-lg-3"
                       ]
-                      [ inputAttr
+                      [ buttonAttr
                           [ attr.``type`` "button"
                             attr.``class`` "btn-block"
-                            attr.id "btnLoadFromWebsite"
-                            attr.value (t LoadFromWebsite)
+                            attr.id "btnReadFromWebsite"
                             on.click (fun _ _ ->
-                                readFromWebsite (JS.Document.GetElementById("txtReadEmployerFromWebsite")?value) |> Async.Start
+                                readFromWebsite () |> Async.Start
                             )
                           ]
-                          []
+                          [ iAttr
+                              [ attr.``class`` "fa fa-spinner fa-spin"
+                                attr.id "faReadFromWebsite"
+                                attr.style "color: black; margin-right: 10px; visibility: hidden"
+                              ]
+                              []
+                            text <| t LoadFromWebsite
+                          ]
                     ]
                     divAttr
                       [attr.``class`` "col-lg-9"]
                       [ inputAttr
                           [ attr.id "txtReadEmployerFromWebsite"
                             attr.``type`` "text"
-                            on.paste (fun _ ev ->
-                                readFromWebsite (ev?clipboardData?getData("Text")) |> Async.Start
+                            on.paste (fun el _ ->
+                                readFromWebsite () |> Async.Start
                             )
                             attr.``class`` "form-control"
-                            attr.value "https://jobboerse.arbeitsagentur.de"
+                            attr.placeholder "URL oder Referenznummer"
                             on.focus (fun el _ -> el?select())
                           ]
                           []

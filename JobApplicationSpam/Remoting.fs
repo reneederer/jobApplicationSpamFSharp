@@ -398,13 +398,13 @@ module Server =
             | Some userId ->
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
+                Database.setUserValues dbConn userValues userId |> ignore
                 use transaction = dbConn.BeginTransaction()
                 try
                     let documentId = Database.overwriteDocument dbConn document userId
                     let employerId = Database.addEmployer dbConn employer userId
                     Database.insertSentApplication dbConn userId employerId document.jobName
                     let userEmail = Database.getEmailByUserId dbConn userId |> Option.defaultValue ""
-                    Database.setUserValues dbConn userValues userId |> ignore
                     let! myList = replaceMap userEmail userValues employer document
                     let tmpPath = Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "tmp", Guid.NewGuid().ToString("N"))
                     let odtPaths =
@@ -462,7 +462,7 @@ module Server =
                         (userValues.firstName + " " + userValues.lastName)
                         employer.email
                         (Odt.replaceInString document.email.subject myList Ignore)
-                        (Odt.replaceInString (document.email.body.Replace("\\r\\n", "\r\n").Replace("\\n", "\n")) myList Ignore)
+                        (Odt.replaceInString (document.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Ignore)
                         (if pdfPaths = []
                          then []
                          else [mergedPdfPath, sprintf "Bewerbung_%s_%s.pdf" userValues.firstName userValues.lastName]

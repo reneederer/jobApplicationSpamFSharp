@@ -431,7 +431,7 @@ module Database =
         use reader = command.ExecuteReader()
         reader.Read() |> ignore
         let documentName = reader.GetString(0)
-        let jobName, emailSubject, emailBody = reader.GetString(1), reader.GetString(2), reader.GetString(3).Replace("\\n", "\n")
+        let jobName, emailSubject, emailBody = reader.GetString(1), reader.GetString(2), reader.GetString(3).Replace("\\n", "\n").Replace("\n", Types.newLine)
         reader.Dispose()
         command.Dispose()
 

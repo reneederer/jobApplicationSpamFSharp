@@ -8,6 +8,9 @@ module Types =
     open System
 
     [<WebSharper.JavaScript>]
+    let newLine = string (char 13) + string (char 10)
+
+    [<WebSharper.JavaScript>]
     type Gender =
     | Male
     | Female
@@ -197,7 +200,7 @@ module Types =
           pages=[]
           email=
             { subject = "Bewerbung als $beruf"
-              body = "Sehr $geehrter $chefAnrede $chefTitel $chefNachname,\n\nanbei sende ich Ihnen meine Bewerbungsunterlagen.\nÜber eine Einladung zu einem Bewerbungsgespräch würde ich mich sehr freuen.\n\nMit freundlichen Grüßen\n\n$meinTitel $meinVorname $meinNachname\n$meineStrasse\n$meinePlz $meineStadt\nTelefon: $meineTelefonnr\nMobil: $meineMobilnr"
+              body = String.Format("Sehr $geehrter $chefAnrede $chefTitel $chefNachname,{0}{0}anbei sende ich Ihnen meine Bewerbungsunterlagen.{0}Über eine Einladung zu einem Bewerbungsgespräch würde ich mich sehr freuen.{0}{0}Mit freundlichen Grüßen{0}{0}$meinTitel $meinVorname $meinNachname{0}$meineStrasse{0}$meinePlz $meineStadt{0}Telefon: $meineTelefonnr{0}Mobil: $meineMobilnr", newLine)
             }
           jobName=""
         }   

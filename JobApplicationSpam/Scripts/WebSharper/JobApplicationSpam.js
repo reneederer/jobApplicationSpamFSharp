@@ -873,6 +873,21 @@
     }))));
    });
   }
+  function readFromWebsite(url)
+  {
+   var b$1;
+   b$1=null;
+   return Concurrency.Delay(function()
+   {
+    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.readWebsite:1243289988",[url]),function(a)
+    {
+     return a.$==1?(Global.alert(Seq.fold(function($1,$2)
+     {
+      return $1+$2+"\n";
+     },"",a.$0)),Concurrency.Zero()):(Var.Set(varEmployer,a.$0),Concurrency.Zero());
+    });
+   });
+  }
   varDocument=Var.Create$1(Types.emptyDocument());
   documentEmailSubject=Var.Lens(varDocument,function(x)
   {
@@ -1402,31 +1417,15 @@
   {
    return function()
    {
-    var b$1;
-    return Concurrency.Start((b$1=null,Concurrency.Delay(function()
-    {
-     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.readWebsite:-2112793874",[Global.document.getElementById("txtReadEmployerFromWebsite").value]),function(a)
-     {
-      Var.Set(varEmployer,a);
-      return Concurrency.Zero();
-     });
-    })),null);
+    return Concurrency.Start(readFromWebsite(Global.document.getElementById("txtReadEmployerFromWebsite").value),null);
    };
-  })],[])]),Doc.Element("div",[AttrProxy.Create("class","col-lg-9")],[Doc.Element("input",[AttrProxy.Create("id","txtReadEmployerFromWebsite"),AttrProxy.Create("type","text"),AttrModule.Handler("paste",function(el)
+  })],[])]),Doc.Element("div",[AttrProxy.Create("class","col-lg-9")],[Doc.Element("input",[AttrProxy.Create("id","txtReadEmployerFromWebsite"),AttrProxy.Create("type","text"),AttrModule.Handler("paste",function()
   {
-   return function()
+   return function(ev)
    {
-    var b$1;
-    return Concurrency.Start((b$1=null,Concurrency.Delay(function()
-    {
-     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.readWebsite:-2112793874",[el.value]),function(a)
-     {
-      Var.Set(varEmployer,a);
-      return Concurrency.Zero();
-     });
-    })),null);
+    return Concurrency.Start(readFromWebsite(ev.clipboardData.getData("Text")),null);
    };
-  }),AttrProxy.Create("class","form-control"),AttrProxy.Create("value","https://jobboerse.arbeitsagentur.de"),AttrModule.Handler("click",function(el)
+  }),AttrProxy.Create("class","form-control"),AttrProxy.Create("value","https://jobboerse.arbeitsagentur.de"),AttrModule.Handler("focus",function(el)
   {
    return function()
    {

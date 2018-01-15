@@ -578,9 +578,9 @@ module Server =
             }
     
     [<Remote>]
-    let readWebsite url =
+    let readWebsite (identifier : string) : Async<Result<Employer, string>> =
         async {
-            return Website.read url
+            return Website.read identifier
         }
     
     [<Remote>]

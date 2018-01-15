@@ -5,8 +5,24 @@ module Website =
     open HtmlAgilityPack
     open System.Text.RegularExpressions
     open System.Linq
+    open System.Net.Http
+    open WebSharper.UI.Next.CSharp.Html
+    open System.Collections.Generic
+    open System
+    open System.Net
+    open Chessie.ErrorHandling
 
-    let readJobboerse (doc : HtmlDocument) = 
+    type WebResource =
+    | Identifier of string
+    | Document of HtmlDocument
+
+    let getDoc webResource =
+        match webResource with
+        | Identifier s -> HtmlWeb().Load(s)
+        | Document doc -> doc
+
+    let readJobboerseDesktop (webResource : WebResource) = 
+        let doc = getDoc webResource
         let company =
             match doc.GetElementbyId("ruckfragenundbewerbungenan_-2147483648") with
             | null -> ""
@@ -74,21 +90,79 @@ module Website =
             | null -> ""
             | el -> el.Attributes.["href"].Value.Substring(7)
 
-        { company = company |> System.Net.WebUtility.HtmlDecode
-          street = street |> System.Net.WebUtility.HtmlDecode
-          postcode = postcode |> System.Net.WebUtility.HtmlDecode
-          city = city |> System.Net.WebUtility.HtmlDecode
-          gender = gender
-          degree = degree |> System.Net.WebUtility.HtmlDecode
-          firstName = firstName |> System.Net.WebUtility.HtmlDecode
-          lastName = lastName |> System.Net.WebUtility.HtmlDecode
-          email = email |> System.Net.WebUtility.HtmlDecode
-          phone = phone |> System.Net.WebUtility.HtmlDecode
-          mobilePhone = mobilePhone |> System.Net.WebUtility.HtmlDecode
-        }
+        ok
+          { company = company |> System.Net.WebUtility.HtmlDecode
+            street = street |> System.Net.WebUtility.HtmlDecode
+            postcode = postcode |> System.Net.WebUtility.HtmlDecode
+            city = city |> System.Net.WebUtility.HtmlDecode
+            gender = gender
+            degree = degree |> System.Net.WebUtility.HtmlDecode
+            firstName = firstName |> System.Net.WebUtility.HtmlDecode
+            lastName = lastName |> System.Net.WebUtility.HtmlDecode
+            email = email |> System.Net.WebUtility.HtmlDecode
+            phone = phone |> System.Net.WebUtility.HtmlDecode
+            mobilePhone = mobilePhone |> System.Net.WebUtility.HtmlDecode
+          }
+
+    
+    let readJobboerseByReferenzNummer (webResource : WebResource) =
+        match webResource with
+        | Identifier refNr ->
+            let url = "https://jobboerse.arbeitsagentur.de/vamJB/schnellsuche.html"
+            let cookies = new CookieContainer();
+            use handler = new HttpClientHandler();
+            handler.CookieContainer <- cookies;
+            use httpClient = new HttpClient(handler)
+            httpClient.BaseAddress <- new Uri(url)
+            let newUrl, cookies =
+                async {
+                    let! response = httpClient.GetAsync(url) |> Async.AwaitTask
+                    response.EnsureSuccessStatusCode() |> ignore
+                    let responseUri = response.RequestMessage.RequestUri.ToString()
+                    Console.WriteLine("responseUri:" + responseUri)
+                    let responseCookies = cookies.GetCookies(new Uri(responseUri)).Cast<Cookie>();
+                    return responseUri,responseCookies
+                } |> Async.RunSynchronously
+            let doc = HtmlWeb().Load(newUrl)
+            let csrfTokenValue = doc.DocumentNode.Descendants("input").Where(fun x -> x.GetAttributeValue("name", "") = "CSRFToken").First().GetAttributeValue("value", "")
+            System.Console.WriteLine(csrfTokenValue)
+            let data =
+                [ KeyValuePair("sieSuchen.wert.wert", "leer")
+                  KeyValuePair("suchbegriff.wert", refNr)
+                  KeyValuePair("arbeitsort.lokation", "")
+                  KeyValuePair("_eventId_suchen", "Suchen")
+                  KeyValuePair("CSRFToken", csrfTokenValue)
+                ]
+
+            let content = new FormUrlEncodedContent(data)
+            handler.Dispose()
+            httpClient.Dispose()
+            use handler = new HttpClientHandler()
+
+            for cookie in cookies do
+                handler.CookieContainer.Add(cookie)
+            use httpClient = new HttpClient(handler, BaseAddress = new Uri(newUrl))
+            httpClient.DefaultRequestHeaders.ExpectContinue <- Option.toNullable (Some false)
+            httpClient.DefaultRequestHeaders.Add("Cache-Control", "no-cache")
+            httpClient.DefaultRequestHeaders.Add("Connection", "Keep-Alive")
+            httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/535.2 (KHTML, like Gecko) Chrome/15.0.874.121 Safari/535.2")
+            httpClient.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8")
+            httpClient.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate, br")
+            httpClient.DefaultRequestHeaders.Add("Accept-Language", "de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7,es;q=0.6")
+            httpClient.DefaultRequestHeaders.Add("Referer", "https://jobboerse.arbeitsagentur.de/vamJB/startseite.html?aa=1&m=1&kgr=as&vorschlagsfunktionaktiv=true")
+            let url =
+                async {
+                    let! response = httpClient.PostAsync(url, content) |> Async.AwaitTask
+                    response.EnsureSuccessStatusCode() |> ignore
+                    return response.RequestMessage.RequestUri.ToString()
+                } |> Async.RunSynchronously
+            readJobboerseDesktop (Identifier url)
+        | _ -> ok emptyEmployer
 
 
-    let readMeineStadt (doc : HtmlDocument) = 
+
+    let readMeineStadt (webResource : WebResource) = 
+        let doc = getDoc webResource
         try
             let node =
                 doc
@@ -118,67 +192,40 @@ module Website =
                 | e ->
                     phone1, email1
 
-
-            { company = company |> System.Net.WebUtility.HtmlDecode
-              street = street |> System.Net.WebUtility.HtmlDecode
-              postcode = postcode |> System.Net.WebUtility.HtmlDecode
-              city = city |> System.Net.WebUtility.HtmlDecode
-              gender = Gender.Unknown
-              degree = ""
-              firstName = ""
-              lastName = ""
-              email = email |> System.Net.WebUtility.HtmlDecode
-              phone = phone |> System.Net.WebUtility.HtmlDecode
-              mobilePhone = ""
-            }
+            ok
+              { company = company |> System.Net.WebUtility.HtmlDecode
+                street = street |> System.Net.WebUtility.HtmlDecode
+                postcode = postcode |> System.Net.WebUtility.HtmlDecode
+                city = city |> System.Net.WebUtility.HtmlDecode
+                gender = Gender.Unknown
+                degree = ""
+                firstName = ""
+                lastName = ""
+                email = email |> System.Net.WebUtility.HtmlDecode
+                phone = phone |> System.Net.WebUtility.HtmlDecode
+                mobilePhone = ""
+              }
         with
         | e ->
-            reraise()
-            { company = ""
-              street = ""
-              postcode = ""
-              city = ""
-              gender = Gender.Unknown
-              degree = ""
-              firstName = ""
-              lastName = ""
-              email = ""
-              phone = ""
-              mobilePhone = ""
-            }
+            ok emptyEmployer
 
 
-    let websiteMap : Map<string, (HtmlDocument -> Employer)> =
-        [ "^.*jobboerse.*$", readJobboerse
-          "^.*meinestadt.*$", readMeineStadt]
+    let websiteMap : Map<string, (WebResource -> Result<Employer, string>)> =
+        [ @"^.*jobboerse\.arbeitsagentur\.de.*$", readJobboerseDesktop
+          @"^.*jobboerse\.mobil\.arbeitsagentur\.de.*$", (fun _ -> fail "Bitte die Referenznummer des Jobangebots einfügen.\n\nVon der Mobilseite der Arbeitsagentur kann nicht gelesen werden.")
+          @"^\d+[\d\-\w]+$", readJobboerseByReferenzNummer
+          @"^.*meinestadt.*$", readMeineStadt
+        ]
         |> Map.ofList
 
-    let read url =
-        let matchingWebsiteFuns : list<HtmlDocument -> Employer> =
+    let read (str : string) =
+        let r =
             websiteMap
-            |> Map.filter (fun pattern value -> Regex.IsMatch(url, pattern))
-            |> Map.toList
-            |> List.map (fun (k : string, (v : HtmlDocument -> Employer)) -> v)
+            |> Map.tryPick (fun k v -> if Regex.IsMatch(str, k) then Some v else None)
+            |> Option.defaultValue (fun _ -> ok { emptyEmployer with company = "hallo" })
+            <| Identifier str
+        Console.WriteLine(sprintf "%A" r)
+        r
         
-        try
-            let doc = HtmlWeb().Load(url)
-            [ for currentWebsiteFun in matchingWebsiteFuns do
-                yield
-                    doc |> currentWebsiteFun
-            ]
-            |> List.head
-        with
-        | e ->
-            reraise()
-            { company = ""
-              street = ""
-              postcode = ""
-              city = ""
-              gender = Gender.Unknown
-              degree = ""
-              firstName = ""
-              lastName = ""
-              email = ""
-              phone = ""
-              mobilePhone = ""
-            }
+            
+        

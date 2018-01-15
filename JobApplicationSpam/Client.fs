@@ -13,7 +13,6 @@ module Client =
     open WebSharper.JQuery
     open System
     open WebSharper.UI.Next.Client.HtmlExtensions
-    open Server
 
     [<JavaScript>]
     let varLanguageDict = Var.Create<Map<Word, string>>(Deutsch.dict |> Map.ofList)
@@ -401,7 +400,7 @@ module Client =
                                             
                                         }
                                     async {
-                                        let! _ = overwriteDocument varDocument.Value
+                                        let! _ = Server.overwriteDocument varDocument.Value
                                         do! setDocument()
                                         do! setPageButtons()
                                         show ["divAttachments"]
@@ -426,7 +425,7 @@ module Client =
                                                         | [] -> before
                                             
                                         }
-                                    let! _ = overwriteDocument varDocument.Value
+                                    let! _ = Server.overwriteDocument varDocument.Value
                                     do! setDocument()
                                     do! setPageButtons()
                                     show ["divAttachments"]
@@ -453,7 +452,7 @@ module Client =
                                                         | [] -> before
                                             
                                         }
-                                    let! _ = overwriteDocument varDocument.Value
+                                    let! _ = Server.overwriteDocument varDocument.Value
                                     do! setDocument()
                                     do! setPageButtons()
                                     show ["divAttachments"]
@@ -611,6 +610,16 @@ module Client =
                 addSelectOption slctHtmlPageTemplateEl htmlPageTemplate.name
             show [ "divAttachments" ]
         } |> Async.Start
+
+        let readFromWebsite url =
+            async {
+                let! employerResult = Server.readWebsite url
+                match employerResult with
+                | Ok (employer, _) ->
+                    varEmployer.Value <- employer
+                | Bad (xs) ->
+                    JS.Alert(List.fold (fun state x -> state + x + "\n") "" xs)
+            }
 
         divAttr
           [ attr.id "divJobApplicationContent"
@@ -990,11 +999,8 @@ module Client =
                             attr.``class`` "btn-block"
                             attr.id "btnLoadFromWebsite"
                             attr.value (t LoadFromWebsite)
-                            on.click (fun el _ ->
-                                async {
-                                    let! employer = Server.readWebsite (JS.Document.GetElementById("txtReadEmployerFromWebsite")?value)
-                                    varEmployer.Value <- employer
-                                } |> Async.Start
+                            on.click (fun _ _ ->
+                                readFromWebsite (JS.Document.GetElementById("txtReadEmployerFromWebsite")?value) |> Async.Start
                             )
                           ]
                           []
@@ -1004,15 +1010,12 @@ module Client =
                       [ inputAttr
                           [ attr.id "txtReadEmployerFromWebsite"
                             attr.``type`` "text"
-                            on.paste (fun el _ ->
-                                async {
-                                    let! employer = Server.readWebsite el?value
-                                    varEmployer.Value <- employer
-                                } |> Async.Start
+                            on.paste (fun _ ev ->
+                                readFromWebsite (ev?clipboardData?getData("Text")) |> Async.Start
                             )
                             attr.``class`` "form-control"
                             attr.value "https://jobboerse.arbeitsagentur.de"
-                            on.click (fun el _ -> el?select())
+                            on.focus (fun el _ -> el?select())
                           ]
                           []
                       ]

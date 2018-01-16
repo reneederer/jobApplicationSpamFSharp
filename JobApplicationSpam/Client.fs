@@ -24,42 +24,44 @@ module Client =
 
     [<JavaScript>]
     let login () =
-        formAttr
-          [ attr.action "/login"; attr.method "POST" ]
-          [ h4 [text (t Login) ]
-            divAttr
-              [ attr.``class`` "form-group" ]
-              [ labelAttr
-                  [ attr.``for`` "txtLoginEmail" ] 
-                  [text "Email"]
+        div
+          [ formAttr
+              [ attr.action "/login"; attr.method "POST" ]
+              [ h4 [text (t Login) ]
+                divAttr
+                  [ attr.``class`` "form-group" ]
+                  [ labelAttr
+                      [ attr.``for`` "txtLoginEmail" ] 
+                      [text "Email"]
+                    inputAttr
+                      [ attr.``class`` "form-control"; attr.name "txtLoginEmail"; attr.id "txtLoginEmail" ]
+                      []
+                  ]
+                divAttr
+                  [ attr.``class`` "form-group" ]
+                  [ labelAttr
+                      [ attr.``for`` "txtLoginPassword" ] 
+                      [text "Password"]
+                    inputAttr
+                      [ attr.``type`` "password"; attr.``class`` "form-control"; attr.name "txtLoginPassword"; attr.id "txtLoginPassword" ]
+                      []
+                  ]
                 inputAttr
-                  [ attr.``class`` "form-control"; attr.name "txtLoginEmail"; attr.id "txtLoginEmail" ]
+                  [ attr.``type`` "submit"
+                    attr.value "Login"
+                    attr.name "btnLogin"
+                  ]
+                  []
+                inputAttr
+                  [ attr.``type`` "submit"
+                    attr.style "margin-left: 30px;"
+                    attr.name "btnRegister"
+                    attr.value "Register"
+                  ]
                   []
               ]
-            divAttr
-              [ attr.``class`` "form-group" ]
-              [ labelAttr
-                  [ attr.``for`` "txtLoginPassword" ] 
-                  [text "Password"]
-                inputAttr
-                  [ attr.``type`` "password"; attr.``class`` "form-control"; attr.name "txtLoginPassword"; attr.id "txtLoginPassword" ]
-                  []
-              ]
-            inputAttr
-              [ attr.``type`` "submit"
-                attr.value "Login"
-                attr.name "btnLogin"
-              ]
-              []
-            inputAttr
-              [ attr.``type`` "submit"
-                attr.style "margin-left: 30px;"
-                attr.name "btnRegister"
-                attr.value "Register"
-              ]
-              []
           ]
-    
+
 
     [<JavaScript>]
     let templates () = 
@@ -81,7 +83,7 @@ module Client =
 
         let varUserEmail = Var.CreateWaiting<string>()
 
-        let varEmployer = Var.Create<Employer>({company="";gender=Gender.Unknown;degree="";firstName="";lastName="";street="";postcode="";city="";email="";phone="";mobilePhone=""})
+        let varEmployer = Var.Create emptyEmployer
         let employerCompany : IRef<string> = varEmployer.Lens (fun x -> x.company) (fun x v -> { x with company = v })
         let employerGender : IRef<Gender> = varEmployer.Lens (fun x -> x.gender) (fun x v -> { x with gender = v })
         let employerDegree : IRef<string> = varEmployer.Lens (fun x -> x.degree) (fun x v -> { x with degree = v })
@@ -117,18 +119,33 @@ module Client =
                               ]
                           ]
                         tbody
-                          [ for app in sentApplications do
+                          [ let mutable i = 0
+                            for (company, jobName, appliedOn) in sentApplications do
                                yield!
                                  [ tr
                                      [ td
-                                         [ text app.companyName ]
+                                         [ text company ]
                                        td
-                                         [ text (sprintf "%02i.%02i.%04i" app.statusChangedOn.Day app.statusChangedOn.Month app.statusChangedOn.Year) ]
+                                         [ text (sprintf "%02i.%02i.%04i" appliedOn.Day appliedOn.Month appliedOn.Year) ]
                                        td
-                                         [ text app.appliedAs ]
+                                         [ text jobName ]
+                                       td
+                                         [ buttonAttr
+                                             [ on.click (fun _ _ ->
+                                                    async {
+                                                        let! result = Server.emailSentApplicationToUser i
+                                                        match result with
+                                                        | Ok _ -> ()
+                                                        | Bad _ -> JS.Alert("Entschuldigung, es trat ein Fehler auf")
+                                                    } |> Async.Start
+                                               )
+                                             ]
+                                             []
+                                         ]
                                      ]
                                    :> Doc
                                  ]
+                            i <- i + 1
                           ]
                       ]
             }
@@ -140,8 +157,8 @@ module Client =
           divAttr
             [attr.``class`` "form-group row"]
             [ labelAttr
-                [attr.``class`` (column1Size + " col-form-label"); attr.``for`` guid]
-                [text labelText]
+                [ attr.``class`` (column1Size + " col-form-label"); attr.``for`` guid ]
+                [ text labelText ]
               divAttr
                 [ attr.``class`` column2Size]
                 [ Doc.Input
@@ -826,7 +843,7 @@ module Client =
               [ attr.id "divChoosePageType"; attr.style "display: none" ]
               [ inputAttr
                   [ attr.``type`` "radio"
-                    //attr.disabled "true"
+                    attr.disabled "true"
                     attr.name "rbgrpPageType"
                     attr.id "rbHtmlPage"
                     on.click (fun _ _ -> show ["divAttachments";"divChoosePageType"; "divCreateHtmlPage"]) ]

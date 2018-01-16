@@ -86,7 +86,7 @@ module Odt =
     let rec private replaceInDirectory path map emptyTextTagAction =
         let files = Directory.EnumerateFiles(path)
         for file in files do
-            replaceInFile file map (if file.EndsWith("content.xml") then Replace else Ignore)
+            if file.EndsWith(".xml") then replaceInFile file map Replace
         let directories = Directory.EnumerateDirectories(path)
         for directory in directories do
             replaceInDirectory directory map emptyTextTagAction

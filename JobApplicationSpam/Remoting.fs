@@ -325,7 +325,7 @@ module Server =
         }
     
     [<Remote>]
-    let replaceMap (userEmail : string) (userValues : UserValues) (employer : Employer) (document : Document) =
+    let replaceMap (userEmail : string) (userValues : UserValues) (employer : Employer) (jobName : string) =
         async {
             return
                 [ ("$firmaName", employer.company)
@@ -357,7 +357,7 @@ module Server =
                   ("$meineMobilnummer", userValues.mobilePhone)
                   ("$meineMobilnr", userValues.mobilePhone)
                   ("$datumHeute", DateTime.Today.ToString("dd.MM.yyyy"))
-                  ("$beruf", document.jobName)
+                  ("$beruf", jobName)
                 ]
         }
 
@@ -368,7 +368,7 @@ module Server =
             async {
                 let! userEmail = getEmailByUserId userId
                 let guid = Guid.NewGuid().ToString("N")
-                let! map = replaceMap (userEmail |> Option.defaultValue "") userValues employer document
+                let! map = replaceMap (userEmail |> Option.defaultValue "") userValues employer document.jobName
                 Directory.CreateDirectory(Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "tmp", guid)) |> ignore
                 if filePath.EndsWith(".odt") || filePath.EndsWith(".docx")
                 then
@@ -388,6 +388,71 @@ module Server =
         | None -> async { return "" }
          
 
+    [<Remote>]
+    let emailSentApplicationToUser (sentApplicationOffset : int) =
+        let oUserId = getCurrentUserId() |> Async.RunSynchronously
+        async {
+            match oUserId with 
+            | None -> return failwith "No user logged in"
+            | Some userId ->
+                use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+                dbConn.Open()
+                try
+                    let userEmail = Database.getEmailByUserId dbConn userId |> Option.defaultValue ""
+                    let sentApplication = Database.getSentApplication dbConn sentApplicationOffset userId
+                    let! myList = replaceMap sentApplication.userEmail sentApplication.userValues sentApplication.employer sentApplication.jobName
+                    let tmpPath = Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "tmp", Guid.NewGuid().ToString("N"))
+                    let odtPaths =
+                        [ for (path, pageIndex) in sentApplication.filePages do
+                                yield
+                                    if path.EndsWith(".pdf")
+                                    then
+                                        Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], path)
+                                    elif path.EndsWith(".odt") || path.EndsWith(".docx")
+                                    then
+                                        let directoryGuid = Guid.NewGuid().ToString("N")
+                                        Odt.replaceInOdt
+                                            (Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], path))
+                                            (Path.Combine(tmpPath, directoryGuid, "extractedOdt"))
+                                            (Path.Combine(tmpPath, directoryGuid, "replacedOdt"))
+                                            myList
+                                    else
+                                        let copiedPath = Path.Combine(tmpPath, Guid.NewGuid().ToString("N"), Path.GetFileName(path))
+                                        Directory.CreateDirectory(Path.GetDirectoryName copiedPath) |> ignore
+                                        File.Copy(Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], path), copiedPath)
+                                        Odt.replaceInFile
+                                            copiedPath
+                                            myList
+                                            Ignore
+                                        copiedPath
+                        ]
+
+
+
+
+
+                    let pdfPaths =
+                        [ for odtPath in odtPaths do
+                            yield Odt.odtToPdf odtPath
+                        ]
+                    let mergedPdfPath = Path.Combine(tmpPath, (sprintf "Bewerbung_%s_%s.pdf" sentApplication.userValues.firstName sentApplication.userValues.lastName))
+                    if pdfPaths <> [] then Odt.mergePdfs pdfPaths mergedPdfPath
+                    sendEmail
+                        userEmail
+                        (sentApplication.userValues.firstName + " " + sentApplication.userValues.lastName)
+                        sentApplication.userEmail
+                        (Odt.replaceInString sentApplication.email.subject myList Ignore)
+                        (Odt.replaceInString (sentApplication.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Ignore)
+                        (if pdfPaths = []
+                         then []
+                         else [mergedPdfPath, sprintf "Bewerbung_%s_%s.pdf" sentApplication.userValues.firstName sentApplication.userValues.lastName]
+                         )
+                    return ok ()
+                with
+                | e ->
+                    log.Error ("", e)
+                    return fail "Couldn't email the application to the user"
+        }
 
     [<Remote>]
     let applyNow (employer : Employer) (document : Document) (userValues : UserValues) =
@@ -416,7 +481,7 @@ module Server =
                             (userEmail, userValues)
                             (document.pages |> List.choose(fun x -> match x with FilePage p -> Some (p.path, p.pageIndex) | HtmlPage _ -> None))
                             document.jobName
-                    let! myList = replaceMap userEmail userValues employer document
+                    let! myList = replaceMap userEmail userValues employer document.jobName
                     let tmpPath = Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "tmp", Guid.NewGuid().ToString("N"))
                     let odtPaths =
                         [ for item in document.pages do
@@ -471,8 +536,9 @@ module Server =
                         [ for odtPath in odtPaths do
                             yield Odt.odtToPdf odtPath
                         ]
-                    let mergedPdfPath = Path.Combine(tmpPath, (sprintf "Bewerbung_%s_%s.pdf" userValues.firstName userValues.lastName))
-                    if pdfPaths <> [] then Odt.mergePdfs pdfPaths mergedPdfPath
+                    let mutable mergedPdfPath = Path.Combine(tmpPath, (sprintf "Bewerbung_%s_%s.pdf" userValues.firstName userValues.lastName))
+                    mergedPdfPath <- pdfPaths.Head
+                    //if pdfPaths <> [] then Odt.mergePdfs pdfPaths mergedPdfPath
                     sendEmail
                         userEmail
                         (userValues.firstName + " " + userValues.lastName)
@@ -651,3 +717,4 @@ module Server =
             dbConn.Open()
             return Database.getFilePageNames dbConn documentId
         }
+    

@@ -304,14 +304,134 @@ module Database =
         let sentApplications =
             [ while reader.Read() do
                 let statusChangedDate = reader.GetDate(2)
+                let companyName = reader.GetString(0)
+                let jobName = reader.GetString(1)
+                let statusChangedOn = DateTime(statusChangedDate.Year, statusChangedDate.Month, statusChangedDate.Day)
                 yield
-                  { companyName = reader.GetString(0)
-                    appliedAs = reader.GetString(1)
-                    statusChangedOn = DateTime(statusChangedDate.Year, statusChangedDate.Month, statusChangedDate.Day)
-                  }
+                  ( companyName
+                  , jobName
+                  , statusChangedOn
+                  )
             ]
         log.Debug(sprintf "%i %s %s = %A" userId (startDate.Date.ToString()) (endDate.Date.ToString()) sentApplications)
         sentApplications
+    
+    let getSentApplication dbConn (sentApplicationOffset : int) (userId : int) =
+        use command =
+            new NpgsqlCommand("""
+                select
+                      sentStatus.statusChangedOn
+                    , employer.company
+                    , employer.street
+                    , employer.postcode
+                    , employer.city
+                    , employer.gender
+                    , employer.degree
+                    , employer.firstName
+                    , employer.lastName
+                    , employer.email
+                    , employer.phone
+                    , employer.mobilePhone
+                    , sentDocumentEmail.subject
+                    , sentDocumentEmail.body
+                    , sentUserValues.email
+                    , sentUserValues.gender
+                    , sentUserValues.degree
+                    , sentUserValues.firstName
+                    , sentUserValues.lastName
+                    , sentUserValues.street
+                    , sentUserValues.postcode
+                    , sentUserValues.city
+                    , sentUserValues.phone
+                    , sentUserValues.mobilePhone
+                    , sentDocument.jobName
+                    , sentDocument.id
+                from sentApplication
+                join sentDocument on sentApplication.sentDocumentId = sentDocument.id
+                join employer on sentDocument.employerId = employer.id
+                join sentDocumentEmail on sentDocument.sentDocumentEmailId = sentDocumentEmail.id
+                join sentUserValues on sentDocument.sentUserValuesId = sentUserValues.id
+                join sentStatus on sentApplication.id = sentStatus.sentApplicationId
+                where sentApplication.userId = :userId
+                  and sentStatus.sentStatusValueId = 1
+                order by id offset :sentApplicationOffset limit 1
+                """, dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("sentApplicationOffset", sentApplicationOffset)) |> ignore
+        use reader = command.ExecuteReader()
+        if reader.Read()
+        then
+            let statusChangedOn =
+                let d = reader.GetDate(0)
+                DateTime(d.Year, d.Month, d.Day)
+            let employerCompany = reader.GetString(1)
+            let employerStreet = reader.GetString(2)
+            let employerPostcode = reader.GetString(3)
+            let employerCity = reader.GetString(4)
+            let employerGender = reader.GetString(5)
+            let employerDegree = reader.GetString(6)
+            let employerFirstName = reader.GetString(7)
+            let employerLastName = reader.GetString(8)
+            let employerEmail = reader.GetString(9)
+            let employerPhone = reader.GetString(10)
+            let employerMobilePhone = reader.GetString(11)
+            let subject = reader.GetString(12)
+            let body = reader.GetString(13)
+            let userEmail = reader.GetString(14)
+            let userGender = reader.GetString(15)
+            let userDegree = reader.GetString(16)
+            let userFirstName = reader.GetString(17)
+            let userLastName = reader.GetString(18)
+            let userStreet = reader.GetString(19)
+            let userPostcode = reader.GetString(20)
+            let userCity = reader.GetString(21)
+            let userPhone = reader.GetString(22)
+            let userMobilePhone = reader.GetString(23)
+            let jobName = reader.GetString(24)
+            let sentDocumentId = reader.GetInt32(25)
+            { jobName = jobName
+              sentDate = statusChangedOn.ToString("dd.MM.yyyy")
+              email = { subject = subject; body = body }
+              userEmail = userEmail
+              userValues =
+                { gender = Gender.fromString userGender
+                  degree = userDegree
+                  firstName = userFirstName
+                  lastName = userLastName
+                  street = userStreet
+                  postcode = userPostcode
+                  city = userCity
+                  phone = userPhone
+                  mobilePhone = userMobilePhone
+                }
+              employer =
+                { company = employerCompany
+                  street = employerStreet
+                  postcode = employerPostcode
+                  city = employerCity
+                  gender = Gender.fromString employerGender
+                  degree = employerDegree
+                  firstName = employerFirstName
+                  lastName = employerLastName
+                  email = employerEmail
+                  phone = employerPhone
+                  mobilePhone = employerMobilePhone
+                }
+              filePages =
+                    command.Dispose()
+                    reader.Dispose()
+                    use command = new NpgsqlCommand("""select path, pageIndex from sentFilePage where sentDocumentId = :sentDocumentId order by pageIndex""", dbConn)
+                    command.Parameters.Add(new NpgsqlParameter("sentDocumentId", sentDocumentId)) |> ignore
+                    use reader = command.ExecuteReader()
+                    [ while reader.Read() do
+                        yield
+                              reader.GetString(0)
+                            , reader.GetInt32(1)
+                    ]
+            }
+        else
+            failwith "An error occured"
+
 
     let overwriteDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) =
         log.Debug(sprintf "%A %i" document userId)

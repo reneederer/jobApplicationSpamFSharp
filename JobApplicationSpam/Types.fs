@@ -139,12 +139,6 @@ module Types =
         ; oTemplateId : option<int>
         }
     
-    type SentApplication =
-        { companyName : string
-          appliedAs : string
-          statusChangedOn : DateTime
-        }
-    
     [<WebSharper.JavaScript>]
     type Language =
     | English
@@ -163,6 +157,17 @@ module Types =
     type EmptyTextTagAction =
     | Replace
     | Ignore
+
+
+    type SentApplication =
+        { jobName : string
+          sentDate : string
+          email : DocumentEmail
+          userValues : UserValues
+          userEmail : string
+          employer : Employer
+          filePages : list<string * int>
+        }
 
     [<WebSharper.JavaScript>]
     let emptyUserValues =
@@ -204,6 +209,7 @@ module Types =
             }
           jobName=""
         }   
+    
 
 
     type DataBinding =

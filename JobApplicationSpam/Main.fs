@@ -13,7 +13,7 @@ type EndPoint =
     | [<EndPoint "/register">] Register
     | [<EndPoint "/showsentjobapplications">] ShowSentJobApplications
     | [<EndPoint "/about">] About
-    | [<EndPoint "GET /confirmemail">] ConfirmEmail
+    | [<EndPoint "/confirmemail">] ConfirmEmail
     | [<EndPoint "/templates">] Templates
     | [<EndPoint "/upload">] Upload
     | [<EndPoint "/logout">] Logout
@@ -255,10 +255,11 @@ module Site =
     
     let confirmEmailPage (ctx : Context<EndPoint>) =
         async {
-            match ctx.Request.Get.["email"], ctx.Request.Get.["guid"] with
-            | Some email, Some guid->
-                match Server.confirmEmail email guid |> Async.RunSynchronously with
-                | Ok _ -> 
+            try
+                match ctx.Request.Get.["email"], ctx.Request.Get.["guid"] with
+                | Some email, Some guid->
+                    match Server.confirmEmail email guid |> Async.RunSynchronously with
+                    | Ok _ -> 
                         let! oUserId = Server.getUserIdByEmail email
                         match oUserId with
                         | Some userId ->
@@ -266,10 +267,13 @@ module Site =
                             return templatesPage ctx
                         | None ->
                             return loginPage ctx
-                | Bad vs -> return loginPage ctx
-            | Some _, None
-            | None, Some _
-            | None, None ->
+                    | Bad vs -> return loginPage ctx
+                | Some _, None
+                | None, Some _
+                | None, None ->
+                    return loginPage ctx
+            with
+            | e ->
                 return loginPage ctx
         } |> Async.RunSynchronously
 
@@ -299,8 +303,7 @@ module Site =
             | Some _, EndPoint.Register -> registerPage ctx
             | None, EndPoint.Register -> registerPage ctx
             | Some _, EndPoint.About -> aboutPage ctx
-            | Some _, EndPoint.Upload ->
-                uploadPage ctx
+            | Some _, EndPoint.Upload -> uploadPage ctx
             | Some _, EndPoint.ConfirmEmail -> confirmEmailPage ctx
             | None, EndPoint.ConfirmEmail -> confirmEmailPage ctx
             | Some _ , EndPoint.Templates -> templatesPage ctx

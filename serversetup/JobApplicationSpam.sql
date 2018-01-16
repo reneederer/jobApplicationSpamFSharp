@@ -36,7 +36,7 @@ create table sentUserValues(id serial primary key, email text not null, gender t
 create table sentDocument(id serial primary key, employerId int not null, sentDocumentEmailId int not null, sentUserValuesId int not null, jobName text not null, foreign key(sentUserValuesId) references sentUserValues(id) on update cascade, foreign key(employerId) references employer(id), foreign key(sentDocumentEmailId) references sentDocumentEmail(id) on update cascade);
 create table sentFilePage(id serial primary key, sentDocumentId int not null, path text not null, pageIndex int not null, foreign key(sentDocumentId) references sentDocument(id) on update cascade);
 
-create table sentApplication(id serial primary key, userId int not null, sentDocumentId int not null, foreign key(userId) references users(id), foreign key(sentDocumentId) references sentDocument(id) on update cascade);
+create table sentApplication(id serial primary key, userId int not null, sentDocumentId int not null, url text not null, foreign key(userId) references users(id), foreign key(sentDocumentId) references sentDocument(id) on update cascade);
 create table sentStatusValue(id int primary key, status text);
 create table sentStatus(id serial primary key, sentApplicationId int, statusChangedOn date, dueOn timestamp, sentStatusValueId int, statusMessage text, foreign key(sentApplicationId) references sentApplication(id), foreign key(sentStatusValueId) references sentStatusValue(id));
 create table link(id serial primary key, path text, guid text, name text);

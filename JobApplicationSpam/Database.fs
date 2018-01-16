@@ -225,7 +225,7 @@ module Database =
             failwith <| "Email does not exist or guid was already null: " + email
         log.Debug(sprintf "%s = ()" email)
 
-    let insertSentApplication dbConn (userId : int) (employerId : int) (email : DocumentEmail) (userEmailAndValues : string * UserValues) (sentFilePages : list<string (*path*) * int (*pageIndex*)>) (jobName : string) =
+    let insertSentApplication dbConn (userId : int) (employerId : int) (email : DocumentEmail) (userEmailAndValues : string * UserValues) (sentFilePages : list<string (*path*) * int (*pageIndex*)>) (jobName : string) (url : string) =
         use command = new NpgsqlCommand("""insert into sentDocumentEmail(subject, body) values(:subject, :body) returning id""", dbConn)
         command.Parameters.Add(new NpgsqlParameter("subject", email.subject)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("body", email.body)) |> ignore
@@ -267,9 +267,10 @@ module Database =
             command.ExecuteNonQuery() |> ignore
             command.Dispose()
 
-        use command = new NpgsqlCommand("insert into sentApplication(userId, sentDocumentId) values(:userId, :sentDocumentId) returning id", dbConn)
+        use command = new NpgsqlCommand("insert into sentApplication(userId, sentDocumentId, url) values(:userId, :sentDocumentId, :url) returning id", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("sentDocumentId", sentDocumentId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("url", url)) |> ignore
         let sentApplicationId = command.ExecuteScalar() |> string |> Int32.Parse
         command.Dispose()
 
@@ -288,7 +289,7 @@ module Database =
         log.Debug(sprintf "%i %s %s" userId (startDate.Date.ToString()) (endDate.Date.ToString()))
         use command =
             new NpgsqlCommand(
-                """select employer.company, sentDocument.jobName, sentStatus.statusChangedOn
+                """select employer.company, sentDocument.jobName, sentStatus.statusChangedOn, sentApplication.url
                    from sentApplication
                    join sentStatus
                      on sentApplication.id = sentStatus.sentApplicationId
@@ -297,20 +298,23 @@ module Database =
                      on employer.id = sentDocument.employerId
                    where sentApplication.userId = :userId
                      and sentStatusValueId = 1
+                   order by sentStatus.statusChangedOn desc, sentStatus.id desc
                    """
                 , dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         use reader = command.ExecuteReader()
         let sentApplications =
             [ while reader.Read() do
-                let statusChangedDate = reader.GetDate(2)
                 let companyName = reader.GetString(0)
                 let jobName = reader.GetString(1)
+                let statusChangedDate = reader.GetDate(2)
+                let url = reader.GetString(3)
                 let statusChangedOn = DateTime(statusChangedDate.Year, statusChangedDate.Month, statusChangedDate.Day)
                 yield
                   ( companyName
                   , jobName
                   , statusChangedOn
+                  , url
                   )
             ]
         log.Debug(sprintf "%i %s %s = %A" userId (startDate.Date.ToString()) (endDate.Date.ToString()) sentApplications)
@@ -878,4 +882,14 @@ module Database =
         use reader = command.ExecuteReader()
         [ while reader.Read() do
             yield reader.GetString(0) ]
+
+    let tryFindSentApplication dbConn (userId : int) (employer : Employer) =
+        use command =
+            new NpgsqlCommand("""select company from employer where (company, userId) = (:company, :userId) order by id desc limit 1""", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("company", employer.company)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        use reader = command.ExecuteReader()
+        if reader.Read()
+        then Some 1
+        else None
 

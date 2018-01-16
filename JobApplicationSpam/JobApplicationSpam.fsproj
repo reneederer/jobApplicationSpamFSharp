@@ -84,6 +84,7 @@
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Types.fs" />
     <Compile Include="Database.fs" />
+    <Compile Include="CustomVariables.fs" />
     <Compile Include="Odt.fs" />
     <Compile Include="Website.fs" />
     <Compile Include="Internationalisation\English.fs" />

@@ -9,6 +9,7 @@ module Odt =
     open System.Text.RegularExpressions
     open Types
 
+    let private log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().GetType())
 
     let areStreamsEqual (fs1 : Stream) (fs2 : Stream) =
         let chunkSize = 2048
@@ -31,52 +32,61 @@ module Odt =
         else areFileStreamsEqual ()
 
 
-    let private log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().GetType())
 
-    let replaceInString (text : string) (map : list<string * string>) (emptyTextTagAction : EmptyTextTagAction) =
-        let t =
-            match emptyTextTagAction with
-            | Replace ->
-                let pattern = """\$.*?(<text:span text:style-name="\w*?">).*?(</text:span>)"""
-                let rec replaceTags (s : string) beginIndex endIndex =
-                    if beginIndex < 0 || endIndex < 0
-                    then s
-                    else
-                        let s1 = s.Substring(beginIndex, endIndex - beginIndex + 1)
-                        let m = Regex.Match(s.Substring(beginIndex, endIndex - beginIndex + 1), pattern)
-                        if m.Success
-                        then
-                            let g1 = s.Substring(0, beginIndex)
-                            let g2 = s1.Substring(0, m.Groups.[1].Index)
-                            let g3begin = m.Groups.[1].Index + m.Groups.[1].Length
-                            let g3length = m.Groups.[2].Index - (m.Groups.[1].Index + m.Groups.[1].Length)
-                            let g3 = s1.Substring(g3begin, g3length)
-                            let g4begin = beginIndex + m.Groups.[2].Index + m.Groups.[2].Length
-                            let g4 = s.Substring(g4begin)
-                            let nextS = g1 + g2 + g3 + g4
-                            let nextDollarIndex =
-                                let n = nextS.IndexOf('$', beginIndex + 1)
-                                if n < 0 then nextS.Length - 1 else n
-                            replaceTags nextS beginIndex nextDollarIndex
-                        elif beginIndex <= 0
-                        then s
-                        else replaceTags s (text.LastIndexOf('$', beginIndex - 1)) (beginIndex)
-                replaceTags text (text.LastIndexOf('$')) (text.Length - 1)
-            | Ignore -> text
+    let replaceInString (text1 : string) (map : list<string * string>) (emptyTextTagAction1 : EmptyTextTagAction) =
+        let rec replaceInString' (text : string) (emptyTextTagAction : EmptyTextTagAction) depth =
+            if depth >= 10
+            then text
+            else
+                let t =
+                    match emptyTextTagAction with
+                    | Replace ->
+                        let pattern = """\$.*?(<text:span text:style-name="\w*?">).*?(</text:span>)"""
+                        let rec replaceTags (s : string) beginIndex endIndex =
+                            if beginIndex < 0 || endIndex < 0
+                            then s
+                            else
+                                let s1 = s.Substring(beginIndex, endIndex - beginIndex + 1)
+                                let m = Regex.Match(s.Substring(beginIndex, endIndex - beginIndex + 1), pattern)
+                                if m.Success
+                                then
+                                    let g1 = s.Substring(0, beginIndex)
+                                    let g2 = s1.Substring(0, m.Groups.[1].Index)
+                                    let g3begin = m.Groups.[1].Index + m.Groups.[1].Length
+                                    let g3length = m.Groups.[2].Index - (m.Groups.[1].Index + m.Groups.[1].Length)
+                                    let g3 = s1.Substring(g3begin, g3length)
+                                    let g4begin = beginIndex + m.Groups.[2].Index + m.Groups.[2].Length
+                                    let g4 = s.Substring(g4begin)
+                                    let nextS = g1 + g2 + g3 + g4
+                                    let nextDollarIndex =
+                                        let n = nextS.IndexOf('$', beginIndex + 1)
+                                        if n < 0 then nextS.Length - 1 else n
+                                    replaceTags nextS beginIndex nextDollarIndex
+                                elif beginIndex <= 0
+                                then s
+                                else replaceTags s (text.LastIndexOf('$', beginIndex - 1)) (beginIndex)
+                        replaceTags text (text.LastIndexOf('$')) (text.Length - 1)
+                    | Ignore -> text
 
-        List.fold
-            (fun (state:string) (k: string, v: string) ->
-                if v = "" then
-                    state.Replace(k + " ", "").Replace(k, "")
-                else
-                    state.Replace
-                        (k
-                        , match emptyTextTagAction with
-                          | Replace -> System.Security.SecurityElement.Escape(v)
-                          | Ignore -> v)
-            )
-            t
-            map
+                List.fold
+                    (fun (state:string) (k: string, v: string) ->
+                        let replacedV =
+                            if v.Contains "$" && state.Contains k
+                            then
+                                replaceInString' v Ignore (depth + 1)
+                            else v
+                        if replacedV = "" then
+                            state.Replace(k + " ", "").Replace(k, "")
+                        else
+                            state.Replace
+                                (k
+                                , match emptyTextTagAction with
+                                  | Replace -> System.Security.SecurityElement.Escape(replacedV)
+                                  | Ignore -> replacedV)
+                    )
+                    t
+                    map
+        replaceInString' text1 emptyTextTagAction1 0
 
     let replaceInFile path map emptyTextTagAction =
         let content = File.ReadAllText(path)

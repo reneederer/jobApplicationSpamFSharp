@@ -109,47 +109,54 @@ module Client =
             async {
                 let! sentApplications = Server.getSentApplications DateTime.Now DateTime.Now
                 varDivSentApplications.Value <-
-                    tableAttr
-                      [ attr.style "border-spacing: 10px; border-collapse: separate" ]
-                      [ thead
-                          [ tr
-                              [ th [ text (t CompanyName) ]
-                                th [ text (t AppliedOnDate) ]
-                                th [ text (t AppliedAs) ]
+                    divAttr
+                      [ attr.style "width: 100%; height: 100%; overflow: auto"
+                      ]
+                      [ tableAttr
+                          [ attr.style "border-spacing: 10px; border-collapse: separate" ]
+                          [ thead
+                              [ tr
+                                  [ th [ text (t CompanyName) ]
+                                    th [ text (t AppliedOnDate) ]
+                                    th [ text (t AppliedAs) ]
+                                    th [ text "Url" ]
+                                  ]
                               ]
-                          ]
-                        tbody
-                          [ let emailSentApplicationToUserFun =
-                                fun (el : Dom.Element) (ev : Dom.MouseEvent) ->
-                                    async {
-                                        let! result = Server.emailSentApplicationToUser (el.ParentElement.ParentElement?rowIndex - 1)
-                                        match result with
-                                        | Ok _ -> ()
-                                        | Bad _ -> JS.Alert("Entschuldigung, es trat ein Fehler auf")
-                                    } |> Async.Start
+                            tbody
+                              [ let emailSentApplicationToUserFun =
+                                    fun (el : Dom.Element) (ev : Dom.MouseEvent) ->
+                                        async {
+                                            let! result = Server.emailSentApplicationToUser (el.ParentElement.ParentElement?rowIndex - 1)
+                                            match result with
+                                            | Ok _ -> ()
+                                            | Bad _ -> JS.Alert("Entschuldigung, es trat ein Fehler auf")
+                                        } |> Async.Start
 
-                            for (company, jobName, appliedOn) in sentApplications do
-                               yield!
-                                 [ tr
-                                     [ td
-                                         [ text company ]
-                                       td
-                                         [ text (sprintf "%02i.%02i.%04i" appliedOn.Day appliedOn.Month appliedOn.Year) ]
-                                       td
-                                         [ text jobName ]
-                                       td
-                                         [ buttonAttr
-                                             [ on.click emailSentApplicationToUserFun
-                                             ]
-                                             [ iAttr
-                                                 [ attr.``class`` "fa fa-envelope"; (Attr.Create "aria-hidden" "true")
+                                for (company, jobName, appliedOn, url) in sentApplications do
+                                   yield!
+                                     [ tr
+                                         [ td
+                                             [ text company ]
+                                           td
+                                             [ text (sprintf "%02i.%02i.%04i" appliedOn.Day appliedOn.Month appliedOn.Year) ]
+                                           td
+                                             [ text jobName ]
+                                           td
+                                             [ text url ]
+                                           td
+                                             [ buttonAttr
+                                                 [ on.click emailSentApplicationToUserFun
                                                  ]
-                                                 []
+                                                 [ iAttr
+                                                     [ attr.``class`` "fa fa-envelope"; (Attr.Create "aria-hidden" "true")
+                                                     ]
+                                                     []
+                                                 ]
                                              ]
                                          ]
+                                       :> Doc
                                      ]
-                                   :> Doc
-                                 ]
+                              ]
                           ]
                       ]
             }
@@ -538,47 +545,56 @@ module Client =
                 then
                     JS.Alert(String.Format(t FieldIsRequired, (t JobName)))
                 else
-                    let btnLoadFromWebsite = JQuery("#btnLoadFromWebsite")
-                    let fontAwesomeEls =
-                        [ JQuery("#faBtnApplyNowBottom")
-                          JQuery("#faBtnApplyNowTop")
-                        ]
-                    fontAwesomeEls
-                    |> List.iter (fun faEl ->
-                        faEl.Css("color", "black") |> ignore
-                        faEl.AddClass("fa-spinner fa-spin") |> ignore
-                        )
-                    btnLoadFromWebsite.Prop("disabled", true) |> ignore
-                    JQuery("#divJobApplicationContent").Find("input,textarea,button,select").Prop("disabled", true) |> ignore
-
-                    let! applyResult = Server.applyNow varEmployer.Value varDocument.Value varUserValues.Value
-
-                    fontAwesomeEls
-                    |> List.iter (fun faEl ->
-                        faEl.RemoveClass("fa-spinner fa-spin") |> ignore
-                    )
-                    btnLoadFromWebsite.Prop("disabled", false) |> ignore
-                    JQuery("#divJobApplicationContent").Find("input,textarea,button,select").Prop("disabled", false) |> ignore
-                    match applyResult with
-                    | Bad xs ->
-                        do! Async.Sleep 700
-                        JS.Alert(t SorryAnErrorOccurred + "\n" + t YourApplicationHasNotBeenSent)
-                    | Ok _ ->
+                    let! sentApplication (*TODO this is an option<int> instead of option<SentApplication> as placeholder*) =
+                        Server.tryFindSentApplication varEmployer.Value
+                    if sentApplication.IsNone || (sentApplication.IsSome && JS.Confirm("Du hast dich schon einmal bei einer Firma mit diesem Firmennamen beworben.\nBewerbung trotzdem abschicken?"))
+                    then
+                        let btnLoadFromWebsite = JQuery("#btnLoadFromWebsite")
+                        let fontAwesomeEls =
+                            [ JQuery("#faBtnApplyNowBottom")
+                              JQuery("#faBtnApplyNowTop")
+                            ]
                         fontAwesomeEls
                         |> List.iter (fun faEl ->
-                            faEl.Css("color", "#08a81b") |> ignore
-                            faEl.AddClass("fa-check") |> ignore
-                        )
+                            faEl.Css("color", "black") |> ignore
+                            faEl.AddClass("fa-spinner fa-spin") |> ignore
+                            )
+                        btnLoadFromWebsite.Prop("disabled", true) |> ignore
+                        JQuery("#divJobApplicationContent").Find("input,textarea,button,select").Prop("disabled", true) |> ignore
 
-                        JQuery("#divAddEmployer input[type='text'][data-bind]").Val("") |> ignore
-                        JQuery("#divAddEmployer input[type='radio'][data-bind='bossGender'][value='u']").Prop("checked", "checked") |> ignore
-
-                        do! Async.Sleep 3500
+                        let! applyResult =
+                            Server.applyNow
+                                varEmployer.Value
+                                varDocument.Value
+                                varUserValues.Value
+                                (JS.Document.GetElementById("txtReadEmployerFromWebsite")?value)
 
                         fontAwesomeEls
                         |> List.iter (fun faEl ->
-                            faEl.RemoveClass("fa-check") |> ignore
+                            faEl.RemoveClass("fa-spinner fa-spin") |> ignore
                         )
+                        btnLoadFromWebsite.Prop("disabled", false) |> ignore
+                        JQuery("#divJobApplicationContent").Find("input,textarea,button,select").Prop("disabled", false) |> ignore
+                        match applyResult with
+                        | Bad xs ->
+                            do! Async.Sleep 700
+                            JS.Alert(t SorryAnErrorOccurred + "\n" + t YourApplicationHasNotBeenSent)
+                        | Ok _ ->
+                            fontAwesomeEls
+                            |> List.iter (fun faEl ->
+                                faEl.Css("color", "#08a81b") |> ignore
+                                faEl.AddClass("fa-check") |> ignore
+                            )
+
+                            varEmployer.Value <- emptyEmployer
+                            JS.Document.GetElementById("txtReadEmployerFromWebsite")?value <- ""
+
+                            do! Async.Sleep 4500
+
+                            fontAwesomeEls
+                            |> List.iter (fun faEl ->
+                                faEl.RemoveClass("fa-check") |> ignore
+                            )
             }
             
         async {
@@ -649,6 +665,7 @@ module Client =
                 | Bad (xs) ->
                     JS.Alert(List.fold (fun state x -> state + x + "\n") "" xs)
             }
+
 
         divAttr
           [ attr.id "divJobApplicationContent"
@@ -918,22 +935,17 @@ module Client =
                                 let! maxUploadSize = Server.getMaxUploadSize ()
                                 if (el?files)?item(0)?size > maxUploadSize
                                 then
-                                    JS.Document.GetElementById("btnUpload")?style?visibility <- "hidden"
                                     JS.Alert(t FileIsTooBig + "\n" + String.Format(t UploadLimit, (maxUploadSize / 1000000) |> string))
                                 else
-                                    JS.Document.GetElementById("btnUpload")?style?visibility <- "visible"
+                                    el.ParentElement?submit()
                             } |> Async.Start
                         )
                       ]
                       []
                     inputAttr [ attr.``type`` "hidden"; attr.id "hiddenDocumentId"; attr.name "documentId"; attr.value "1" ] []
                     inputAttr [ attr.``type`` "hidden"; attr.id "hiddenNextPageIndex"; attr.name "pageIndex"; attr.value "1" ] []
-                    br []
-                    br []
-                    buttonAttr [attr.``type`` "submit"; attr.id "btnUpload"; attr.style "visibility: hidden" ] [text (t AddAttachment)]
                   ]
                 br []
-                hr []
                 br []
                 h4 [ text (t YouMightWantToReplaceSomeWordsInYourFileWithVariables) ]
                 text <| t VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication

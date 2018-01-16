@@ -428,34 +428,32 @@
     {
      Var.Set(varDivSentApplications,Doc.Element("table",[AttrProxy.Create("style","border-spacing: 10px; border-collapse: separate")],[Doc.Element("thead",[],[Doc.Element("tr",[],[Doc.Element("th",[],[Doc.TextNode(Client.t(Word.CompanyName))]),Doc.Element("th",[],[Doc.TextNode(Client.t(Word.AppliedOnDate))]),Doc.Element("th",[],[Doc.TextNode(Client.t(Word.AppliedAs))])])]),Doc.Element("tbody",[],List.ofSeq(Seq.delay(function()
      {
-      var i;
-      i=0;
-      return Seq.append(Seq.collect(function(m)
+      function emailSentApplicationToUserFun(el,ev)
+      {
+       var b$2;
+       return Concurrency.Start((b$2=null,Concurrency.Delay(function()
+       {
+        return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.emailSentApplicationToUser:2130902632",[el.parentElement.parentElement.rowIndex-1]),function(a$1)
+        {
+         return a$1.$==1?(Global.alert("Entschuldigung, es trat ein Fehler auf"),Concurrency.Zero()):Concurrency.Zero();
+        });
+       })),null);
+      }
+      return Seq.collect(function(m)
       {
        var appliedOn;
        appliedOn=m[2];
        return List.ofArray([Doc.Element("tr",[],[Doc.Element("td",[],[Doc.TextNode(m[0])]),Doc.Element("td",[],[Doc.TextNode(((((Runtime.Curried(function($1,$2,$3,$4)
        {
         return $1(Utils.padNumLeft(String($2),2)+"."+Utils.padNumLeft(String($3),2)+"."+Utils.padNumLeft(String($4),4));
-       },4))(Global.id))((new Date(appliedOn)).getDate()))((new Date(appliedOn)).getMonth()+1))((new Date(appliedOn)).getFullYear()))]),Doc.Element("td",[],[Doc.TextNode(m[1])]),Doc.Element("td",[],[Doc.Element("button",[AttrModule.Handler("click",function()
+       },4))(Global.id))((new Date(appliedOn)).getDate()))((new Date(appliedOn)).getMonth()+1))((new Date(appliedOn)).getFullYear()))]),Doc.Element("td",[],[Doc.TextNode(m[1])]),Doc.Element("td",[],[Doc.Element("button",[AttrModule.Handler("click",function($1)
        {
-        return function()
+        return function($2)
         {
-         var b$2;
-         return Concurrency.Start((b$2=null,Concurrency.Delay(function()
-         {
-          return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.emailSentApplicationToUser:2130902632",[i]),function(a$1)
-          {
-           return a$1.$==1?(Global.alert("Entschuldigung, es trat ein Fehler auf"),Concurrency.Zero()):Concurrency.Zero();
-          });
-         })),null);
+         return emailSentApplicationToUserFun($1,$2);
         };
-       })],[])])])]);
-      },a),Seq.delay(function()
-      {
-       i=i+1;
-       return[];
-      }));
+       })],[Doc.Element("i",[AttrProxy.Create("class","fa fa-envelope"),AttrProxy.Create("aria-hidden","true")],[])])])])]);
+      },a);
      })))]));
      return Concurrency.Zero();
     });

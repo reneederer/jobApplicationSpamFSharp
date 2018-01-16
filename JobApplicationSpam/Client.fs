@@ -119,7 +119,15 @@ module Client =
                               ]
                           ]
                         tbody
-                          [ let mutable i = 0
+                          [ let emailSentApplicationToUserFun =
+                                fun (el : Dom.Element) (ev : Dom.MouseEvent) ->
+                                    async {
+                                        let! result = Server.emailSentApplicationToUser (el.ParentElement.ParentElement?rowIndex - 1)
+                                        match result with
+                                        | Ok _ -> ()
+                                        | Bad _ -> JS.Alert("Entschuldigung, es trat ein Fehler auf")
+                                    } |> Async.Start
+
                             for (company, jobName, appliedOn) in sentApplications do
                                yield!
                                  [ tr
@@ -131,21 +139,17 @@ module Client =
                                          [ text jobName ]
                                        td
                                          [ buttonAttr
-                                             [ on.click (fun _ _ ->
-                                                    async {
-                                                        let! result = Server.emailSentApplicationToUser i
-                                                        match result with
-                                                        | Ok _ -> ()
-                                                        | Bad _ -> JS.Alert("Entschuldigung, es trat ein Fehler auf")
-                                                    } |> Async.Start
-                                               )
+                                             [ on.click emailSentApplicationToUserFun
                                              ]
-                                             []
+                                             [ iAttr
+                                                 [ attr.``class`` "fa fa-envelope"; (Attr.Create "aria-hidden" "true")
+                                                 ]
+                                                 []
+                                             ]
                                          ]
                                      ]
                                    :> Doc
                                  ]
-                            i <- i + 1
                           ]
                       ]
             }

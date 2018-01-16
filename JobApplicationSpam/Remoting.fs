@@ -536,9 +536,8 @@ module Server =
                         [ for odtPath in odtPaths do
                             yield Odt.odtToPdf odtPath
                         ]
-                    let mutable mergedPdfPath = Path.Combine(tmpPath, (sprintf "Bewerbung_%s_%s.pdf" userValues.firstName userValues.lastName))
-                    mergedPdfPath <- pdfPaths.Head
-                    //if pdfPaths <> [] then Odt.mergePdfs pdfPaths mergedPdfPath
+                    let mergedPdfPath = Path.Combine(tmpPath, (sprintf "Bewerbung_%s_%s.pdf" userValues.firstName userValues.lastName))
+                    if pdfPaths <> [] then Odt.mergePdfs pdfPaths mergedPdfPath
                     sendEmail
                         userEmail
                         (userValues.firstName + " " + userValues.lastName)

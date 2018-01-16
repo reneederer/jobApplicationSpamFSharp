@@ -317,6 +317,7 @@ module Database =
         sentApplications
     
     let getSentApplication dbConn (sentApplicationOffset : int) (userId : int) =
+        log.Debug (sprintf "(sentApplicationOffset = %i, userId = %i)" sentApplicationOffset userId)
         use command =
             new NpgsqlCommand("""
                 select

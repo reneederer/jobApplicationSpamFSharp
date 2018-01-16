@@ -246,7 +246,7 @@ module Site =
                             reraise()
                 )
         | _ -> ()
-        Content.RedirectPermanentToUrl "/templates"
+        Content.RedirectPermanentToUrl "/"
 
     let templatesPage (ctx : Context<EndPoint>) =
         Templating.main ctx EndPoint.Templates "Bewerbungsspam" [

@@ -40,7 +40,7 @@ module MyTests =
 
 
     [<Test>]
-    let replaceInString () =
+    let replaceInString00 () =
         Odt.replaceInString "$a welt" (["$a", "hallo"]) Ignore |> should equal "hallo welt"
 
     [<Test>]
@@ -85,43 +85,43 @@ module MyTests =
         Odt.replaceInString "$a_ $b welt" (["$a", ""; "$b", "hallo"]) Ignore |> should equal ""
     [<Test>]
     let replaceInString14 () =
-        Odt.replaceInString """<text:p name="hallo">$a_ $b</text:p>welt""" (["$a", ""; "$b", "hallo"]) Ignore |> should equal "welt"
+        Odt.replaceInString """<?xml ?><text:p name="hallo">$a_ $b</text:p>welt""" (["$a", ""; "$b", "hallo"]) Ignore |> should equal "<?xml ?>welt"
     [<Test>]
     let replaceInString15 () =
-        Odt.replaceInString """<text:p name="hallo">$a_</text:p>welt""" (["$a", "hallo"]) Ignore |> should equal """<text:p name="hallo">hallo</text:p>welt"""
+        Odt.replaceInString """<?xml ?><text:p name="hallo">$a_</text:p>welt""" (["$a", "hallo"]) Ignore |> should equal """<?xml ?><text:p name="hallo">hallo</text:p>welt"""
     [<Test>]
     let replaceInString16 () =
-        Odt.replaceInString """<text:p name="hallo">$a_</text:p>welt""" (["$a", ""]) Ignore |> should equal "welt"
+        Odt.replaceInString """<?xml ?><text:p name="hallo">$a_</text:p>welt""" (["$a", ""]) Ignore |> should equal "<?xml ?>welt"
     [<Test>]
     let replaceInString17 () =
-        Odt.replaceInString """<text:p name="hallo">$a $b</text:p>""" (["$a", "hallo"; "$b", "welt"]) Ignore |> should equal """<text:p name="hallo">hallo welt</text:p>"""
+        Odt.replaceInString """<?xml ?><text:p name="hallo">$a $b</text:p>""" (["$a", "hallo"; "$b", "welt"]) Ignore |> should equal """<?xml ?><text:p name="hallo">hallo welt</text:p>"""
     [<Test>]
     let replaceInString18 () =
-        Odt.replaceInString """<text:p name="hallo">$a_</text:p>""" (["$a", "hallo"]) Ignore |> should equal """<text:p name="hallo">hallo</text:p>"""
+        Odt.replaceInString """<?xml ?><text:p name="hallo">$a_</text:p>""" (["$a", "hallo"]) Ignore |> should equal """<?xml ?><text:p name="hallo">hallo</text:p>"""
     [<Test>]
     let replaceInString19 () =
-        Odt.replaceInString """<text:p name="hallo">$a_</text:p>""" (["$a", ""; "$b", ""]) Ignore |> should equal ""
+        Odt.replaceInString """<?xml ?><text:p name="hallo">$a_</text:p>""" (["$a", ""; "$b", ""]) Ignore |> should equal "<?xml ?>"
     [<Test>]
     let replaceInString20 () =
-        Odt.replaceInString """<text:p name="hallo">abc$a_</text:p>$b def""" (["$a", ""; "$b", ""]) Ignore |> should equal "def"
+        Odt.replaceInString """<?xml ?><text:p name="hallo">abc$a_</text:p>$b def""" (["$a", ""; "$b", ""]) Ignore |> should equal "<?xml ?>def"
     [<Test>]
     let replaceInString21 () =
-        Odt.replaceInString """<text:p name="hallo">$a_</text:p>welt""" (["$a", ""]) Ignore |> should equal "welt"
+        Odt.replaceInString """<?xml ?><text:p name="hallo">$a_</text:p>welt""" (["$a", ""]) Ignore |> should equal "<?xml ?>welt"
     [<Test>]
     let replaceInString22 () =
-        Odt.replaceInString """<text:p name="hallo">$a_</text:p>$b""" (["$a", ""; "$b", ""]) Ignore |> should equal ""
+        Odt.replaceInString """<?xml ?><text:p name="hallo">$a_</text:p>$b""" (["$a", ""; "$b", ""]) Ignore |> should equal "<?xml ?>"
     [<Test>]
     let replaceInString23 () =
-        Odt.replaceInString """<text:p name="hallo">$a_</text:p>$b_""" (["$a", ""; "$b", ""]) Ignore |> should equal ""
+        Odt.replaceInString """<?xml ?>hallo<text:p name="hallo">$a_</text:p>, grausame <text:p>$b_</text:p>welt""" (["$a", ""; "$b", ""]) Ignore |> should equal "<?xml ?>hallo, grausame welt"
     [<Test>]
     let replaceInString24 () =
-        Odt.replaceInString """<text:p name="hallo">$a_$a welt</text:p>""" (["$a", ""]) Ignore |> should equal ""
+        Odt.replaceInString """<?xml ?><text:p name="hallo">$a_$a welt</text:p>""" (["$a", ""]) Ignore |> should equal "<?xml ?>"
     [<Test>]
     let replaceInString25 () =
-        Odt.replaceInString """<text:p name="hallo">$a_ $b welt</text:p>""" (["$a", ""; "$b", "hallo"]) Ignore |> should equal ""
+        Odt.replaceInString """<?xml ?><text:p name="hallo">$a_ $b welt</text:p>""" (["$a", ""; "$b", "hallo"]) Ignore |> should equal "<?xml ?>"
     [<Test>]
     let replaceInString26 () =
-        Odt.replaceInString """<text:p name="hallo">$a_ $b</text:p>welt""" (["$a", ""; "$b", "hallo"]) Ignore |> should equal "welt"
+        Odt.replaceInString """<?xml ?><text:p name="hallo">$a_ $b</text:p>welt""" (["$a", ""; "$b", "hallo"]) Ignore |> should equal "<?xml ?>welt"
     [<Test>]
     let replaceInString27 () =
         (Odt.replaceInString
@@ -136,6 +136,20 @@ module MyTests =
               "$meineMobilnr", ""]
             Ignore
         ) |> should equal "Dr. René Ederer\nRaabstr. 24A\nTelefon: 0911 12345\n"
+    [<Test>]
+    let replaceInString28 () =
+        (Odt.replaceInString
+            "<?xml ?><text:p>$meinTitel $meinVorname $meinNachname</text:p><text:p>$meineStrasse</text:p><text:p>$meinePlz_ $meineStadt</text:p><text:p>Telefon: $meineTelefonnr</text:p><text:p>Mobil: $meineMobilnr_</text:p>"
+            [ "$meinTitel", "Dr."
+              "$meinVorname", "René"
+              "$meinNachname", "Ederer"
+              "$meineStrasse", "Raabstr. 24A"
+              "$meinePlz", ""
+              "$meineStadt", "Nürnberg"
+              "$meineTelefonnr", "0911 12345"
+              "$meineMobilnr", ""]
+            Ignore
+        ) |> should equal "<?xml ?><text:p>Dr. René Ederer</text:p><text:p>Raabstr. 24A</text:p><text:p>Telefon: 0911 12345</text:p>"
     (*
     log4net.Config.XmlConfigurator.Configure(new FileInfo(@"log4net.config")) |> ignore
     

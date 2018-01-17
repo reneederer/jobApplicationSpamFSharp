@@ -119,7 +119,6 @@ module Client =
                                   [ th [ text (t CompanyName) ]
                                     th [ text (t AppliedOnDate) ]
                                     th [ text (t AppliedAs) ]
-                                    th [ text "Url" ]
                                     th [ text "an dich mailen" ]
                                   ]
                               ]
@@ -142,8 +141,6 @@ module Client =
                                              [ text (sprintf "%02i.%02i.%04i" appliedOn.Day appliedOn.Month appliedOn.Year) ]
                                            td
                                              [ text jobName ]
-                                           td
-                                             [ text url ]
                                            td
                                              [ buttonAttr
                                                  [ on.click emailSentApplicationToUserFun
@@ -1093,9 +1090,6 @@ module Client =
                                 attr.id "faBtnApplyNowTop"
                                 attr.style "color: #08a81b; margin-right: 10px"
                               ]
-                              []
-                            divAttr
-                              [ attr.id "divBtnApplyNowTop" ]
                               [ text <| t ApplyNow ]
                           ]
                       ]
@@ -1130,9 +1124,6 @@ module Client =
                         attr.id "faBtnApplyNowBottom"
                         attr.style "color: #08a81b; margin-right: 10px"
                       ]
-                      []
-                    divAttr
-                      [ attr.id "divBtnApplyNowBottom" ]
                       [ text <| t ApplyNow ]
                   ]
               ]

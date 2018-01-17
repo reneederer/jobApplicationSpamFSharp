@@ -426,7 +426,7 @@
    {
     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getSentApplications:494885027",[Date.now(),Date.now()]),function(a)
     {
-     Var.Set(varDivSentApplications,Doc.Element("div",[AttrProxy.Create("style","width: 100%; height: 100%; overflow: auto")],[Doc.Element("table",[AttrProxy.Create("style","border-spacing: 10px; border-collapse: separate")],[Doc.Element("thead",[],[Doc.Element("tr",[],[Doc.Element("th",[],[Doc.TextNode(Client.t(Word.CompanyName))]),Doc.Element("th",[],[Doc.TextNode(Client.t(Word.AppliedOnDate))]),Doc.Element("th",[],[Doc.TextNode(Client.t(Word.AppliedAs))]),Doc.Element("th",[],[Doc.TextNode("Url")]),Doc.Element("th",[],[Doc.TextNode("an dich mailen")])])]),Doc.Element("tbody",[],List.ofSeq(Seq.delay(function()
+     Var.Set(varDivSentApplications,Doc.Element("div",[AttrProxy.Create("style","width: 100%; height: 100%; overflow: auto")],[Doc.Element("table",[AttrProxy.Create("style","border-spacing: 10px; border-collapse: separate")],[Doc.Element("thead",[],[Doc.Element("tr",[],[Doc.Element("th",[],[Doc.TextNode(Client.t(Word.CompanyName))]),Doc.Element("th",[],[Doc.TextNode(Client.t(Word.AppliedOnDate))]),Doc.Element("th",[],[Doc.TextNode(Client.t(Word.AppliedAs))]),Doc.Element("th",[],[Doc.TextNode("an dich mailen")])])]),Doc.Element("tbody",[],List.ofSeq(Seq.delay(function()
      {
       function emailSentApplicationToUserFun(el,ev)
       {
@@ -446,7 +446,7 @@
        return List.ofArray([Doc.Element("tr",[],[Doc.Element("td",[],[Doc.TextNode(m[0])]),Doc.Element("td",[],[Doc.TextNode(((((Runtime.Curried(function($1,$2,$3,$4)
        {
         return $1(Utils.padNumLeft(String($2),2)+"."+Utils.padNumLeft(String($3),2)+"."+Utils.padNumLeft(String($4),4));
-       },4))(Global.id))((new Date(appliedOn)).getDate()))((new Date(appliedOn)).getMonth()+1))((new Date(appliedOn)).getFullYear()))]),Doc.Element("td",[],[Doc.TextNode(m[1])]),Doc.Element("td",[],[Doc.TextNode(m[3])]),Doc.Element("td",[],[Doc.Element("button",[AttrModule.Handler("click",function($1)
+       },4))(Global.id))((new Date(appliedOn)).getDate()))((new Date(appliedOn)).getMonth()+1))((new Date(appliedOn)).getFullYear()))]),Doc.Element("td",[],[Doc.TextNode(m[1])]),Doc.Element("td",[],[Doc.Element("button",[AttrModule.Handler("click",function($1)
        {
         return function($2)
         {

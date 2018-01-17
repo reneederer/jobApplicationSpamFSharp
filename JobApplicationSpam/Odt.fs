@@ -8,15 +8,19 @@ module Odt =
     open PdfSharp.Pdf.IO
     open System.Text.RegularExpressions
     open Types
+    open NUnit.Framework.Constraints
 
     let private log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().GetType())
-
 
     let deleteLine (s : string) (index : int) =
         let deleteLine' (m : Match) =
              s.Substring(0, m.Index) + s.Substring(m.Index + m.Length)
         
-        let pattern = "(<text:p.*?>(?<!<text:p).*?</text:p>)|((?<=(\n|^)).*?\r?(\n|$))"
+        let pattern =
+            if s.Trim().StartsWith("<?xml ")
+            then
+                "((<text:p.*?</text:p>)|(<w:p.*?</w:p>))"
+            else "(?<=(\n|^)).*?\r?(\n|$)"
         let matches = Regex.Matches(s, pattern)
         let rec tryFindMatch n =
             if n < 0

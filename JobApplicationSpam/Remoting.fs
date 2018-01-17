@@ -407,7 +407,7 @@ module Server =
                 dbConn.Open()
                 try
                     let userEmail = Database.getEmailByUserId userId |> Option.defaultValue ""
-                    match Database.getSentApplication sentApplicationOffset userId with
+                    match Database.getSentApplication dbConn sentApplicationOffset userId with
                     | None -> return fail "The requested application could not be not found"
                     | Some sentApplication ->
                         let! myList = replaceMap sentApplication.userEmail sentApplication.userValues sentApplication.employer sentApplication.jobName

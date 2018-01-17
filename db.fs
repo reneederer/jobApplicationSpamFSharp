@@ -2,54 +2,72 @@
 module Database =
     open System
     open Npgsql
-    open log4net
-    open System.Linq
-    open System.Reflection
-    open FSharp.Data.Sql.Common
-    open FSharp.Data.Sql
     open Types
-
-    let [<Literal>] dbVendor = FSharp.Data.Sql.Common.DatabaseProviderTypes.POSTGRESQL
-    let [<Literal>] connString = "Server=localhost; Port=5432; User Id=spam; Password=Steinmetzstr9!@#$; Database=jobapplicationspam"
-    let [<Literal>] connexStringName = "DefaultConnectionString"
-    let [<Literal>] resPath = "bin"
-    let [<Literal>] indivAmount = 1000
-    let [<Literal>] useOptTypes  = true
-    type DB =
-        SqlDataProvider<
-            dbVendor,
-            connString,
-            "",
-            resPath,
-            indivAmount,
-            useOptTypes>
-
-    let dbContext = DB.GetDataContext()
-    let db = dbContext.Public
+    open Chessie.ErrorHandling
+    open System.Data
+    open log4net.Config
+    open log4net
+    open System.Reflection
+    open System.IO
+    open NpgsqlTypes
+    open WebSharper.Sitelets.Http
 
     let log = LogManager.GetLogger(MethodBase.GetCurrentMethod().GetType())
 
-    let getEmailByUserId (userId : int) =
-        log.Debug(sprintf "(userId = %i)" userId)
-        let oEmail = db.Users.Where(fun x -> x.Id = userId).Select(fun x -> Some x.Email).SingleOrDefault()
-        log.Debug(sprintf "(userId = %i) = %A" userId oEmail)
+    let getEmailByUserId (dbConn : NpgsqlConnection) (userId : int) =
+        log.Debug(sprintf "%i" userId)
+        use command = new NpgsqlCommand("select email from users where id = :userId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        use reader = command.ExecuteReader()
+        let oEmail =
+            if reader.Read()
+            then Some <| reader.GetString(0)
+            else None
+        log.Debug(sprintf "%i = %A" userId oEmail)
         oEmail
         
-    let getUserIdByEmail (email : string) : option<int> =
+    let getUserIdByEmail (dbConn : NpgsqlConnection) (email : string) =
         log.Debug(sprintf "(email= %s)" email)
-        let oUserId = db.Users.Where(fun x -> x.Email = email).Select(fun x -> Some x.Id).SingleOrDefault()
-        log.Debug(sprintf "(email = %s) = %A" email oUserId)
+        use command = new NpgsqlCommand("select id from users where email = :email limit 1", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
+        use reader = command.ExecuteReader()
+        let oUserId =
+            if reader.Read()
+            then Some <| reader.GetInt32(0)
+            else None
+        log.Debug(sprintf "%s = %A" email oUserId)
         oUserId
 
-    let setLastLoginToToday dbConn (userId : int) =
-        log.Debug(sprintf "(userId = %i)" userId)
-        use command = new NpgsqlCommand("update users set lastLogin = current_date where id = :userId", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
-        command.ExecuteNonQuery() |> ignore
-        log.Debug(sprintf "(userId = %i) = ()" userId)
+    let getEmployer (dbConn : NpgsqlConnection) (employerId : int) =
+        log.Debug(sprintf "%i" employerId)
+        use command =
+            new NpgsqlCommand(
+                """select company, street, postcode, city, gender, degree, firstName,
+                lastName, email, phone, mobilePhone from employer where id = :employerId limit 1""", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("employerId", employerId)) |> ignore
+        use reader = command.ExecuteReader()
+        let oEmployer =
+            if reader.Read()
+            then
+              Some
+                  { company = reader.GetString(0)
+                    street = reader.GetString(1)
+                    postcode = reader.GetString(2)
+                    city = reader.GetString(3)
+                    gender = Gender.fromString(reader.GetString(4))
+                    degree = reader.GetString(5)
+                    firstName = reader.GetString(6)
+                    lastName = reader.GetString(7)
+                    email = reader.GetString(8)
+                    phone = reader.GetString(9)
+                    mobilePhone = reader.GetString(10)
+                  }
+            else None
+        log.Debug(sprintf "%i = %A" employerId oEmployer)
+        oEmployer
     
     let addEmployer (dbConn : NpgsqlConnection) (employer : Employer) (userId : int) =
-        log.Debug(sprintf "(employer = %A, userId = %i)" employer userId)
+        log.Debug(sprintf "%A %i" employer userId)
         use command =
             new NpgsqlCommand(
                 """insert into employer
@@ -69,107 +87,145 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("phone", employer.phone)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("mobilePhone", employer.mobilePhone)) |> ignore
         let addedEmployerId = command.ExecuteScalar() |> string |> Int32.Parse
-        log.Debug(sprintf "(employer = %A, userId = %i) = %i" employer userId addedEmployerId)
+        log.Debug(sprintf "%A %i = %i" employer userId addedEmployerId)
         addedEmployerId
 
 
-    let getUserValues (userId : int) =
-        log.Debug(sprintf "(userId = %i)" userId)
+    let getUserValues (dbConn : NpgsqlConnection) (userId : int) =
+        log.Debug(sprintf "%i" userId)
+        use command =
+            new NpgsqlCommand("""
+                select gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone
+                from userValues where userId = :userId order by id desc limit 1"""
+                , dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        use reader = command.ExecuteReader()
         let userValues =
-            db.Uservalues.Where(fun x -> x.Userid = userId).Single()
-            |> fun x ->
-                { gender = Gender.fromString x.Gender
-                  degree = x.Degree
-                  firstName = x.Firstname
-                  lastName = x.Lastname
-                  street = x.Street
-                  postcode = x.Postcode
-                  city = x.City
-                  phone = x.Phone
-                  mobilePhone = x.Mobilephone
+            if reader.Read()
+            then
+                { gender = reader.GetString(0) |> Gender.fromString
+                  degree = reader.GetString(1)
+                  firstName = reader.GetString(2)
+                  lastName = reader.GetString(3)
+                  street = reader.GetString(4)
+                  postcode = reader.GetString(5)
+                  city = reader.GetString(6)
+                  phone = reader.GetString(7)
+                  mobilePhone = reader.GetString(8)
                 }
-        log.Debug(sprintf "(userId = %i) = %A" userId userValues)
+            else
+                reader.Dispose()
+                command.Dispose()
+                use command =
+                    new NpgsqlCommand(""" insert into userValues(userId, gender, degree, firstName,
+                                         lastName, street, postcode, city, phone, mobilePhone)
+                                         values(:userId, 'u', '', '', '', '', '', '', '', '')""", dbConn)
+                command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+                command.ExecuteNonQuery() |> ignore
+                { gender = Gender.Unknown
+                  degree = ""
+                  firstName = ""
+                  lastName = ""
+                  street = ""
+                  postcode = ""
+                  city = ""
+                  phone = ""
+                  mobilePhone = ""
+                }
+
+        log.Debug(sprintf "%i = %A" userId userValues)
         userValues
 
-    let setUserValues (userValues : UserValues) (userId : int) =
-        log.Debug(sprintf "(userValues = %A, userId = %i)" userValues userId)
-        db.Uservalues.Where(fun x -> x.Userid = userId).Single()
-        |> fun x -> 
-            x.Gender <- userValues.gender.ToString()
-            x.Firstname <- userValues.firstName
-            x.Lastname <- userValues.lastName
-            x.Street <- userValues.street
-            x.Postcode <- userValues.postcode
-            x.City <- userValues.city
-            x.Phone <- userValues.phone
-            x.Mobilephone <- userValues.mobilePhone
-        dbContext.SubmitUpdates()
-        log.Debug(sprintf "(userValues = %A, userId = %i) = ()" userValues userId)
-        ()
+    let setUserValues (dbConn : NpgsqlConnection) (userValues : UserValues) (userId : int) =
+        log.Debug(sprintf "%A %i" userValues userId)
+        use command =
+            new NpgsqlCommand(
+                "insert into userValues
+                (userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone)
+                values (:userId, :gender, :degree, :firstName, :lastName, :street, :postcode, :city, :phone, :mobilePhone)
+                on conflict(userId) do
+                update set (gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone)
+                        = (:gender, :degree, :firstName, :lastName, :street, :postcode, :city, :phone, :mobilePhone)"
+                , dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("gender", userValues.gender.ToString())) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("degree", userValues.degree)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("firstName", userValues.firstName)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("lastName", userValues.lastName)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("street", userValues.street)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("postcode", userValues.postcode)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("city", userValues.city)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("phone", userValues.phone)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("mobilePhone", userValues.mobilePhone)) |> ignore
+        let affectedRowCount = command.ExecuteNonQuery()
+        log.Debug(sprintf "%A %i = %i" userValues userId affectedRowCount)
+        affectedRowCount
     
-    let userEmailExists (email : string) =
-        log.Debug(sprintf "(email = %s)" email)
-        let emailExists = db.Users.Where(fun x -> x.Email = email).Any()
-        log.Debug(sprintf "(email = %s) = %b" email emailExists)
+    let userEmailExists (dbConn : NpgsqlConnection) (email : string) =
+        log.Debug(sprintf "%s" email)
+        use command = new NpgsqlCommand("select count(*) from users where email = :email limit 1", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
+        let emailExists = (command.ExecuteScalar() |> string |> Int32.Parse) = 1
+        log.Debug(sprintf "%s = %b" email emailExists)
         emailExists
 
-    let getIdPasswordSaltAndGuid (email : string) =
-        log.Debug(sprintf "(email = %s)" email)
-        let ret1 = db.Users.Where(fun x -> x.Email = email)
-        let ret2 = ret1.Select(fun x -> Some (x.Id, x.Password, x.Salt, x.Guid)).SingleOrDefault()
-        log.Debug(sprintf "(email = %s) = %A" email ret2)
-        ret2
+    let getIdPasswordSaltAndGuid (dbConn : NpgsqlConnection) (email : string) =
+        log.Debug(sprintf "%s" email)
+        use command = new NpgsqlCommand("select id, password, salt, guid from users where email = :email limit 1", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
+        use reader = command.ExecuteReader()
+        let ret =
+            if reader.Read()
+            then
+                Some
+                    ( reader.GetInt32(0)
+                    , reader.["password"] |> string
+                    , reader.["salt"] |> string
+                    , if reader.IsDBNull(3) then None else Some (reader.GetString(3))
+                    )
+            else None
+        log.Debug(sprintf "%s = %A" email ret)
+        ret
 
 
     let insertNewUser (dbConn : NpgsqlConnection) (email : string) (password : string) (salt : string) (guid : string) =
-        log.Debug(sprintf "(email = %s, password = %s, salt = %s, guid = %s)" email password salt guid)
-        use command = new NpgsqlCommand("insert into users(email, password, salt, guid, createdOn, lastLogin) values(:email, :password, :salt, :guid, current_date, current_date) returning id", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("password", password)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("salt", salt)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("guid", guid)) |> ignore
-        let userId = command.ExecuteScalar() |> string |> Int32.Parse
-        command.Dispose()
-        use command = new NpgsqlCommand(""" insert into userValues(userId, gender, degree, firstName,
-                                         lastName, street, postcode, city, phone, mobilePhone)
-                                         values(:userId, 'u', '', '', '', '', '', '', '', '')""", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
-        command.ExecuteNonQuery() |> ignore
-        log.Debug(sprintf "(email = %s, password = %s, salt = %s, guid = %s) = %i" email password salt guid userId)
-        userId
+        log.Debug(sprintf "%s %s %s %s" email password salt guid)
+        use command = new NpgsqlCommand("insert into users(email, password, salt, guid) values(:email, :password, :salt, :guid) returning id", dbConn)
+        command.Parameters.AddRange
+            [| new NpgsqlParameter("email", email)
+               new NpgsqlParameter("password", password)
+               new NpgsqlParameter("salt", salt)
+               new NpgsqlParameter("guid", guid) |]
+        let insertedNewUserId = command.ExecuteScalar() |> string |> Int32.Parse
+        log.Debug(sprintf "%s %s %s %s = %i" email password salt guid insertedNewUserId)
+        insertedNewUserId
 
-    let getGuid (email : string) : option<string> =
-        log.Debug(sprintf "(email = %s)" email)
-        let oGuid = db.Users.Where(fun x -> x.Email = email).Select(fun x -> x.Guid).SingleOrDefault()
-        log.Debug(sprintf "(email = %s) = %A" email oGuid)
+    let getGuid (dbConn : NpgsqlConnection) (email : string) =
+        log.Debug(sprintf "%s" email)
+        use command = new NpgsqlCommand("select guid from users where email = :email", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
+        let guid = command.ExecuteScalar()
+        if guid = null then raise (new Exception("No record with email: " + email))
+        let oGuid =
+            match guid |> string with
+            | null -> None
+            | "" -> None
+            | guidStr -> Some guidStr
+        log.Debug(sprintf "%s = %A" email oGuid)
         oGuid
 
-    let setGuidToNull (email : string) =
-        log.Debug(sprintf "(email = %s)" email)
-        let records = db.Users.Where(fun x -> x.Email = email)
-        records |> Seq.iter (fun x -> x.Guid <- None)
-        let recordCount = records.Count()
-        log.Debug(sprintf "(email = %s) = %i" email recordCount)
-        recordCount
+    let setGuidToNull (dbConn : NpgsqlConnection) (email : string) =
+        log.Debug(sprintf "%s" email)
+        use command = new NpgsqlCommand("update users set guid = null where email = :email and guid is not null", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
+        let affectedRowCount = command.ExecuteNonQuery()
+        if affectedRowCount <> 1
+        then
+            log.Error("Email does not exist or guid was already null: " + email)
+            failwith <| "Email does not exist or guid was already null: " + email
+        log.Debug(sprintf "%s = ()" email)
 
-    let insertSentApplication
-            dbConn
-            (userId : int)
-            (employerId : int)
-            (email : DocumentEmail)
-            (userEmailAndValues : string * UserValues)
-            (sentFilePages : list<string * int>) // path * pageIndex
-            (jobName : string) (url : string) =
-        log.Debug(
-            sprintf
-                "(userId = %i, employerId = %i, email = %A, userEmailAndValues = %A, sentFilePages = %A, jobName = %s, url = %s)"
-                userId
-                employerId
-                email
-                userEmailAndValues
-                sentFilePages
-                jobName
-                url)
+    let insertSentApplication dbConn (userId : int) (employerId : int) (email : DocumentEmail) (userEmailAndValues : string * UserValues) (sentFilePages : list<string (*path*) * int (*pageIndex*)>) (jobName : string) =
         use command = new NpgsqlCommand("""insert into sentDocumentEmail(subject, body) values(:subject, :body) returning id""", dbConn)
         command.Parameters.Add(new NpgsqlParameter("subject", email.subject)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("body", email.body)) |> ignore
@@ -177,11 +233,8 @@ module Database =
         command.Dispose()
 
         let userValues = snd userEmailAndValues
-        use command = new NpgsqlCommand("""insert into sentUserValues
-                                           ( email, gender, degree, firstName, lastName,
-                                             street, postcode, city, phone, mobilePhone)
-                                           values(:email, :gender, :degree, :firstName, :lastName,
-                                                  :street, :postcode, :city, :phone, :mobilePhone) returning id""", dbConn)
+        use command = new NpgsqlCommand("""insert into sentUserValues(email, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone)
+                                           values(:email, :gender, :degree, :firstName, :lastName, :street, :postcode, :city, :phone, :mobilePhone) returning id""", dbConn)
         command.Parameters.Add(new NpgsqlParameter("email", fst userEmailAndValues)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("gender", userValues.gender.ToString())) |> ignore
         command.Parameters.Add(new NpgsqlParameter("degree", userValues.degree)) |> ignore
@@ -214,10 +267,9 @@ module Database =
             command.ExecuteNonQuery() |> ignore
             command.Dispose()
 
-        use command = new NpgsqlCommand("insert into sentApplication(userId, sentDocumentId, url) values(:userId, :sentDocumentId, :url) returning id", dbConn)
+        use command = new NpgsqlCommand("insert into sentApplication(userId, sentDocumentId) values(:userId, :sentDocumentId) returning id", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("sentDocumentId", sentDocumentId)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("url", url)) |> ignore
         let sentApplicationId = command.ExecuteScalar() |> string |> Int32.Parse
         command.Dispose()
 
@@ -228,41 +280,43 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("sentApplicationId", sentApplicationId)) |> ignore
         command.ExecuteNonQuery() |> ignore
         command.Dispose()
-        log.Debug(
-            sprintf
-                "(userId = %i, employerId = %i, email = %A, userEmailAndValues = %A, sentFilePages = %A, jobName = %s, url = %s) = ()"
-                userId
-                employerId
-                email
-                userEmailAndValues
-                sentFilePages
-                jobName
-                url)
 
 
 
 
-    let getSentApplications (userId : int) (startDate : DateTime) (endDate : DateTime) =
-        log.Debug(sprintf "(userId = %i, startDate = %A, endDate = %A)" userId startDate endDate)
+    let getSentApplications (dbConn : NpgsqlConnection) (userId : int) (startDate : DateTime) (endDate : DateTime) =
+        log.Debug(sprintf "%i %s %s" userId (startDate.Date.ToString()) (endDate.Date.ToString()))
+        use command =
+            new NpgsqlCommand(
+                """select employer.company, sentDocument.jobName, sentStatus.statusChangedOn
+                   from sentApplication
+                   join sentStatus
+                     on sentApplication.id = sentStatus.sentApplicationId
+                   join sentDocument on sentApplication.sentDocumentId = sentDocument.id
+                   join employer
+                     on employer.id = sentDocument.employerId
+                   where sentApplication.userId = :userId
+                     and sentStatusValueId = 1
+                   """
+                , dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        use reader = command.ExecuteReader()
         let sentApplications =
-            query {
-                for sentApplication in db.Sentapplication do
-                join sentStatus in db.Sentstatus on (sentApplication.Id = sentStatus.Sentapplicationid)
-                join sentDocument in db.Sentdocument on (sentApplication.Sentdocumentid = sentDocument.Id)
-                join employer in db.Employer on (sentDocument.Employerid = employer.Id)
-                where (sentApplication.Userid = userId) //&& (sentStatus.Sentstatusvalueid = 1))
-                sortByDescending sentStatus.Statuschangedon
-                thenByDescending sentStatus.Id
-                select ( employer.Company
-                       , sentDocument.Jobname
-                       , sentStatus.Statuschangedon
-                       , sentApplication.Url)
-            } |> List.ofSeq
-        log.Debug(sprintf "(userId = %i, startDate = %A, endDate = %A) = %A" userId startDate endDate sentApplications)
+            [ while reader.Read() do
+                let statusChangedDate = reader.GetDate(2)
+                let companyName = reader.GetString(0)
+                let jobName = reader.GetString(1)
+                let statusChangedOn = DateTime(statusChangedDate.Year, statusChangedDate.Month, statusChangedDate.Day)
+                yield
+                  ( companyName
+                  , jobName
+                  , statusChangedOn
+                  )
+            ]
+        log.Debug(sprintf "%i %s %s = %A" userId (startDate.Date.ToString()) (endDate.Date.ToString()) sentApplications)
         sentApplications
     
     let getSentApplication dbConn (sentApplicationOffset : int) (userId : int) =
-        log.Debug (sprintf "(sentApplicationOffset = %i, userId = %i)" sentApplicationOffset userId)
         use command =
             new NpgsqlCommand("""
                 select
@@ -305,8 +359,8 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("sentApplicationOffset", sentApplicationOffset)) |> ignore
         use reader = command.ExecuteReader()
-        try
-            reader.Read ()
+        if reader.Read()
+        then
             let statusChangedOn =
                 let d = reader.GetDate(0)
                 DateTime(d.Year, d.Month, d.Day)
@@ -335,65 +389,57 @@ module Database =
             let userMobilePhone = reader.GetString(23)
             let jobName = reader.GetString(24)
             let sentDocumentId = reader.GetInt32(25)
-            let oSentApplication =
-                Some
-                    { jobName = jobName
-                      sentDate = statusChangedOn.ToString("dd.MM.yyyy")
-                      email = { subject = subject; body = body }
-                      userEmail = userEmail
-                      userValues =
-                        { gender = Gender.fromString userGender
-                          degree = userDegree
-                          firstName = userFirstName
-                          lastName = userLastName
-                          street = userStreet
-                          postcode = userPostcode
-                          city = userCity
-                          phone = userPhone
-                          mobilePhone = userMobilePhone
-                        }
-                      employer =
-                        { company = employerCompany
-                          street = employerStreet
-                          postcode = employerPostcode
-                          city = employerCity
-                          gender = Gender.fromString employerGender
-                          degree = employerDegree
-                          firstName = employerFirstName
-                          lastName = employerLastName
-                          email = employerEmail
-                          phone = employerPhone
-                          mobilePhone = employerMobilePhone
-                        }
-                      filePages =
-                            command.Dispose()
-                            reader.Dispose()
-                            use command = new NpgsqlCommand("""select path, pageIndex from sentFilePage where sentDocumentId = :sentDocumentId order by pageIndex""", dbConn)
-                            command.Parameters.Add(new NpgsqlParameter("sentDocumentId", sentDocumentId)) |> ignore
-                            use reader = command.ExecuteReader()
-                            [ while reader.Read() do
-                                yield
-                                      reader.GetString(0)
-                                    , reader.GetInt32(1)
-                            ]
-                    }
-            log.Debug (sprintf "(sentApplicationOffset = %i, userId = %i) = %A" sentApplicationOffset userId oSentApplication)
-            oSentApplication
-        with
-        | e ->
-            log.Error("", e)
-            None
-
+            { jobName = jobName
+              sentDate = statusChangedOn.ToString("dd.MM.yyyy")
+              email = { subject = subject; body = body }
+              userEmail = userEmail
+              userValues =
+                { gender = Gender.fromString userGender
+                  degree = userDegree
+                  firstName = userFirstName
+                  lastName = userLastName
+                  street = userStreet
+                  postcode = userPostcode
+                  city = userCity
+                  phone = userPhone
+                  mobilePhone = userMobilePhone
+                }
+              employer =
+                { company = employerCompany
+                  street = employerStreet
+                  postcode = employerPostcode
+                  city = employerCity
+                  gender = Gender.fromString employerGender
+                  degree = employerDegree
+                  firstName = employerFirstName
+                  lastName = employerLastName
+                  email = employerEmail
+                  phone = employerPhone
+                  mobilePhone = employerMobilePhone
+                }
+              filePages =
+                    command.Dispose()
+                    reader.Dispose()
+                    use command = new NpgsqlCommand("""select path, pageIndex from sentFilePage where sentDocumentId = :sentDocumentId order by pageIndex""", dbConn)
+                    command.Parameters.Add(new NpgsqlParameter("sentDocumentId", sentDocumentId)) |> ignore
+                    use reader = command.ExecuteReader()
+                    [ while reader.Read() do
+                        yield
+                              reader.GetString(0)
+                            , reader.GetInt32(1)
+                    ]
+            }
+        else
+            failwith "An error occured"
 
 
     let overwriteDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) =
-        log.Debug(sprintf "(document = %A, userId = %i)" document userId)
+        log.Debug(sprintf "%A %i" document userId)
         use command = new NpgsqlCommand("update document set (name, jobName) = (:name, :jobName) where id = :documentId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("name", document.name)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("jobName", document.jobName)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
-        if command.ExecuteNonQuery() <> 1
-        then failwith "An error occurred"
+        command.ExecuteNonQuery() |> ignore
         command.Dispose()
         use command =
             new NpgsqlCommand(
@@ -453,11 +499,11 @@ module Database =
                 command.Parameters.Add(new NpgsqlParameter("name", filePage.name)) |> ignore
                 command.ExecuteNonQuery() |> ignore
                 command.Dispose()
-        log.Debug(sprintf "(document = %A, userId = %i) = %i" document userId document.id)
+        log.Debug(sprintf "%A %i = %i" document userId document.id)
         document.id
     
     let saveNewDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) =
-        log.Debug(sprintf "(document = %A, userId = %i)" document userId)
+        log.Debug(sprintf "%A %i" document userId)
         use command = new NpgsqlCommand("insert into document (userId, name, jobName) values (:userId, :name, :jobName) returning id", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("name", document.name)) |> ignore
@@ -505,11 +551,10 @@ module Database =
                 command.Parameters.Add(new NpgsqlParameter("name", filePage.name)) |> ignore
                 let pageId = command.ExecuteScalar() |> string |> Int32.Parse
                 command.Dispose()
-        log.Debug(sprintf "(document = %A, userId = %i) = %i" document userId documentId)
+        log.Debug(sprintf "%A %i = %i" document userId documentId)
         documentId
     
     let deleteDocument (dbConn : NpgsqlConnection) (documentId : int) =
-        log.Debug(sprintf "(documentId = %i)" documentId)
         use command = new NpgsqlCommand("delete from pageMap where documentId = :documentId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
         command.ExecuteNonQuery() |> ignore
@@ -534,130 +579,161 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
         command.ExecuteNonQuery() |> ignore
         command.Dispose()
-        log.Debug(sprintf "(documentId = %i) = ()" documentId)
 
        
-    let getDocument (documentId : int) =
-        log.Debug(sprintf "(documentId = %i)" documentId)
-        let oDocumentValues = 
-            (query {
-                for document in db.Document do
-                join documentEmail in db.Documentemail on (document.Id = documentEmail.Documentid)
-                where (document.Id = documentId)
-                select (Some (document.Name, document.Jobname, documentEmail.Subject, documentEmail.Body))
-            }).SingleOrDefault()
-        match oDocumentValues with
-        | None ->
-            log.Debug(sprintf "(documentId = %i) = None" documentId)
-            None
-        | Some (documentName, jobName, emailSubject, emailBody) ->
-            let htmlPages = 
-                db.Htmlpage
-                  .Where(fun x -> x.Documentid = documentId)
-                  .OrderBy(fun x -> x.Pageindex)
-                  .Select(fun x ->
-                      HtmlPage
-                        { map = 
-                              db.Pagemap
-                                .Where(fun x -> x.Documentid = documentId && x.Pageindex = x.Pageindex)
-                                .Select(fun y -> (y.Key, y.Value))
-                              |> List.ofSeq
-                          oTemplateId = x.Templateid
-                          pageIndex = x.Pageindex
-                          name = x.Name
-                        }
-                  )
-                |> List.ofSeq
-            
-            let filePages =
-                db.Filepage
-                  .Where(fun x -> x.Documentid = documentId)
-                  .OrderBy(fun x -> x.Pageindex)
-                  .Select(fun x -> FilePage { path = x.Path; pageIndex = x.Pageindex; name = x.Name })
-                |> List.ofSeq
+    let getDocument (dbConn : NpgsqlConnection) (documentId : int) =
+        use command =
+            new NpgsqlCommand(
+                """select d.name, d.jobName, email.subject, email.body
+                from document d
+                join documentEmail email on d.id = email.documentId
+                where d.id = :documentId""", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        use reader = command.ExecuteReader()
+        reader.Read() |> ignore
+        let documentName = reader.GetString(0)
+        let jobName, emailSubject, emailBody = reader.GetString(1), reader.GetString(2), reader.GetString(3).Replace("\\n", "\n").Replace("\n", Types.newLine)
+        reader.Dispose()
+        command.Dispose()
 
-            let document =
-                { id = documentId
-                  name = documentName
-                  pages = (htmlPages @ filePages) |> List.sortBy (fun x -> x.PageIndex())
-                  email = {subject = emailSubject; body = emailBody}
-                  jobName = jobName
-                }
-            log.Debug(sprintf "(documentId = %i) = %A" documentId document)
-            Some document
+        use command = new NpgsqlCommand("select id, templateId, pageIndex, name from htmlPage where documentId = :documentId order by pageIndex", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        use reader = command.ExecuteReader()
+        let htmlPageData =
+            [ while reader.Read() do
+                yield
+                  reader.GetInt32(0)
+                , if reader.IsDBNull(1) then None else Some <| reader.GetInt32(1)
+                , reader.GetInt32(2)
+                , reader.GetString(3) 
+            ]
+        reader.Dispose()
+        command.Dispose()
+
+        use command = new NpgsqlCommand("select path, pageIndex, name from filePage where documentId = :documentId order by pageIndex", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        use reader = command.ExecuteReader()
+        let filePages =
+            [ while reader.Read() do
+                yield
+                  FilePage
+                    { path = reader.GetString(0)
+                      pageIndex = reader.GetInt32(1)
+                      name = reader.GetString(2)
+                    }
+            ]
+        reader.Dispose()
+        command.Dispose()
+
+        let htmlPages =
+            htmlPageData
+            |> List.map
+                (fun (_, oTemplateId, pageIndex, pageName) ->
+                    HtmlPage
+                      { name = pageName
+                        oTemplateId = oTemplateId
+                        pageIndex = pageIndex
+                        map =
+                            use command = new NpgsqlCommand("select key, value from pageMap where documentId = :documentId and pageIndex = :pageIndex", dbConn)
+                            command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+                            command.Parameters.Add(new NpgsqlParameter("pageIndex", pageIndex)) |> ignore
+                            use reader = command.ExecuteReader()
+                            [ while reader.Read() do
+                                yield reader.GetString(0), reader.GetString(1)
+                            ]
+                      }
+                )
+
+
+        { id = documentId
+          name = documentName
+          pages = (htmlPages @ filePages) |> List.sortBy (fun x -> x.PageIndex())
+          email = {subject = emailSubject; body = emailBody}
+          jobName = jobName
+        }
     
-    let getDocumentOffset (userId : int) (documentOffset : int) =
-        log.Debug(sprintf "(userId = %i, documentOffset = %i)" userId documentOffset)
-        try
-            db.Document
-              .Where(fun x -> x.Userid = userId)
-              .OrderBy(fun x -> x.Id)
-              .Skip(documentOffset)
-              .Select(fun x -> Some x.Id)
-              .FirstOrDefault()
-            |> Option.bind getDocument
-        with
-        | e ->
-            log.Error ("", e)
-            None
+    let getDocumentOffset (dbConn : NpgsqlConnection) (userId : int) (documentOffset : int) =
+        if documentOffset < 0
+        then None
+        else
+            use command = new NpgsqlCommand("select id from document where userId = :userId order by id offset :documentOffset limit 1", dbConn)
+            command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+            command.Parameters.Add(new NpgsqlParameter("documentOffset", documentOffset)) |> ignore
+            match command.ExecuteScalar() |> string with
+            | null -> None
+            | documentIdStr ->
+                command.Dispose()
+                Some <| getDocument dbConn (documentIdStr |> Int32.Parse)
 
-    let getDocumentNames (userId : int) =
-        log.Debug(sprintf "(userId = %i)" userId)
-        let documentNames =
-            db.Document
-              .Where(fun x -> x.Userid = userId)
-              .OrderBy(fun x -> x.Id)
-              .Select(fun x -> x.Name)
-            |> List.ofSeq
-        log.Debug(sprintf "(userId = %i) = %A" userId documentNames)
-        documentNames
+    let getDocumentNames (dbConn : NpgsqlConnection) (userId : int) =
+        log.Debug(sprintf "%i" userId)
+        use command = new NpgsqlCommand("select name from document where userId = :userId order by id", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        use reader = command.ExecuteReader()
+        let ret =
+            [ while reader.Read() do
+                yield reader.GetString(0)
+            ]
+        log.Debug(sprintf "%i = %A" userId ret)
+        ret
 
-    let getHtmlPageTemplatePath (htmlPageTemplateId : int) =
-        log.Debug(sprintf "(htmlPageTemplateId = %i)" htmlPageTemplateId)
-        let oOdtPath = db.Htmlpagetemplate.Where(fun x -> x.Id = htmlPageTemplateId).Select(fun x -> Some x.Odtpath).SingleOrDefault()
-        log.Debug(sprintf "(htmlPageTemplateId = %i) = %A" htmlPageTemplateId oOdtPath)
-        oOdtPath
+    let getHtmlPageTemplatePath (dbConn : NpgsqlConnection) (htmlPageTemplateId : int) =
+        use command = new NpgsqlCommand("select odtPath from htmlPageTemplate where id = :htmlPageTemplateId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("htmlPageTemplateId", htmlPageTemplateId)) |> ignore
+        command.ExecuteScalar() |> string
 
-    let getHtmlPageTemplates () =
-        log.Debug "()"
-        let htmlPageTemplates = db.Htmlpagetemplate.OrderBy(fun x -> x.Id).Select(fun x -> { id = x.Id; html = x.Html; name = x.Name }) |> List.ofSeq
-        log.Debug(sprintf "() = %A" htmlPageTemplates)
-        htmlPageTemplates
 
-    let getHtmlPageTemplate (templateId : int) =
-        log.Debug(sprintf "(templateId = %i)" templateId)
-        let oHtml = db.Htmlpagetemplate.Where(fun x -> x.Id = templateId).Select(fun x -> Some x.Html).SingleOrDefault()
-        log.Debug(sprintf "(templateId = %i) = %A" templateId oHtml)
-        oHtml
+    let getHtmlPageTemplates (dbConn : NpgsqlConnection) =
+        use command = new NpgsqlCommand("select id, html, name from htmlPageTemplate order by id", dbConn)
+        use reader = command.ExecuteReader()
+        [ while reader.Read() do
+            yield { id = reader.GetInt32(0); html = reader.GetString(1); name = reader.GetString(2) } ]
 
-    let getHtmlPages (documentId : int) =
-        log.Debug(sprintf "(documentId = %i)" documentId)
-        let htmlPages = db.Htmlpage.Where(fun x -> x.Documentid = documentId).Select(fun x -> { name = x.Name; oTemplateId = x.Templateid }) |> List.ofSeq
-        log.Debug(sprintf "(documentId = %i) = %A" documentId htmlPages)
+    let getHtmlPageTemplate (dbConn : NpgsqlConnection) (templateId : int) =
+        log.Debug(sprintf "%i" templateId)
+        use command = new NpgsqlCommand("select html from htmlPageTemplate where id = :templateId limit 1", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("templateId", templateId)) |> ignore
+        use reader = command.ExecuteReader()
+        reader.Read() |> ignore
+        let html = reader.GetString(0)
+        log.Debug(sprintf "%i = %A" templateId html)
+        html
+
+    let getHtmlPages (dbConn : NpgsqlConnection) (documentId : int) =
+        use command = new NpgsqlCommand("select name, templateId from htmlPage where documentId = :documentId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        use reader = command.ExecuteReader()
+        [ while reader.Read() do
+            yield { name = reader.GetString(0); oTemplateId = if reader.IsDBNull(0) then None else Some <| reader.GetInt32(1) } ]
 
     
-    let getLastEditedDocumentOffset (userId : int) =
-        log.Debug(sprintf "(userId = %i)" userId)
+    let getLastEditedDocumentOffset (dbConn : NpgsqlConnection) (userId : int) =
+        use command = new NpgsqlCommand("""select count(*)
+                                           from document d
+                                           join lasteditedDocumentId l
+                                             on d.userId = l.userId
+                                           where d.userId = :userId and d.Id < l.documentid
+                                           """, dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         let documentOffset =
-            (query {
-                for document in db.Document do
-                join lastEditedDocumentId in db.Lastediteddocumentid on (document.Userid = lastEditedDocumentId.Userid)
-                where (document.Userid = userId && document.Id < lastEditedDocumentId.Documentid)
-                select document.Id
-            }).Count()
-        log.Debug(sprintf "(userId = %i)" userId)
+            command.ExecuteScalar() |> string |> Int32.Parse
+        command.Dispose()
+        use command = new NpgsqlCommand("delete from lastEditedDocumentId where userId = :userId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        command.ExecuteNonQuery() |> ignore
         documentOffset
 
     let setLastEditedDocumentId (dbConn : NpgsqlConnection) (userId : int) (documentId : int) =
-        use command =
-            new NpgsqlCommand("""insert into lastEditedDocumentId (documentId, userId) values (:documentId, :userId)
-                               on conflict (userId) do update 
-                               set (documentId, userId) = (:documentId, :userId)""", dbConn)
+        use command = new NpgsqlCommand("delete from lastEditedDocumentId where userId = :userId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        command.ExecuteNonQuery() |> ignore
+        command.Dispose()
+        use command = new NpgsqlCommand("insert into lastEditedDocumentId (documentId, userId) values (:documentId, :userId)", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
         command.ExecuteNonQuery() |> ignore
 
-    let getPageMapOffset dbConn (userId : int) (pageIndex : int) (documentIndex : int) =
+    let getPageMapOffset (dbConn : NpgsqlConnection) (userId : int) (pageIndex : int) (documentIndex : int) =
         use command =
             new NpgsqlCommand(
                 """select key, value
@@ -665,7 +741,6 @@ module Database =
                 join document on pageMap.documentId = document.id
                 where userId = :userId and
                 documentId =
-
                   (select documentId from document where userId = :userId offset :documentIndex limit 1)
                 and pageIndex = :pageIndex""", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
@@ -718,15 +793,11 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("name", name)) |> ignore
         command.ExecuteNonQuery() |> ignore
 
-    let tryGetDocumentIdOffset (userId : int) (documentIndex : int) =
-        log.Debug(sprintf "(userId = %i, documentIndex = %i)" userId documentIndex)
-        let documentIds = db.Document.Where(fun x -> x.Userid = userId).Select(fun x -> x.Id)
-        let oDocumentId =
-            if documentIds.Count() >= documentIndex
-            then Some (documentIds.Skip(documentIndex).First())
-            else None
-        log.Debug(sprintf "(userId = %i, documentIndex = %i) = %A" userId documentIndex oDocumentId)
-        oDocumentId
+    let getDocumentIdOffset dbConn (userId : int) (documentIndex : int) =
+        use command = new NpgsqlCommand("select id from document where userId = :userId limit 1 offset :documentIndex", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("documentIndex", documentIndex)) |> ignore
+        command.ExecuteScalar() |> string |> Int32.Parse
 
     let createLink dbConn (filePath : string) (name : string) =
         let guid = Guid.NewGuid().ToString("N")
@@ -770,45 +841,40 @@ module Database =
         command.ExecuteNonQuery()
 
 
-    let tryGetPathAndNameByGuid (guid : string) =
-        log.Debug(sprintf "(guid = %s)" guid)
-        let oPathAndName = db.Link.Where(fun x -> x.Guid = guid).Select(fun x -> Some (x.Path, x.Name)).SingleOrDefault()
-        log.Debug(sprintf "(guid = %s) = %A" guid oPathAndName)
-        oPathAndName
+    let getPathAndNameByGuid dbConn (guid : string) =
+        use command = new NpgsqlCommand("select path, name from link where guid = :guid limit 1", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("guid", guid)) |> ignore
+        use reader = command.ExecuteReader()
+        if reader.Read()
+        then
+            reader.GetString(0), reader.GetString(1)
+        else failwith <| "Couldn't read link with guid: " + guid
 
     let deleteLink dbConn (guid : string) =
         use command = new NpgsqlCommand("delete from link where guid = :guid", dbConn)
         command.Parameters.Add(new NpgsqlParameter("guid", guid)) |> ignore
         command.ExecuteNonQuery() |> ignore
 
-    let getFilesWithExtension (extension : string) (userId : int) =
-        log.Debug(sprintf "(extension = %s, userId = %i)" extension userId)
-        let files =
-            query {
-                for filePage in db.Filepage do
-                join document in db.Document on (filePage.Documentid = document.Id)
-                where (filePage.Path.EndsWith(extension) && document.Userid = userId)
-                select filePage.Path
-            } |> List.ofSeq
-        log.Debug(sprintf "(extension = %s, userId = %i) = %A" extension userId files)
-        files
+    let getFilesWithExtension dbConn (extension : string) (userId : int) =
+        use command =
+            new NpgsqlCommand("""select path from filePage
+                                 join document on filePage.documentId = document.Id
+                                 where path like :extension
+                                 and userId = :userId"""
+                             , dbConn)
+        command.Parameters.Add(new NpgsqlParameter("extension", "%" + extension)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        use reader = command.ExecuteReader()
+        [ while reader.Read() do
+            yield reader.GetString(0) ]
 
 
-    let getFilePageNames (documentId : int) =
-        log.Debug(sprintf "(documentId = %i)" documentId)
-        let filePageNames = db.Filepage.Where(fun x -> x.Documentid = documentId).Select(fun x -> x.Name) |> List.ofSeq
-        log.Debug(sprintf "(documentId = %i) = %A" documentId filePageNames)
-        filePageNames
-
-    let tryFindSentApplication (userId : int) (employer : Employer) =
-        log.Debug(sprintf "(userId = %i, employer = %A)" userId employer)
-        let employers =
-                db.Employer
-                  .Where(fun x -> x.Company = employer.company && x.Userid = userId)
-                  .OrderByDescending(fun x -> x.Id)
-                |> List.ofSeq
-        log.Debug(sprintf "(userId = %i, employer = %A) = %b" userId employer (employers |> (not << List.isEmpty)))
-        if employers |> List.isEmpty
-        then None
-        else Some 1
+    let getFilePageNames dbConn (documentId : int) =
+        use command =
+            new NpgsqlCommand("""select name from filePage where documentId = :documentId"""
+                             , dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        use reader = command.ExecuteReader()
+        [ while reader.Read() do
+            yield reader.GetString(0) ]
 

@@ -698,7 +698,7 @@
     slctDocumentNameEl=Global.document.getElementById("slctDocumentName");
     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getDocumentOffset:-1633111335",[slctDocumentNameEl.selectedIndex]),function(a)
     {
-     return a==null?(Var.Set(varDocument,Types.emptyDocument()),Global.document.getElementById("btnAddPage").style.visibility="hidden",Global.document.getElementById("btnApplyNowTop").disabled=true,Global.document.getElementById("btnApplyNowBottom").disabled=true,show(List.ofArray(["divAddDocument"])),Concurrency.Zero()):(Var.Set(varDocument,a.$0),Global.document.getElementById("hiddenDocumentId").value=String(varDocument.c.id),Global.document.getElementById("btnAddPage").style.visibility="visible",Global.document.getElementById("btnApplyNowTop").disabled=false,Global.document.getElementById("btnApplyNowBottom").disabled=false,Global.document.getElementById("divBtnApplyNowTop").innerHTML=Client.t(Word.ApplyNow),Global.document.getElementById("divBtnApplyNowBottom").innerHTML=Client.t(Word.ApplyNow),show(List.ofArray(["divAttachments"])),Concurrency.Zero());
+     return a==null?(Var.Set(varDocument,Types.emptyDocument()),Global.document.getElementById("btnAddPage").style.visibility="hidden",Global.document.getElementById("btnApplyNowTop").disabled=true,Global.document.getElementById("btnApplyNowBottom").disabled=true,show(List.ofArray(["divAddDocument"])),Concurrency.Zero()):(Var.Set(varDocument,a.$0),Global.document.getElementById("hiddenDocumentId").value=String(varDocument.c.id),Global.document.getElementById("btnAddPage").style.visibility="visible",Global.document.getElementById("btnApplyNowTop").disabled=false,Global.document.getElementById("btnApplyNowBottom").disabled=false,show(List.ofArray(["divAttachments"])),Concurrency.Zero());
     });
    });
   }
@@ -1465,7 +1465,7 @@
    {
     return Concurrency.Start(btnApplyNowClicked(),null);
    };
-  })],[Doc.Element("i",[AttrProxy.Create("class","fa fa-icon"),AttrProxy.Create("id","faBtnApplyNowTop"),AttrProxy.Create("style","color: #08a81b; margin-right: 10px")],[]),Doc.Element("div",[AttrProxy.Create("id","divBtnApplyNowTop")],[Doc.TextNode(Client.t(Word.ApplyNow))])])])]),createInput(Client.t(Word.CompanyName),employerCompany,function()
+  })],[Doc.Element("i",[AttrProxy.Create("class","fa fa-icon"),AttrProxy.Create("id","faBtnApplyNowTop"),AttrProxy.Create("style","color: #08a81b; margin-right: 10px")],[]),Doc.TextNode(Client.t(Word.ApplyNow))])])]),createInput(Client.t(Word.CompanyName),employerCompany,function()
   {
    return"";
   }),createInput(Client.t(Word.Street),employerStreet,function()
@@ -1501,7 +1501,7 @@
    {
     return Concurrency.Start(btnApplyNowClicked(),null);
    };
-  })],[Doc.Element("i",[AttrProxy.Create("class","fa fa-icon"),AttrProxy.Create("id","faBtnApplyNowBottom"),AttrProxy.Create("style","color: #08a81b; margin-right: 10px")],[]),Doc.Element("div",[AttrProxy.Create("id","divBtnApplyNowBottom")],[Doc.TextNode(Client.t(Word.ApplyNow))])])])]);
+  })],[Doc.Element("i",[AttrProxy.Create("class","fa fa-icon"),AttrProxy.Create("id","faBtnApplyNowBottom"),AttrProxy.Create("style","color: #08a81b; margin-right: 10px")],[]),Doc.TextNode(Client.t(Word.ApplyNow))])])]);
  };
  Client.login=function()
  {

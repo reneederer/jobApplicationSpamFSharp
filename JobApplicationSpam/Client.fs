@@ -402,8 +402,6 @@ module Client =
                     JS.Document.GetElementById("btnAddPage")?style?visibility <- "visible"
                     JS.Document.GetElementById("btnApplyNowTop")?disabled <- false
                     JS.Document.GetElementById("btnApplyNowBottom")?disabled <- false
-                    JS.Document.GetElementById("divBtnApplyNowTop" )?innerHTML <- t ApplyNow
-                    JS.Document.GetElementById("divBtnApplyNowBottom" )?innerHTML <- t ApplyNow
                     show ["divAttachments"]
                 | None ->
                     varDocument.Value <- emptyDocument
@@ -1090,7 +1088,8 @@ module Client =
                                 attr.id "faBtnApplyNowTop"
                                 attr.style "color: #08a81b; margin-right: 10px"
                               ]
-                              [ text <| t ApplyNow ]
+                              []
+                            text <| t ApplyNow
                           ]
                       ]
                   ]
@@ -1124,7 +1123,8 @@ module Client =
                         attr.id "faBtnApplyNowBottom"
                         attr.style "color: #08a81b; margin-right: 10px"
                       ]
-                      [ text <| t ApplyNow ]
+                      []
+                    text <| t ApplyNow
                   ]
               ]
           ]

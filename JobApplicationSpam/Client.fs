@@ -13,7 +13,7 @@ module Client =
     open WebSharper.JQuery
     open System
     open WebSharper.UI.Next.Client.HtmlExtensions
-    open WebSharper.UI.Next.Html.Tags
+    open WebSharper.UI.V
 
     [<JavaScript>]
     let varLanguageDict = Var.Create<Map<Word, string>>(Deutsch.dict |> Map.ofList)
@@ -378,7 +378,7 @@ module Client =
               "divCreateHtmlPage"
               "divChoosePageType"
               "divEmail"
-              "divNewDocument"
+              "divAddDocument"
               "divEditUserValues"
               "divAddEmployer"
               "divDisplayedDocument"
@@ -403,9 +403,17 @@ module Client =
                     varDocument.Value <- document
                     JS.Document.GetElementById("hiddenDocumentId")?value <- varDocument.Value.id |> string
                     JS.Document.GetElementById("btnAddPage")?style?visibility <- "visible"
+                    JS.Document.GetElementById("btnApplyNowTop")?disabled <- false
+                    JS.Document.GetElementById("btnApplyNowBottom")?disabled <- false
+                    JS.Document.GetElementById("divBtnApplyNowTop" )?innerHTML <- t ApplyNow
+                    JS.Document.GetElementById("divBtnApplyNowBottom" )?innerHTML <- t ApplyNow
+                    show ["divAttachments"]
                 | None ->
                     varDocument.Value <- emptyDocument
                     JS.Document.GetElementById("btnAddPage")?style?visibility <- "hidden"
+                    JS.Document.GetElementById("btnApplyNowTop")?disabled <- true
+                    JS.Document.GetElementById("btnApplyNowBottom")?disabled <- true
+                    show ["divAddDocument"]
             }
         
 
@@ -435,7 +443,6 @@ module Client =
                                         let! _ = Server.overwriteDocument varDocument.Value
                                         do! setDocument()
                                         do! setPageButtons()
-                                        show ["divAttachments"]
                                     } |> Async.Start
                             )
                           )
@@ -460,7 +467,6 @@ module Client =
                                     let! _ = Server.overwriteDocument varDocument.Value
                                     do! setDocument()
                                     do! setPageButtons()
-                                    show ["divAttachments"]
                                 } |> Async.Start
                             )
                           )
@@ -487,7 +493,6 @@ module Client =
                                     let! _ = Server.overwriteDocument varDocument.Value
                                     do! setDocument()
                                     do! setPageButtons()
-                                    show ["divAttachments"]
                                 } |> Async.Start
                             )
                           )
@@ -649,7 +654,6 @@ module Client =
                 do! Async.Sleep 10
             for htmlPageTemplate in htmlPageTemplates do
                 addSelectOption slctHtmlPageTemplateEl htmlPageTemplate.name
-            show [ "divAttachments" ]
         } |> Async.Start
 
         let readFromWebsite () =
@@ -678,9 +682,8 @@ module Client =
                 selectAttr
                   [ attr.id "slctDocumentName";
                     on.change
-                      (fun _ _ ->
+                      (fun el _ ->
                           async {
-                            show ["divAttachments"]
                             do! setDocument()
                             do! setPageButtons()
                             do! fillDocumentValues()
@@ -691,7 +694,7 @@ module Client =
                   [ attr.``type`` "button"
                     attr.style "margin-left: 20px"
                     attr.``class`` ".btnLikeLink"
-                    on.click(fun _ _ -> show ["divNewDocument"])
+                    on.click(fun _ _ -> show ["divAddDocument"])
                   ]
                   [ iAttr
                       [ attr.``class`` "fa fa-plus-square"
@@ -716,9 +719,11 @@ module Client =
                                 then
                                     el?style?display <- "none"
                                     varDocument.Value <- emptyDocument
+                                    show ["divAddDocument"]
+                                else
+                                    show ["divAttachments"]
                                 do! setDocument()
                                 do! setPageButtons()
-                                show ["divAttachments"]
                         } |> Async.Start
                     )
                   ]
@@ -759,7 +764,7 @@ module Client =
                 br []
               ]
             divAttr
-              [ attr.id "divNewDocument"; attr.style "display: none" ]
+              [ attr.id "divAddDocument"; attr.style "display: none" ]
               [ br []
                 h4 [ text (t AddDocument)]
                 br []
@@ -787,7 +792,7 @@ module Client =
                                 varDocument.Value <- { varDocument.Value with id = newDocumentId }
                                 let slctEl = JS.Document.GetElementById("slctDocumentName")
                                 addSelectOption slctEl newDocumentName
-                                JS.Document.GetElementById("divNewDocument")?style?display <- "none"
+                                JS.Document.GetElementById("divAddDocument")?style?display <- "none"
                                 JS.Document.GetElementById("btnDeleteDocument")?style?display <- "inline"
                                 slctEl?selectedIndex <- slctEl?options?length - 1
                                 do! setDocument()
@@ -1089,7 +1094,9 @@ module Client =
                                 attr.style "color: #08a81b; margin-right: 10px"
                               ]
                               []
-                            text <| t ApplyNow
+                            divAttr
+                              [ attr.id "divBtnApplyNowTop" ]
+                              [ text <| t ApplyNow ]
                           ]
                       ]
                   ]
@@ -1124,7 +1131,9 @@ module Client =
                         attr.style "color: #08a81b; margin-right: 10px"
                       ]
                       []
-                    text <| t ApplyNow
+                    divAttr
+                      [ attr.id "divBtnApplyNowBottom" ]
+                      [ text <| t ApplyNow ]
                   ]
               ]
           ]

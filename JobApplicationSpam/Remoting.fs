@@ -9,6 +9,7 @@ open System.Configuration
 open Website
 open System.Security.Cryptography
 open System.Text.RegularExpressions
+open System.Linq
 
 
 module Server =
@@ -18,6 +19,7 @@ module Server =
     open System.IO
     open WebSharper.Web.Remoting
     open WebSharper.Core
+    open System.Transactions
 
     let log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().GetType())
 
@@ -160,7 +162,9 @@ module Server =
                 match Database.getIdPasswordSaltAndGuid email with
                 | Some (userId, hashedPassword, salt, None) ->
                     if generateHash password salt 1000 64 = hashedPassword
-                    then return ok <| string userId
+                    then
+                        Database.setLastLoginToToday dbConn userId
+                        return ok <| string userId
                     else return fail "Email oder Passwort ist falsch."
                 |  Some (_, _, _, Some guid) -> return fail "Bitte bestätige deine Email-Adresse."
                 | None -> return fail  "Email oder Passwort ist falsch."
@@ -334,6 +338,7 @@ module Server =
                         | Gender.Female, _ -> "Sehr geehrte Frau $chefTitel $chefNachname,"
                         | _, s when s.Trim() = "" -> "Sehr geehrte Damen und Herren,"
                         | Gender.Unknown, _ -> "Sehr geehrte Damen und Herren,")
+                  ("$telefonZeile", "Telefon: $meineTelefonnr")
                   ("$chefTitel", employer.degree)
                   ("$chefVorname", employer.firstName)
                   ("$chefNachname", employer.lastName)
@@ -358,6 +363,10 @@ module Server =
                   ("$datumHeute", DateTime.Today.ToString("dd.MM.yyyy"))
                   ("$beruf", jobName)
                 ]
+                |> fun xs ->
+                        (xs.OrderByDescending(fun (k, v) -> k.Length))
+                           .ThenBy(fun (k, v) -> if k.EndsWith("_") then 1 else -1)
+                |> List.ofSeq
         }
 
     [<Remote>]

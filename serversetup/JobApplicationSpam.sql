@@ -20,7 +20,7 @@ drop table if exists userValues cascade;
 drop table if exists users cascade;
 
 
-create table users (id serial primary key, email text unique not null, password text not null, salt text not null, guid text null, createdOn date not null);
+create table users (id serial primary key, email text unique not null, password text not null, salt text not null, guid text null, createdOn date not null, lastLogin date not null);
 create table userValues(id serial primary key, userId int unique not null, gender text not null, degree text not null, firstName text not null, lastName text not null, street text not null, postcode text not null, city text not null, phone text not null, mobilePhone text not null, foreign key(userId) references users(id));
 create table employer(id serial primary key, userId int not null, company text not null, street text not null, postcode text not null, city text not null, gender text not null, degree text not null, firstName text not null, lastName text not null, email text not null, phone text not null, mobilePhone text not null, foreign key(userId) references users(id));
 create table htmlPageTemplate(id serial primary key, name text unique not null, odtPath text unique not null, html text not null);
@@ -42,7 +42,7 @@ create table sentStatus(id serial primary key, sentApplicationId int not null, s
 create table link(id serial primary key, path text not null, guid text not null, name text not null);
 
 
-insert into users(email, password, salt, guid, createdOn) values('rene.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null, current_date);
+insert into users(email, password, salt, guid, createdOn, lastLogin) values('rene.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null, current_date, current_date);
 /*
 insert into users(email, password, salt, guid) values('ren.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null);
 insert into users(email, password, salt, guid) values('helmut.goerke@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', 'someguid');

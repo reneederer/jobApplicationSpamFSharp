@@ -11,6 +11,25 @@ module Odt =
 
     let private log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().GetType())
 
+
+    let deleteLine (s : string) (index : int) =
+        let deleteLine' (m : Match) =
+             s.Substring(0, m.Index) + s.Substring(m.Index + m.Length)
+        
+        let pattern = "(<text:p.*?>(?<!<text:p).*?</text:p>)|((?<=(\n|^)).*?\r?(\n|$))"
+        let matches = Regex.Matches(s, pattern)
+        let rec tryFindMatch n =
+            if n < 0
+            then None
+            elif matches.[n].Success && matches.[n].Index <= index
+            then Some matches.[n]
+            else tryFindMatch (n - 1)
+        let oM = tryFindMatch (matches.Count - 1)
+        oM |> Option.map (fun m -> deleteLine' m) |> Option.defaultValue ""
+
+
+
+
     let areStreamsEqual (fs1 : Stream) (fs2 : Stream) =
         let chunkSize = 2048
         let mutable (b1 : array<byte>) = Array.zeroCreate (chunkSize)
@@ -35,7 +54,7 @@ module Odt =
 
     let replaceInString (text1 : string) (map : list<string * string>) (emptyTextTagAction1 : EmptyTextTagAction) =
         let rec replaceInString' (text : string) (emptyTextTagAction : EmptyTextTagAction) depth =
-            if depth >= 10
+            if depth >= 100
             then text
             else
                 let t =
@@ -70,23 +89,55 @@ module Odt =
 
                 List.fold
                     (fun (state:string) (k: string, v: string) ->
-                        let replacedV =
-                            if v.Contains "$" && state.Contains k
+                        let replace (s : string) (k1 : string) (v1: string) = 
+                            let replacedV =
+                                if v1.Contains "$" && s.Contains k1
+                                then replaceInString' v1 Ignore (depth + 1)
+                                else v1
+
+                            if replacedV = ""
                             then
-                                replaceInString' v Ignore (depth + 1)
-                            else v
-                        if replacedV = "" then
-                            state.Replace(k + " ", "").Replace(k, "")
-                        else
-                            state.Replace
-                                (k
-                                , match emptyTextTagAction with
-                                  | Replace -> System.Security.SecurityElement.Escape(replacedV)
-                                  | Ignore -> replacedV)
+                                if k1.EndsWith "_"
+                                then
+                                    let rec deleteAllLinesWithKey (s2: string) =
+                                        let keyIndex = s2.IndexOf(k1)
+                                        if keyIndex = -1
+                                        then s2
+                                        else
+                                            deleteAllLinesWithKey (deleteLine s2 keyIndex)
+                                    deleteAllLinesWithKey s
+                                else s.Replace(k1 + " ", "").Replace(k1, "")
+                            else
+                                let replaceValue =
+                                    match emptyTextTagAction with
+                                    | Replace -> System.Security.SecurityElement.Escape(replacedV)
+                                    | Ignore -> replacedV
+                                s.Replace(k1 + "_", replaceValue).Replace(k1, replaceValue)
+                        let stateWithReplacedUderScoreVar = replace state (k + "_") v
+                        replace stateWithReplacedUderScoreVar k v
                     )
                     t
                     map
         replaceInString' text1 emptyTextTagAction1 0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     let replaceInFile path map emptyTextTagAction =
         let content = File.ReadAllText(path)

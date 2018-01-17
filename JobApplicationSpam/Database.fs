@@ -2,19 +2,12 @@
 module Database =
     open System
     open Npgsql
-    open Types
-    open Chessie.ErrorHandling
-    open System.Data
     open log4net
     open System.Linq
     open System.Reflection
-    open System.IO
-    open NpgsqlTypes
     open FSharp.Data.Sql.Common
     open FSharp.Data.Sql
-    open FSharp.Data.Sql.Providers.PostgreSQL
-    open FSharp.Data.Sql.Transactions
-    open FSharp.Data.Sql.Common.Sql
+    open Types
 
     let [<Literal>] dbVendor = FSharp.Data.Sql.Common.DatabaseProviderTypes.POSTGRESQL
     let [<Literal>] connString = "Server=localhost; Port=5432; User Id=spam; Password=Steinmetzstr9!@#$; Database=jobapplicationspam"
@@ -47,6 +40,13 @@ module Database =
         let oUserId = db.Users.Where(fun x -> x.Email = email).Select(fun x -> Some x.Id).SingleOrDefault()
         log.Debug(sprintf "(email = %s) = %A" email oUserId)
         oUserId
+
+    let setLastLoginToToday dbConn (userId : int) =
+        log.Debug(sprintf "(userId = %i)" userId)
+        use command = new NpgsqlCommand("update users set lastLogin = current_date where id = :userId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
+        command.ExecuteNonQuery() |> ignore
+        log.Debug(sprintf "(userId = %i) = ()" userId)
     
     let addEmployer (dbConn : NpgsqlConnection) (employer : Employer) (userId : int) =
         log.Debug(sprintf "(employer = %A, userId = %i)" employer userId)
@@ -123,7 +123,7 @@ module Database =
 
     let insertNewUser (dbConn : NpgsqlConnection) (email : string) (password : string) (salt : string) (guid : string) =
         log.Debug(sprintf "(email = %s, password = %s, salt = %s, guid = %s)" email password salt guid)
-        use command = new NpgsqlCommand("insert into users(email, password, salt, guid, createdOn) values(:email, :password, :salt, :guid, current_date) returning id", dbConn)
+        use command = new NpgsqlCommand("insert into users(email, password, salt, guid, createdOn, lastLogin) values(:email, :password, :salt, :guid, current_date, current_date) returning id", dbConn)
         command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("password", password)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("salt", salt)) |> ignore
@@ -328,7 +328,8 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("name", document.name)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("jobName", document.jobName)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
-        command.ExecuteNonQuery() |> ignore
+        if command.ExecuteNonQuery() <> 1
+        then failwith "An error occurred"
         command.Dispose()
         use command =
             new NpgsqlCommand(
@@ -529,7 +530,7 @@ module Database =
               .OrderBy(fun x -> x.Id)
               .Skip(documentOffset)
               .Select(fun x -> Some x.Id)
-              .SingleOrDefault()
+              .FirstOrDefault()
             |> Option.bind getDocument
         with
         | e ->

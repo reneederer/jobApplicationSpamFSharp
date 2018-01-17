@@ -7,6 +7,10 @@ module Types =
     open WebSharper.Core.ContentTypes.Text
     open System
 
+    type EmptyTextTagAction =
+    | Replace
+    | Ignore
+
     [<WebSharper.JavaScript>]
     let newLine = string (char 13)
 
@@ -154,9 +158,6 @@ module Types =
             | English -> "english"
             | Deutsch -> "deutsch"
 
-    type EmptyTextTagAction =
-    | Replace
-    | Ignore
 
 
     type SentApplication =
@@ -205,7 +206,7 @@ module Types =
           pages=[]
           email=
             { subject = "Bewerbung als $beruf"
-              body = String.Format("$anredeZeile{0}{0}anbei sende ich Ihnen meine Bewerbungsunterlagen.{0}Über eine Einladung zu einem Bewerbungsgespräch würde ich mich sehr freuen.{0}{0}Mit freundlichen Grüßen{0}{0}$meinTitel $meinVorname $meinNachname{0}$meineStrasse{0}$meinePlz $meineStadt{0}Telefon: $meineTelefonnr{0}Mobil: $meineMobilnr", newLine)
+              body = String.Format("$anredeZeile{0}{0}anbei sende ich Ihnen meine Bewerbungsunterlagen.{0}Über eine Einladung zu einem Bewerbungsgespräch würde ich mich sehr freuen.{0}{0}Mit freundlichen Grüßen{0}{0}$meinTitel $meinVorname $meinNachname{0}$meineStrasse{0}$meinePlz $meineStadt{0}Telefon: $meineTelefonnr_{0}Mobil: $meineMobilnr", newLine)
             }
           jobName=""
         }   

@@ -7,6 +7,8 @@ open System
 open JobApplicationSpam.Types
 open System.Configuration
 open Website
+open System.Security.Cryptography
+open System.Text.RegularExpressions
 
 
 module Server =
@@ -15,6 +17,7 @@ module Server =
     open System.Net.Mail
     open System.IO
     open WebSharper.Web.Remoting
+    open WebSharper.Core
 
     let log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().GetType())
 
@@ -29,7 +32,7 @@ module Server =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.getEmailByUserId dbConn userId
+            return Database.getEmailByUserId userId
         }
 
     [<Remote>]
@@ -37,7 +40,7 @@ module Server =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.getUserIdByEmail dbConn email
+            return Database.getUserIdByEmail email
         }
 
     [<Remote>]
@@ -75,7 +78,7 @@ module Server =
             match oUserId with
             | Some userId ->
                 let! userEmail = getEmailByUserId userId
-                return userEmail |> Option.get
+                return userEmail
             | None -> return failwith "Nobody is logged in"
         }
 
@@ -108,7 +111,7 @@ module Server =
             async {
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
-                return Database.getUserValues dbConn userId
+                return Database.getUserValues userId
             }
         | None -> failwith "There is no user logged in."
 
@@ -124,7 +127,7 @@ module Server =
                 dbConn.Open()
                 use transaction = dbConn.BeginTransaction()
                 try
-                    let insertedUserValuesId = Database.setUserValues dbConn userValues userId
+                    let insertedUserValuesId = Database.setUserValues userValues userId
                     transaction.Commit()
                     return ok "User values have been updated."
                 with
@@ -134,33 +137,7 @@ module Server =
             | None -> return fail "Please login."
         }
 
-    
-    [<Remote>]
-    let addEmployer (employer : Employer) =
-        let oUserId = getCurrentUserId() |> Async.RunSynchronously
-        async {
-            match oUserId with
-            | Some userId ->
-                use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
-                dbConn.Open()
-                use transaction = dbConn.BeginTransaction()
-                try
-                    let addedEmployerId = Database.addEmployer dbConn employer userId
-                    transaction.Commit()
-                    return ok addedEmployerId
-                with
-                | e ->
-                    transaction.Rollback()
-                    return fail "Adding employer failed"
-            | None -> return fail "Please login first"
-        }
 
-
-    open System.Security.Cryptography
-    open WebSharper.Html.Server.Tags
-    open System.Net.Mime
-    open System.Security.Claims
-    open System.Text.RegularExpressions
 
     let generateSalt length =
         let (bytes : array<byte>) = Array.replicate length (0uy)
@@ -180,7 +157,7 @@ module Server =
             try
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
-                match Database.getIdPasswordSaltAndGuid dbConn email with
+                match Database.getIdPasswordSaltAndGuid email with
                 | Some (userId, hashedPassword, salt, None) ->
                     if generateHash password salt 1000 64 = hashedPassword
                     then return ok <| string userId
@@ -207,7 +184,7 @@ module Server =
                 else
                     use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                     dbConn.Open()
-                    if Database.userEmailExists dbConn email
+                    if Database.userEmailExists email
                     then
                         return fail "Diese Email-Adresse ist schon registriert."
                     else
@@ -237,19 +214,17 @@ module Server =
             try
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
-                let oDbGuidOpt = Database.getGuid dbConn email
-                match oDbGuidOpt with
+                let oDbGuid = Database.getGuid email
+                match oDbGuid with
                 | None -> return ok "Email already confirmed"
                 | Some dbGuid when guid = dbGuid ->
                     use transaction = dbConn.BeginTransaction()
-                    try
-                        Database.setGuidToNull dbConn email
-                        transaction.Commit()
-                        return ok "Email confirmed"
-                    with
-                    | e ->
-                        transaction.Rollback()
-                        return failwith "Setting guid to null failed"
+                    let recordCount = Database.setGuidToNull email
+                    if recordCount <> 1
+                    then
+                        log.Error("Email does not exist or guid was already null: " + email)
+                        return fail "An error occurred."
+                    else return ok "Email has been confirmed."
                 | Some _ ->
                     return fail "Unknown guid"
 
@@ -268,7 +243,7 @@ module Server =
             | Some userId ->
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
-                let result =  Database.getDocumentNames dbConn userId
+                let result =  Database.getDocumentNames userId
                 log.Debug "() = ()"
                 return result
             | None ->
@@ -338,7 +313,7 @@ module Server =
             | Some userId ->
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
-                return Database.getDocumentOffset dbConn userId htmlJobApplicationOffset
+                return Database.getDocumentOffset userId htmlJobApplicationOffset
             | None -> return failwith "No user logged in"
         }
     
@@ -422,56 +397,58 @@ module Server =
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
                 try
-                    let userEmail = Database.getEmailByUserId dbConn userId |> Option.defaultValue ""
-                    let sentApplication = Database.getSentApplication dbConn sentApplicationOffset userId
-                    let! myList = replaceMap sentApplication.userEmail sentApplication.userValues sentApplication.employer sentApplication.jobName
-                    let tmpPath = Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "tmp", Guid.NewGuid().ToString("N"))
-                    let odtPaths =
-                        [ for (path, pageIndex) in sentApplication.filePages do
-                                yield
-                                    if path.EndsWith(".pdf")
-                                    then
-                                        Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], path)
-                                    elif path.EndsWith(".odt") || path.EndsWith(".docx")
-                                    then
-                                        let directoryGuid = Guid.NewGuid().ToString("N")
-                                        Odt.replaceInOdt
-                                            (Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], path))
-                                            (Path.Combine(tmpPath, directoryGuid, "extractedOdt"))
-                                            (Path.Combine(tmpPath, directoryGuid, "replacedOdt"))
-                                            myList
-                                    else
-                                        let copiedPath = Path.Combine(tmpPath, Guid.NewGuid().ToString("N"), Path.GetFileName(path))
-                                        Directory.CreateDirectory(Path.GetDirectoryName copiedPath) |> ignore
-                                        File.Copy(Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], path), copiedPath)
-                                        Odt.replaceInFile
+                    let userEmail = Database.getEmailByUserId userId |> Option.defaultValue ""
+                    match Database.getSentApplication sentApplicationOffset userId with
+                    | None -> return fail "The requested application could not be not found"
+                    | Some sentApplication ->
+                        let! myList = replaceMap sentApplication.userEmail sentApplication.userValues sentApplication.employer sentApplication.jobName
+                        let tmpPath = Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "tmp", Guid.NewGuid().ToString("N"))
+                        let odtPaths =
+                            [ for (path, pageIndex) in sentApplication.filePages do
+                                    yield
+                                        if path.EndsWith(".pdf")
+                                        then
+                                            Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], path)
+                                        elif path.EndsWith(".odt") || path.EndsWith(".docx")
+                                        then
+                                            let directoryGuid = Guid.NewGuid().ToString("N")
+                                            Odt.replaceInOdt
+                                                (Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], path))
+                                                (Path.Combine(tmpPath, directoryGuid, "extractedOdt"))
+                                                (Path.Combine(tmpPath, directoryGuid, "replacedOdt"))
+                                                myList
+                                        else
+                                            let copiedPath = Path.Combine(tmpPath, Guid.NewGuid().ToString("N"), Path.GetFileName(path))
+                                            Directory.CreateDirectory(Path.GetDirectoryName copiedPath) |> ignore
+                                            File.Copy(Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], path), copiedPath)
+                                            Odt.replaceInFile
+                                                copiedPath
+                                                myList
+                                                Ignore
                                             copiedPath
-                                            myList
-                                            Ignore
-                                        copiedPath
-                        ]
+                            ]
 
 
 
 
 
-                    let pdfPaths =
-                        [ for odtPath in odtPaths do
-                            yield Odt.odtToPdf odtPath
-                        ]
-                    let mergedPdfPath = Path.Combine(tmpPath, (sprintf "Bewerbung_%s_%s.pdf" sentApplication.userValues.firstName sentApplication.userValues.lastName))
-                    if pdfPaths <> [] then Odt.mergePdfs pdfPaths mergedPdfPath
-                    sendEmail
-                        ConfigurationManager.AppSettings.["emailUsername"]
-                        "Bewerbungsspam"
-                        userEmail
-                        (Odt.replaceInString sentApplication.email.subject myList Ignore)
-                        (Odt.replaceInString (sentApplication.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Ignore)
-                        (if pdfPaths = []
-                         then []
-                         else [mergedPdfPath, sprintf "Bewerbung_%s_%s.pdf" sentApplication.userValues.firstName sentApplication.userValues.lastName]
-                         )
-                    return ok ()
+                        let pdfPaths =
+                            [ for odtPath in odtPaths do
+                                yield Odt.odtToPdf odtPath
+                            ]
+                        let mergedPdfPath = Path.Combine(tmpPath, (sprintf "Bewerbung_%s_%s.pdf" sentApplication.userValues.firstName sentApplication.userValues.lastName))
+                        if pdfPaths <> [] then Odt.mergePdfs pdfPaths mergedPdfPath
+                        sendEmail
+                            ConfigurationManager.AppSettings.["emailUsername"]
+                            "Bewerbungsspam"
+                            userEmail
+                            (Odt.replaceInString sentApplication.email.subject myList Ignore)
+                            (Odt.replaceInString (sentApplication.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Ignore)
+                            (if pdfPaths = []
+                             then []
+                             else [mergedPdfPath, sprintf "Bewerbung_%s_%s.pdf" sentApplication.userValues.firstName sentApplication.userValues.lastName]
+                             )
+                        return ok ()
                 with
                 | e ->
                     log.Error ("", e)
@@ -487,13 +464,14 @@ module Server =
             | Some userId ->
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
-                Database.setUserValues dbConn userValues userId |> ignore
+                Database.setUserValues userValues userId |> ignore
                 Database.overwriteDocument dbConn document userId |> ignore
                 use transaction = dbConn.BeginTransaction()
                 use command = new NpgsqlCommand("set constraints all deferred", dbConn)
                 command.ExecuteNonQuery() |> ignore
+                command.Dispose()
                 try
-                    let userEmail = Database.getEmailByUserId dbConn userId |> Option.defaultValue ""
+                    let userEmail = Database.getEmailByUserId userId |> Option.get
                     let employerId = Database.addEmployer dbConn employer userId
                     if userEmail <> employer.email || true
                     then
@@ -512,7 +490,7 @@ module Server =
                         [ for item in document.pages do
                             match item with
                             | HtmlPage htmlPage ->
-                                let oPageTemplatePath = Option.map (Database.getHtmlPageTemplatePath dbConn) htmlPage.oTemplateId
+                                let oPageTemplatePath = Option.bind (Database.getHtmlPageTemplatePath) htmlPage.oTemplateId
                                 let pageTemplatePath =
                                     match oPageTemplatePath with
                                     | None -> 
@@ -596,7 +574,7 @@ module Server =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.getHtmlPageTemplates dbConn
+            return Database.getHtmlPageTemplates ()
         }
     
     [<Remote>]
@@ -604,7 +582,7 @@ module Server =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.getHtmlPageTemplate dbConn templateId
+            return Database.getHtmlPageTemplate templateId
         }
     
     [<Remote>]
@@ -612,7 +590,7 @@ module Server =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.getHtmlPages dbConn documentId
+            return Database.getHtmlPages documentId
         }
 
     [<Remote>]
@@ -634,7 +612,7 @@ module Server =
             async {
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
-                return Database.getLastEditedDocumentOffset dbConn userId
+                return Database.getLastEditedDocumentOffset userId
             }
 
     [<Remote>]
@@ -680,7 +658,7 @@ module Server =
             async {
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
-                return Database.getDocumentIdOffset dbConn userId documentIndex
+                return Database.tryGetDocumentIdOffset userId documentIndex
             }
     
     [<Remote>]
@@ -698,11 +676,11 @@ module Server =
         }
 
     [<Remote>]
-    let getPathAndNameByGuid guid =
+    let tryGetPathAndNameByGuid guid =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.getPathAndNameByGuid dbConn guid
+            return Database.tryGetPathAndNameByGuid guid
         }
 
     [<Remote>]
@@ -722,24 +700,24 @@ module Server =
             | Some userId ->
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
-                return Database.getSentApplications dbConn userId startDate endDate
+                return Database.getSentApplications userId startDate endDate
             | None -> 
                 return failwith "Nobody is logged in"
         }
 
-    let filesWithSameExtension filePath userId =
+    let getFilesWithSameExtension filePath userId =
         async {
             let extension = Path.GetExtension(filePath)
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.getFilesWithExtension dbConn extension userId
+            return Database.getFilesWithExtension extension userId
         }
 
     let getFilePageNames (documentId : int) =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.getFilePageNames dbConn documentId
+            return Database.getFilePageNames documentId
         }
     
     [<Remote>]
@@ -750,6 +728,6 @@ module Server =
             | Some userId ->
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
-                return Database.tryFindSentApplication dbConn userId employer
+                return Database.tryFindSentApplication userId employer
             | None -> return failwith "Nobody is logged in"
         }

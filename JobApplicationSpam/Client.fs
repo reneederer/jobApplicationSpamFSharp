@@ -120,6 +120,7 @@ module Client =
                                     th [ text (t AppliedOnDate) ]
                                     th [ text (t AppliedAs) ]
                                     th [ text "Url" ]
+                                    th [ text "an dich mailen" ]
                                   ]
                               ]
                             tbody
@@ -340,7 +341,7 @@ module Client =
                     do! Async.Sleep 10
                 let pageTemplateIndex = JS.Document.GetElementById("slctHtmlPageTemplate")?selectedIndex
                 let! template = Server.getHtmlPageTemplate (pageTemplateIndex + 1)
-                varDisplayedDocument.Value <- template |> Doc.Verbatim
+                varDisplayedDocument.Value <- (template |> Option.defaultValue "" |> Doc.Verbatim)
                 while JS.Document.GetElementById("divInsert") = null do
                     do! Async.Sleep 10
                 let pageMapElements = JS.Document.QuerySelectorAll("[data-page-key]")
@@ -505,7 +506,7 @@ module Client =
                                             do! Async.Sleep 10
                                         let pageTemplateIndex = htmlPage.oTemplateId |> Option.defaultValue 1
                                         let! template = Server.getHtmlPageTemplate pageTemplateIndex
-                                        varDisplayedDocument.Value <- template |> Doc.Verbatim
+                                        varDisplayedDocument.Value <- (template |> Option.defaultValue "" |> Doc.Verbatim)
                                         while JS.Document.GetElementById("divInsert") = null do
                                             do! Async.Sleep 10
                                         do! fillDocumentValues()
@@ -622,8 +623,8 @@ module Client =
             addMenuEntry (t EditAttachments) (fun _ _ -> show ["divAttachments"]) |> ignore
             addMenuEntry (t AddEmployerAndApply) (fun _ _ -> show ["divAddEmployer"]) |> ignore
 
-            let! userEmail = Server.getCurrentUserEmail()
-            varUserEmail.Value <- userEmail
+            let! oUserEmail = Server.getCurrentUserEmail()
+            varUserEmail.Value <- oUserEmail |> Option.defaultValue ""
         
             let! userValues = Server.getCurrentUserValues()
             varUserValues.Value <- userValues

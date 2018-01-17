@@ -10,6 +10,8 @@ open System.IO
 open Types
 
 module MyTests =
+    ()
+    (*
     log4net.Config.XmlConfigurator.Configure(new FileInfo(@"log4net.config")) |> ignore
     
     let mutable dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
@@ -35,25 +37,6 @@ module MyTests =
     [<Test; CategoryAttribute("Database")>]
     let ``getEmail 1 (existing) should return Some "rene.ederer.nbg (at) gmail.com"`` () =
         Database.getEmailByUserId dbConn 1 |> should equal <| Some "rene.ederer.nbg@gmail.com"
-
-    [<Test; CategoryAttribute("Database")>]
-    let ``getEmployer 404 (nonexisting) should return None`` () =
-        Database.getEmployer dbConn 404 |> should equal None
-
-    [<Test; CategoryAttribute("Database")>]
-    let ``getEmployer 1 (existing) should return Some {company = "BJC BEST JOB IT SERVICES GmbH"}`` () =
-        Database.getEmployer dbConn 1 |> should equal (Some { company = "BJC BEST JOB IT SERVICES GmbH"; street = "Alte Rabenstraße 32"; postcode = "20148"; city = "Hamburg"; gender = Gender.Female; degree = ""; firstName = "Katrin"; lastName = "Thoms"; email = "Katrin.Thoms@bjc-its.de"; phone = "+49 (40) 5 14 00 7180"; mobilePhone = "" })
-
-    [<Test; CategoryAttribute("Database")>]
-    let ``addEmployer should add the employer record to the database`` () =
-        let employerRecord = { company = "Hallo Welt"; street = "Meine Strasse"; postcode = "99999"; city = "aCity"; gender = Gender.Male; degree = "Prof."; firstName = "Hans"; lastName = "Meiser"; email = "hans@meiser.de"; phone = "080 8192"; mobilePhone = "0171 1231" }
-        let addedEmployerId =
-            Database.addEmployer
-                dbConn
-                employerRecord
-                1
-        Database.getEmployer dbConn addedEmployerId |> should equal (Some employerRecord)
-        
 
     [<Test; CategoryAttribute("Database")>]
     let ``getUserValues 1 (existing) should return Some {...}`` () =
@@ -143,4 +126,4 @@ module MyTests =
 
 
 
-
+*)

@@ -106,6 +106,7 @@ module Site =
     open System.Configuration
     open Client
     open WebSharper.Formlets.Controls
+    open WebSharper.Sitelets.Content
 
 
     let homePage (ctx : Context<EndPoint>) =
@@ -214,7 +215,7 @@ module Site =
                     if x.FileName <> "" && x.ContentLength < maxFileSize
                     then
                         let (filePath, name) =
-                            let filesWithSameExtension = Server.filesWithSameExtension x.FileName userId |> Async.RunSynchronously
+                            let filesWithSameExtension = Server.getFilesWithSameExtension x.FileName userId |> Async.RunSynchronously
                             let oSameFile =
                                 filesWithSameExtension
                                 |> Seq.tryFind
@@ -280,19 +281,21 @@ module Site =
 
     let downloadPage (ctx : Context<EndPoint>) (guid : string) =
         async {
-            let! (filePath, name) = Server.getPathAndNameByGuid guid
-            //do! Server.deleteLink documentId guid
-            let file = FileInfo(filePath)
-            return
-                if file.Exists then
-                    Content.File(file.FullName, true, "application/pdf")
-                    |> Content.MapResponse (fun resp ->
-                        { resp with
-                            Headers = Seq.append resp.Headers 
-                                [Http.Header.Custom "Content-Disposition" ("attachment; filename=" + name)]
-                        }
-                    )
-                else Content.NotFound
+            let! oFilePathAndName = Server.tryGetPathAndNameByGuid guid
+            match oFilePathAndName with
+            | None -> return Content.NotFound
+            | Some (filePath, name) ->
+                let file = FileInfo(filePath)
+                return
+                    if file.Exists then
+                        Content.File(file.FullName, true, "application/pdf")
+                        |> Content.MapResponse (fun resp ->
+                            { resp with
+                                Headers = Seq.append resp.Headers 
+                                    [Http.Header.Custom "Content-Disposition" ("attachment; filename=" + name)]
+                            }
+                        )
+                    else Content.NotFound
         } |> Async.RunSynchronously
 
     let main =
@@ -312,6 +315,12 @@ module Site =
                 downloadPage ctx guid
             | _ -> loginPage ctx
         )
+    
+    let redirectHttpToHttps = 
+        Application.MultiPage (fun (ctx : Context<EndPoint>) endpoint ->
+            Content.RedirectPermanentToUrl "https://www.bewerbungsspam.de"
+        )
+        
 
 
         
@@ -327,15 +336,15 @@ module SelfHostedServer =
     [<EntryPoint>]
     let main args =
         log4net.Config.XmlConfigurator.Configure(new FileInfo("log4net.config")) |> ignore
-        let rootDirectory, url =
+        let rootDirectory, url, port =
             match args with
-            | [| rootDirectory; url |] ->
-                rootDirectory, url
-            | [| url |] -> "..", url
-            | [| |] -> "..", "http://localhost:9000/"
+            | [| rootDirectory; url; port |] ->
+                rootDirectory, url, port
+            | [| url; port |] -> "..", url, port
+            | [| |] -> "..", "http://localhost", "9000"
             | _ -> eprintfn "Usage: JobApplicationSpam ROOT_DIRECTORY URL"; exit 1
 
-        use server = WebApp.Start(url, fun appB ->
+        use server = WebApp.Start(url + ":" + port, fun appB ->
             appB
                 .UseAcmeChallenge()
                 .UseStaticFiles(
@@ -343,6 +352,26 @@ module SelfHostedServer =
                         FileSystem = PhysicalFileSystem(rootDirectory)))
                 .UseSitelet(rootDirectory, Site.main)
             |> ignore)
+        
+        use server1 =
+            if url.StartsWith("localhost") || url.StartsWith("http://localhost")
+            then
+                WebApp.Start(url + ":" + "9001", fun appB ->
+                appB
+                    .UseStaticFiles(
+                        StaticFileOptions(
+                            FileSystem = PhysicalFileSystem(rootDirectory)))
+                    .UseSitelet(rootDirectory, Site.redirectHttpToHttps)
+                |> ignore)
+            else
+                let url = System.Text.RegularExpressions.Regex.Replace(url, "https://", "http://")
+                WebApp.Start(url + ":" + "80", fun appB ->
+                appB
+                    .UseStaticFiles(
+                        StaticFileOptions(
+                            FileSystem = PhysicalFileSystem(rootDirectory)))
+                    .UseSitelet(rootDirectory, Site.redirectHttpToHttps)
+                |> ignore)
         while true do
             System.Threading.Thread.Sleep(60000)
         0

@@ -456,7 +456,7 @@ module Server =
                 try
                     let userEmail = Database.getEmailByUserId userId |> Option.get
                     let employerId = Database.addEmployer dbConn employer userId
-                    if userEmail <> employer.email || true
+                    if userEmail <> employer.email || userEmail = "rene.ederer.nbg@gmail.com"
                     then
                         Database.insertSentApplication
                             dbConn

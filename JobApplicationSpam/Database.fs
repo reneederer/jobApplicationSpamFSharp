@@ -804,7 +804,7 @@ module Database =
         log.Debug(sprintf "(userId = %i, employer = %A)" userId employer)
         let employers =
                 db.Employer
-                  .Where(fun x -> x.Company = employer.company && x.Userid = userId)
+                  .Where(fun x -> (x.Email = employer.email) && x.Userid = userId)
                   .OrderByDescending(fun x -> x.Id)
                 |> List.ofSeq
         log.Debug(sprintf "(userId = %i, employer = %A) = %b" userId employer (employers |> (not << List.isEmpty)))

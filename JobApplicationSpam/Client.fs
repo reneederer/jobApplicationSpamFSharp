@@ -369,6 +369,7 @@ module Client =
               "divAttachments"
               "divUploadedFileDownload"
               "divSentApplications"
+              "divVariables"
             ]
         
         let show (elIds : list<string>) =
@@ -535,7 +536,7 @@ module Client =
                 else
                     let! sentApplication (*TODO this is an option<int> instead of option<SentApplication> as placeholder*) =
                         Server.tryFindSentApplication varEmployer.Value
-                    if sentApplication.IsNone || (sentApplication.IsSome && JS.Confirm("Du hast dich schon einmal bei einer Firma mit diesem Firmennamen beworben.\nBewerbung trotzdem abschicken?"))
+                    if sentApplication.IsNone || (sentApplication.IsSome && JS.Confirm("Du hast dich schon einmal bei dieser Firmen-Email-Adresse beworben.\nBewerbung trotzdem abschicken?"))
                     then
                         let btnLoadFromWebsite = JQuery("#btnLoadFromWebsite")
                         let fontAwesomeEls =
@@ -600,6 +601,7 @@ module Client =
                 } |> Async.Start
             ) |> ignore
             addMenuEntry (t German EditYourValues) (fun _ _ -> show ["divEditUserValues"]) |> ignore
+            addMenuEntry "Variablen" (fun _ _ -> show ["divVariables"]) |> ignore
             addMenuEntry (t German EditEmail) (fun _ _ -> show ["divEmail"]) |> ignore
             addMenuEntry (t German EditAttachments) (fun _ _ -> show ["divAttachments"]) |> ignore
             addMenuEntry (t German AddEmployerAndApply) (fun _ _ -> show ["divAddEmployer"]) |> ignore
@@ -712,6 +714,69 @@ module Client =
               ]
             hr []
             divAttr
+              [ attr.id "divVariables"
+                attr.style "display: none"
+              ]
+              [ h4 [ text "Variablen" ]
+                b [ text "Arbeitgeber" ]
+                br []
+                text "$firmaName"
+                br []
+                text "$firmaStrasse"
+                br []
+                text "$firmaPlz"
+                br []
+                text "$firmaStadt"
+                br []
+                text "$chefAnredeBriefkopf"
+                br []
+                text "$chefAnrede"
+                br []
+                text "$geehrter"
+                br []
+                text "$chefTitel"
+                br []
+                text "$chefVorname"
+                br []
+                text "$chefNachname"
+                br []
+                text "$chefEmail"
+                br []
+                text "$chefTelefon"
+                br []
+                text "$chefMobil"
+                br []
+                hr[]
+                b [text (t German YourValues)]
+                br []
+                text "$meinGeschlecht"
+                br []
+                text "$meinTitel"
+                br []
+                text "$meinVorname"
+                br []
+                text "$meinNachname"
+                br []
+                text "$meineStrasse"
+                br []
+                text "$meinePlz"
+                br []
+                text "$meineStadt"
+                br []
+                text "$meineEmail"
+                br []
+                text "$meinMobilnr"
+                br []
+                text "$meineTelefonnr"
+                br []
+                hr []
+                b [ text "Sonstige" ]
+                br []
+                text "$datumHeute"
+                br []
+                text "$jobName"
+              ]
+            divAttr
               [ attr.id "divAttachments"; attr.style "display: none"
               ]
               [ h4 [ text (t German YourAttachments) ]
@@ -798,7 +863,6 @@ module Client =
               [ attr.id "divUploadedFileDownload"; attr.style "display: none"]
               [ inputAttr
                   [ attr.``type`` "checkbox"
-                    //attr.``checked`` "false"
                     attr.value "false"
                     attr.id "chkReplaceVariables"
                   ]

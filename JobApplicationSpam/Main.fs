@@ -107,6 +107,7 @@ module Site =
     open Client
     open WebSharper.Formlets.Controls
     open WebSharper.Sitelets.Content
+    open Types
 
 
     let homePage (ctx : Context<EndPoint>) =
@@ -191,7 +192,6 @@ module Site =
             let relativeDir = Path.Combine("users", userId.ToString())
             let absoluteDir = Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], relativeDir)
             if not <| Directory.Exists absoluteDir then Directory.CreateDirectory absoluteDir |> ignore
-
             let findFreeFileName file documentId =
 
                 let fileNameWithoutExtension = Path.GetFileNameWithoutExtension(file)
@@ -208,14 +208,17 @@ module Site =
                     else name
                 findFreeFileName' 0
 
-            let maxFileSize = Server.getMaxUploadSize() |> Async.RunSynchronously
             ctx.Request.Files
             |> Seq.iter
                 (fun (x : HttpPostedFileBase) ->
-                    if x.FileName <> "" && x.ContentLength < maxFileSize
+                    if     x.FileName <> ""
+                        && x.ContentLength < maxUploadSize
+                        && List.contains (Path.GetExtension(x.FileName).Substring(1)) supportedUnoconvFileTypes
                     then
                         let (filePath, name) =
-                            let filesWithSameExtension = Server.getFilesWithSameExtension x.FileName userId |> Async.RunSynchronously
+                            let filesWithSameExtension =
+                                Server.getFilesWithSameExtension x.FileName userId
+                                |> Async.RunSynchronously
                             let oSameFile =
                                 filesWithSameExtension
                                 |> Seq.tryFind

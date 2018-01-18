@@ -8,7 +8,6 @@ module Odt =
     open PdfSharp.Pdf.IO
     open System.Text.RegularExpressions
     open Types
-    open NUnit.Framework.Constraints
 
     let private log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().GetType())
 

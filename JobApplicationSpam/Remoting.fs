@@ -10,10 +10,11 @@ open Website
 open System.Security.Cryptography
 open System.Text.RegularExpressions
 open System.Linq
+open Translation
+open Phrases
 
 
 module Server =
-    open Deutsch
     open System.Web
     open System.Net.Mail
     open System.IO
@@ -23,11 +24,6 @@ module Server =
 
     let log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().GetType())
 
-    [<Remote>]
-    let getMaxUploadSize () =
-        async {
-            return 5000000
-        }
 
     [<Remote>]
     let getEmailByUserId userId =
@@ -53,26 +49,6 @@ module Server =
             >> Option.bind (fun (parsed, v) -> if parsed then Some v else None)
         )
     
-    [<Remote>]
-    let getLanguageDict language : Async<list<Word * string>>=
-        async {
-            return
-                match language with
-                | English ->
-                    English.dict
-                | Deutsch ->
-                    Deutsch.dict
-                | _ ->
-                    English.dict
-        }
-    
-    [<Remote>]
-    let getAvailableLanguages =
-        async {
-            return Directory.EnumerateFiles("Internationalization") |> List.ofSeq
-        }
-
-
     [<Remote>]
     let getCurrentUserEmail () =
         let oUserId = getCurrentUserId() |> Async.RunSynchronously
@@ -195,14 +171,13 @@ module Server =
                         let salt = generateSalt(64)
                         let hashedPassword = generateHash password salt 1000 64
                         let guid = Guid.NewGuid().ToString("N")
-                        let dict = Deutsch.dict |> Map.ofList
                         Database.insertNewUser dbConn email hashedPassword salt guid |> ignore
                         sendEmail
                             ConfigurationManager.AppSettings.["emailUsername"]
                             ConfigurationManager.AppSettings.["domainName"]
                             email
-                            dict.[PleaseConfirmYourEmailAddressEmailSubject]
-                            (String.Format(dict.[PleaseConfirmYourEmailAddressEmailBody], email, guid))
+                            (t German PleaseConfirmYourEmailAddressEmailSubject)
+                            (String.Format(t German PleaseConfirmYourEmailAddressEmailBody, email, guid))
                             []
                         return ok "Please confirm your email"
             with
@@ -395,7 +370,6 @@ module Server =
 
         | None -> async { return "" }
          
-
     [<Remote>]
     let emailSentApplicationToUser (sentApplicationOffset : int) =
         let oUserId = getCurrentUserId() |> Async.RunSynchronously

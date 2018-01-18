@@ -14,20 +14,15 @@ module Client =
     open System
     open WebSharper.UI.Next.Client.HtmlExtensions
     open WebSharper.UI.V
-
-    [<JavaScript>]
-    let varLanguageDict = Var.Create<Map<Word, string>>(Deutsch.dict |> Map.ofList)
-
-    [<JavaScript>]
-    let t (w : Word) =
-        varLanguageDict.Value.[w]
+    open Phrases
+    open Translation
 
     [<JavaScript>]
     let login () =
         div
           [ formAttr
               [ attr.action "/login"; attr.method "POST" ]
-              [ h4 [text (t Login) ]
+              [ h4 [text (t German Login) ]
                 divAttr
                   [ attr.``class`` "form-group" ]
                   [ labelAttr
@@ -43,7 +38,10 @@ module Client =
                       [ attr.``for`` "txtLoginPassword" ] 
                       [text "Password"]
                     inputAttr
-                      [ attr.``type`` "password"; attr.``class`` "form-control"; attr.name "txtLoginPassword"; attr.id "txtLoginPassword" ]
+                      [ attr.``type`` "password"
+                        attr.``class`` "form-control"
+                        attr.name "txtLoginPassword"
+                        attr.id "txtLoginPassword" ]
                       []
                   ]
                 inputAttr
@@ -116,9 +114,9 @@ module Client =
                           [ attr.style "border-spacing: 10px; border-collapse: separate" ]
                           [ thead
                               [ tr
-                                  [ th [ text (t CompanyName) ]
-                                    th [ text (t AppliedOnDate) ]
-                                    th [ text (t AppliedAs) ]
+                                  [ th [ text (t German CompanyName) ]
+                                    th [ text (t German AppliedOnDate) ]
+                                    th [ text (t German AppliedAs) ]
                                     th [ text "an dich mailen" ]
                                   ]
                               ]
@@ -420,7 +418,7 @@ module Client =
                         JQuery("""<button class="distanced"><i class="fa fa-trash" aria-hidden="true"></i></button>""").On(
                             "click"
                           , (fun _ _ ->
-                                if JS.Confirm(String.Format(t ReallyDeletePage, page.Name()))
+                                if JS.Confirm(String.Format(t German ReallyDeletePage, page.Name()))
                                 then
                                     varDocument.Value <-
                                         { varDocument.Value
@@ -541,10 +539,10 @@ module Client =
                 let regex = RegExp(emailRegexStr)
                 if not <| regex?test(employerEmail.Value)
                 then
-                    JS.Alert(t TheEmailOfYourEmployerDoesNotLookValid)
+                    JS.Alert(t German TheEmailOfYourEmployerDoesNotLookValid)
                 elif documentJobName.Value.Trim() = ""
                 then
-                    JS.Alert(String.Format(t FieldIsRequired, (t JobName)))
+                    JS.Alert(String.Format(t German FieldIsRequired, (t German JobName)))
                 else
                     let! sentApplication (*TODO this is an option<int> instead of option<SentApplication> as placeholder*) =
                         Server.tryFindSentApplication varEmployer.Value
@@ -579,7 +577,7 @@ module Client =
                         match applyResult with
                         | Bad xs ->
                             do! Async.Sleep 700
-                            JS.Alert(t SorryAnErrorOccurred + "\n" + t YourApplicationHasNotBeenSent)
+                            JS.Alert(t German SorryAnErrorOccurred + "\n" + t German YourApplicationHasNotBeenSent)
                         | Ok _ ->
                             fontAwesomeEls
                             |> List.iter (fun faEl ->
@@ -599,12 +597,6 @@ module Client =
             }
             
         async {
-            (*
-            setLanguage Deutsch
-            let! dict = Server.getLanguageDict (Language.fromString(getCookie "language" |> Option.defaultValue "english"))
-            *)
-            varLanguageDict.Value <- (Deutsch.dict |> Map.ofList)
-
             let divMenu = JS.Document.GetElementById("divSidebarMenu")
             while divMenu = null do
                 do! Async.Sleep 10
@@ -612,16 +604,16 @@ module Client =
                 let li = JQuery(sprintf """<li><button class="btnLikeLink1">%s</button></li>""" entry).On("click", f)
                 JQuery(divMenu).Append(li)
 
-            addMenuEntry (t SentApplications) (fun _ _ ->
+            addMenuEntry (t German SentApplications) (fun _ _ ->
                 async {
                     do! getSentApplications()
                     show ["divSentApplications"]
                 } |> Async.Start
             ) |> ignore
-            addMenuEntry (t EditYourValues) (fun _ _ -> show ["divEditUserValues"]) |> ignore
-            addMenuEntry (t EditEmail) (fun _ _ -> show ["divEmail"]) |> ignore
-            addMenuEntry (t EditAttachments) (fun _ _ -> show ["divAttachments"]) |> ignore
-            addMenuEntry (t AddEmployerAndApply) (fun _ _ -> show ["divAddEmployer"]) |> ignore
+            addMenuEntry (t German EditYourValues) (fun _ _ -> show ["divEditUserValues"]) |> ignore
+            addMenuEntry (t German EditEmail) (fun _ _ -> show ["divEmail"]) |> ignore
+            addMenuEntry (t German EditAttachments) (fun _ _ -> show ["divAttachments"]) |> ignore
+            addMenuEntry (t German AddEmployerAndApply) (fun _ _ -> show ["divAddEmployer"]) |> ignore
 
             let! oUserEmail = Server.getCurrentUserEmail()
             varUserEmail.Value <- oUserEmail |> Option.defaultValue ""
@@ -673,7 +665,7 @@ module Client =
           [ divAttr
               [ attr.style "width : 100%"
               ]
-              [ h4 [text (t YourApplicationDocuments)]
+              [ h4 [text (t German YourApplicationDocuments)]
                 selectAttr
                   [ attr.id "slctDocumentName";
                     on.change
@@ -705,7 +697,7 @@ module Client =
                     on.click(fun el _ ->
                         async {
                             let slctEl = JS.Document.GetElementById("slctDocumentName")
-                            if slctEl?selectedIndex >= 0 && JS.Confirm(String.Format(t ReallyDeleteDocument, varDocument.Value.name))
+                            if slctEl?selectedIndex >= 0 && JS.Confirm(String.Format(t German ReallyDeleteDocument, varDocument.Value.name))
                             then
                                 do! Server.deleteDocument varDocument.Value.id
                                 let slctEl = JS.Document.GetElementById("slctDocumentName")
@@ -733,7 +725,7 @@ module Client =
             divAttr
               [ attr.id "divAttachments"; attr.style "display: none"
               ]
-              [ h4 [ text (t YourAttachments) ]
+              [ h4 [ text (t German YourAttachments) ]
                 divAttr
                   [ attr.id "divAttachmentButtons"
                   ]
@@ -761,11 +753,11 @@ module Client =
             divAttr
               [ attr.id "divAddDocument"; attr.style "display: none" ]
               [ br []
-                h4 [ text (t AddDocument)]
+                h4 [ text (t German AddDocument)]
                 br []
                 labelAttr
                   [ attr.``for`` "txtNewDocumentName" ]
-                  [ text <| t DocumentName ]
+                  [ text <| t German DocumentName ]
                 inputAttr
                   [ attr.id "txtNewDocumentName"
                     attr.``class`` "form-control"
@@ -774,13 +766,13 @@ module Client =
                 inputAttr
                   [ attr.``type`` "button"
                     attr.``class`` "btnLikeLink"
-                    attr.value (t AddDocument)
+                    attr.value (t German AddDocument)
                     on.click (fun _ _ ->
                         async {
                             let newDocumentName = JS.Document.GetElementById("txtNewDocumentName")?value |> string
                             if newDocumentName.Trim() = ""
                             then
-                                JS.Alert(String.Format(t FieldIsRequired, t DocumentName))
+                                JS.Alert(String.Format(t German FieldIsRequired, t German DocumentName))
                             else
                                 varDocument.Value <- { varDocument.Value with name = newDocumentName }
                                 let! newDocumentId = Server.saveNewDocument varDocument.Value
@@ -824,7 +816,7 @@ module Client =
                   []
                 labelAttr
                   [ attr.``for`` "chkReplaceVariables" ]
-                  [ text (t ReplaceVariables)
+                  [ text (t German ReplaceVariables)
                   ]
                 br []
                 buttonAttr
@@ -852,14 +844,14 @@ module Client =
                                 | None -> ()
                         )
                   ]
-                  [ text (t Download)
+                  [ text (t German Download)
                   ]
               ]
             divAttr
               [ attr.id "divEmail"; attr.style "display: none"]
-              [ h4 [text (t Email) ]
-                createInput (t EmailSubject) documentEmailSubject (fun s -> "")
-                (createTextArea (t EmailBody) documentEmailBody "400px")
+              [ h4 [text (t German Email) ]
+                createInput (t German EmailSubject) documentEmailSubject (fun s -> "")
+                (createTextArea (t German EmailBody) documentEmailBody "400px")
               ]
             divAttr
               [ attr.id "divChoosePageType"; attr.style "display: none" ]
@@ -873,7 +865,7 @@ module Client =
                 labelAttr
                   [ attr.``for`` "rbHtmlPage"
                   ]
-                  [ text (t CreateOnline) ]
+                  [ text (t German CreateOnline) ]
                 br []
                 inputAttr
                   [ attr.``type`` "radio"; attr.id "rbFilePage"; attr.name "rbgrpPageType";
@@ -885,7 +877,7 @@ module Client =
                   []
                 labelAttr
                   [ attr.``for`` "rbFilePage" ]
-                  [ text (t UploadFile)]
+                  [ text (t German UploadFile)]
                 br []
                 br []
               ]
@@ -918,25 +910,30 @@ module Client =
                         } |> Async.Start
                       )
                   ]
-                  [text (t AddHtmlAttachment)]
+                  [text (t German AddHtmlAttachment)]
               ]
             divAttr
               [ attr.id "divCreateFilePage"; attr.style "display: none" ]
               [ formAttr
                   [ attr.method "POST"; attr.action "upload"; attr.enctype "multipart/form-data"
                   ]
-                  [ text (t PleaseChooseAFile)
+                  [ text (t German PleaseChooseAFile)
                     br []
                     inputAttr
                       [ attr.``type`` "file"
                         attr.name "myFile"
                         attr.id "myFile"
-                        on.change(fun el _ ->
+                        on.change (fun el _ ->
                             async {
-                                let! maxUploadSize = Server.getMaxUploadSize ()
+                                let file = (el?files)?item(0)
+                                let fileName = file?name |> string
+                                let fileExtension = fileName.Substring(fileName.LastIndexOf(".") + 1)
                                 if (el?files)?item(0)?size > maxUploadSize
                                 then
-                                    JS.Alert(t FileIsTooBig + "\n" + String.Format(t UploadLimit, (maxUploadSize / 1000000) |> string))
+                                    JS.Alert(t German FileIsTooBig + "\n" + String.Format(t German UploadLimit, (maxUploadSize / 1000000) |> string))
+                                elif not (supportedUnoconvFileTypes |> List.contains fileExtension)
+                                then
+                                    JS.Alert(String.Format("Entschuldigung.\n*.{0} Dateien können zur Zeit nicht ins PDF-Format verwandelt werden.\nTypische Dateitypen zum Uploaden sind *.odt, *.docx und *.pdf.", fileExtension))
                                 else
                                     el.ParentElement?submit()
                             } |> Async.Start
@@ -948,8 +945,8 @@ module Client =
                   ]
                 br []
                 br []
-                h4 [ text (t YouMightWantToReplaceSomeWordsInYourFileWithVariables) ]
-                text <| t VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication
+                h4 [ text (t German YouMightWantToReplaceSomeWordsInYourFileWithVariables) ]
+                text <| t German VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication
                 br []
                 br []
                 text "$firmaName"
@@ -1010,27 +1007,27 @@ module Client =
               ]
             divAttr
               [ attr.id "divEditUserValues"; attr.style "display: none" ]
-              [ h4 [ text (t YourValues) ]
-                createInput (t Degree) userDegree (fun s -> "")
+              [ h4 [ text (t German YourValues) ]
+                createInput (t German Degree) userDegree (fun s -> "")
                 createRadio
-                  (t Gender)
-                  [ (t Male), Gender.Male, userGender, ""
-                    (t Female), Gender.Female, userGender, ""
+                  (t German Gender)
+                  [ (t German Male), Gender.Male, userGender, ""
+                    (t German Female), Gender.Female, userGender, ""
                   ]
-                createInput (t FirstName) userFirstName (fun s -> "")
-                createInput (t LastName) userLastName (fun s -> "")
-                createInput (t Street) userStreet (fun s -> "")
-                createInput (t Postcode) userPostcode (fun s -> "")
-                createInput (t City) userCity (fun s -> "")
-                createInput (t Phone) userPhone (fun s -> "")
-                createInput (t MobilePhone) userMobilePhone (fun s -> "")
+                createInput (t German FirstName) userFirstName (fun s -> "")
+                createInput (t German LastName) userLastName (fun s -> "")
+                createInput (t German Street) userStreet (fun s -> "")
+                createInput (t German Postcode) userPostcode (fun s -> "")
+                createInput (t German City) userCity (fun s -> "")
+                createInput (t German Phone) userPhone (fun s -> "")
+                createInput (t German MobilePhone) userMobilePhone (fun s -> "")
               ]
             divAttr
               [ attr.id "divAddEmployer"
                 attr.style "display: none"
               ]
-              [ createInput (t JobName) documentJobName (fun s -> "")
-                h4 [text (t Employer)]
+              [ createInput (t German JobName) documentJobName (fun s -> "")
+                h4 [text (t German Employer)]
                 divAttr
                   [ attr.``class`` "form-group row" ]
                   [ divAttr
@@ -1050,7 +1047,7 @@ module Client =
                                 attr.style "color: black; margin-right: 10px; visibility: hidden"
                               ]
                               []
-                            text <| t LoadFromWebsite
+                            text <| t German LoadFromWebsite
                           ]
                     ]
                     divAttr
@@ -1089,26 +1086,26 @@ module Client =
                                 attr.style "color: #08a81b; margin-right: 10px"
                               ]
                               []
-                            text <| t ApplyNow
+                            text <| t German ApplyNow
                           ]
                       ]
                   ]
-                createInput (t CompanyName) employerCompany (fun (s : string) -> "")
-                createInput (t Street) employerStreet (fun (s : string) -> "")
-                createInput (t Postcode) employerPostcode (fun (s : string) -> "")
-                createInput (t City) employerCity (fun (s : string) -> "")
+                createInput (t German CompanyName) employerCompany (fun (s : string) -> "")
+                createInput (t German Street) employerStreet (fun (s : string) -> "")
+                createInput (t German Postcode) employerPostcode (fun (s : string) -> "")
+                createInput (t German City) employerCity (fun (s : string) -> "")
                 createRadio
-                    (t Gender)
-                    [ (t Male), Gender.Male, employerGender, ""
-                      (t Female), Gender.Female, employerGender, ""
-                      (t UnknownGender), Gender.Unknown, employerGender, "checked"
+                    (t German Gender)
+                    [ (t German Male), Gender.Male, employerGender, ""
+                      (t German Female), Gender.Female, employerGender, ""
+                      (t German UnknownGender), Gender.Unknown, employerGender, "checked"
                     ]
-                createInput (t Degree) employerDegree (fun s -> "")
-                createInput (t FirstName) employerFirstName (fun s -> "")
-                createInput (t LastName) employerLastName (fun (s : string) -> "")
-                createInput (t Email) employerEmail (fun (s : string) -> "")
-                createInput (t Phone) employerPhone (fun s -> "")
-                createInput (t MobilePhone) employerMobilePhone (fun s -> "")
+                createInput (t German Degree) employerDegree (fun s -> "")
+                createInput (t German FirstName) employerFirstName (fun s -> "")
+                createInput (t German LastName) employerLastName (fun (s : string) -> "")
+                createInput (t German Email) employerEmail (fun (s : string) -> "")
+                createInput (t German Phone) employerPhone (fun s -> "")
+                createInput (t German MobilePhone) employerMobilePhone (fun s -> "")
                 buttonAttr
                   [ attr.``type`` "button"
                     attr.``class`` "btnLikeLink btn-block"
@@ -1124,7 +1121,7 @@ module Client =
                         attr.style "color: #08a81b; margin-right: 10px"
                       ]
                       []
-                    text <| t ApplyNow
+                    text <| t German ApplyNow
                   ]
               ]
           ]

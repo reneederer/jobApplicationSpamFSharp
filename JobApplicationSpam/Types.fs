@@ -1,20 +1,17 @@
 ﻿namespace JobApplicationSpam
 module Types =
     open WebSharper.UI.Next
-    open WebSharper.Sitelets
-    open log4net
-    open log4net.Core
-    open WebSharper.Core.ContentTypes.Text
+    open WebSharper
     open System
 
     type EmptyTextTagAction =
     | Replace
     | Ignore
 
-    [<WebSharper.JavaScript>]
+    [<JavaScript>]
     let newLine = string (char 13)
 
-    [<WebSharper.JavaScript>]
+    [<JavaScript>]
     type Gender =
     | Male
     | Female
@@ -32,14 +29,14 @@ module Types =
             | "u" -> Gender.Unknown
             | x -> failwith ("Failed to convert string to gender: " + x)
 
-    [<WebSharper.JavaScript>]
+    [<JavaScript>]
     type Login =
         { email : string
           password : string
         }
 
 
-    [<WebSharper.JavaScript>]
+    [<JavaScript>]
     type UserValues =
         { gender : Gender
           degree : string
@@ -53,7 +50,7 @@ module Types =
         }
     
 
-    [<WebSharper.JavaScript>]
+    [<JavaScript>]
     type Employer =
         { company : string
           street : string
@@ -69,7 +66,7 @@ module Types =
         }
     
 
-    [<WebSharper.JavaScript>]
+    [<JavaScript>]
     type JobApplicationPageAction =
     | Upload
     | Create
@@ -82,7 +79,7 @@ module Types =
             | UseCreated -> "UseCreated"
      
 
-    [<WebSharper.JavaScript>]
+    [<JavaScript>]
     type HtmlPage =
         { name : string
           oTemplateId : option<int>
@@ -90,14 +87,14 @@ module Types =
           map : list<string * string>
         }
     
-    [<WebSharper.JavaScript>]
+    [<JavaScript>]
     type FilePage =
         { name : string
           path : string
           pageIndex : int
         }
 
-    [<WebSharper.JavaScript>] 
+    [<JavaScript>] 
     type DocumentPage =
     | HtmlPage of HtmlPage
     | FilePage of FilePage
@@ -115,13 +112,13 @@ module Types =
             | HtmlPage htmlPage -> HtmlPage { htmlPage with pageIndex = newIndex }
             | FilePage filePage -> FilePage { filePage with pageIndex = newIndex }
 
-    [<WebSharper.JavaScript>]
+    [<JavaScript>]
     type DocumentEmail =
         { subject : string
           body : string
         }
 
-    [<WebSharper.JavaScript>]
+    [<JavaScript>]
     type Document =
         { id : int
           name : string
@@ -130,34 +127,19 @@ module Types =
           jobName : string
         }
 
-    [<WebSharper.JavaScript>]
+    [<JavaScript>]
     type HtmlPageTemplate =
         { html : string
           name : string
           id : int
         }
 
-    [<WebSharper.JavaScript>]
+    [<JavaScript>]
     type PageDB =
         { name : string
         ; oTemplateId : option<int>
         }
     
-    [<WebSharper.JavaScript>]
-    type Language =
-    | English
-    | Deutsch
-    with
-        static member fromString(s:string) =
-            match s.ToLower() with
-            | "english" -> English
-            | "deutsch" -> Deutsch
-            | _ -> English
-        override this.ToString() =
-            match this with
-            | English -> "english"
-            | Deutsch -> "deutsch"
-
 
 
     type SentApplication =
@@ -170,7 +152,7 @@ module Types =
           filePages : list<string * int>
         }
 
-    [<WebSharper.JavaScript>]
+    [<JavaScript>]
     let emptyUserValues =
         { gender = Gender.Unknown
           degree = ""
@@ -183,7 +165,7 @@ module Types =
           mobilePhone = ""
         }
 
-    [<WebSharper.JavaScript>]
+    [<JavaScript>]
     let emptyEmployer =
         { company = ""
           gender = Gender.Unknown
@@ -199,7 +181,7 @@ module Types =
         }
 
 
-    [<WebSharper.JavaScript>]
+    [<JavaScript>]
     let emptyDocument =
         { id=0
           name=""
@@ -217,60 +199,14 @@ module Types =
         | TextBinding of IRef<string>
         | GenderBinding of IRef<Gender>
     
+    [<JavaScript>]
+    let supportedUnoconvFileTypes =
+        ["bib"; "doc"; "doc6"; "doc95"; "docbook"; "docx"; "docx7"; "fodt"; "html"; "latex"; "mediawiki"; "odt"; "ooxml"; "ott"; "pdb"; "pdf"; "psw"; "rtf"; "sdw"; "sdw4"; "sdw3"; "stw"; "sxw"; "text"; "txt"; "uot"; "vor"; "vor4"; "vor3"; "wps"; "xhtml"; "emf"; "eps"; "fodg"; "gif"; "html"; "jpg"; "met"; "odd"; "otg"; "pbm"; "pct"; "pdf"; "pgm"; "png"; "ppm"; "ras"; "std"; "svg"; "svm"; "swf"; "sxd"; "sxd3"; "sxd5"; "sxw"; "tiff"; "vor"; "vor3"; "wmf"; "xhtml"; "xpm"; "emf"; "eps"; "fodp"; "gif"; "html"; "jpg"; "met"; "odg"; "odp"; "otp"; "pbm"; "pct"; "pdf"; "pgm"; "png"; "potm"; "pot"; "ppm"; "pptx"; "pps"; "ppt"; "pwp"; "ras"; "sda"; "sdd"; "sdd3"; "sdd4"; "sxd"; "sti"; "svg"; "svm"; "swf"; "sxi"; "tiff"; "uop"; "vor"; "vor3"; "vor4"; "vor5"; "wmf"; "xhtml"; "xpm"; "csv"; "dbf"; "dif"; "fods"; "html"; "ods"; "ooxml"; "ots"; "pdf"; "pxl"; "sdc"; "sdc4"; "sdc3"; "slk"; "stc"; "sxc"; "uos"; "vor3"; "vor4"; "vor"; "xhtml"; "xls"; "xls5"; "xls95"; "xlt"; "xlt5"; "xlt95"; "xlsx"]
 
-    [<WebSharper.JavaScript>]
-    type Word =
-        | AddEmployerAndApply
-        | EditYourValues
-        | EditEmail
-        | EditAttachments
-        | YourApplicationDocuments
-        | LoadFromWebsite
-        | ApplyNow
-        | CompanyName
-        | Street
-        | Postcode
-        | City
-        | Gender
-        | Degree
-        | FirstName
-        | LastName
-        | Email
-        | Phone
-        | MobilePhone
-        | YourValues
-        | EmailSubject
-        | EmailBody
-        | YourAttachments
-        | CreateOnline
-        | UploadFile
-        | PleaseChooseAFile
-        | AddAttachment
-        | YouMightWantToReplaceSomeWordsInYourFileWithVariables
-        | VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication
-        | Employer
-        | Male
-        | Female
-        | UnknownGender
-        | AddDocument
-        | DocumentName
-        | AddHtmlAttachment
-        | Download
-        | ReallyDeleteDocument
-        | ReallyDeletePage
-        | WeHaveSentYouAnEmail
-        | PleaseConfirmYourEmailAddressEmailSubject
-        | PleaseConfirmYourEmailAddressEmailBody
-        | Login
-        | Register
-        | SentApplications
-        | JobName
-        | AppliedAs
-        | AppliedOnDate
-        | TheEmailOfYourEmployerDoesNotLookValid
-        | FieldIsRequired
-        | SorryAnErrorOccurred
-        | YourApplicationHasNotBeenSent
-        | FileIsTooBig
-        | UploadLimit
-        | ReplaceVariables
+    [<JavaScript>]
+    let maxUploadSize =
+        5000000 // 5 MB
+
+
+
+

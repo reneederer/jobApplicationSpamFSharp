@@ -10,7 +10,6 @@ open Chessie.ErrorHandling
 type EndPoint =
     | [<EndPoint "/">] Home
     | [<EndPoint "/login">] Login
-    | [<EndPoint "/register">] Register
     | [<EndPoint "/showsentjobapplications">] ShowSentJobApplications
     | [<EndPoint "/about">] About
     | [<EndPoint "/confirmemail">] ConfirmEmail
@@ -35,7 +34,6 @@ module Templating =
             li ["Upload" => EndPoint.UploadTemplate]
             li ["Add employer" => EndPoint.AddEmployer]
             li ["Apply now" => EndPoint.ApplyNow]
-            li ["Register" => EndPoint.Register]
             li ["Login" => EndPoint.Login ]
             li ["About" => EndPoint.About]
             li ["ShowSentJobApplications" => EndPoint.ShowSentJobApplications]
@@ -160,13 +158,6 @@ module Site =
             ]
     
 
-    let registerPage (ctx : Context<EndPoint>) =
-        Templating.main ctx EndPoint.Register "Register" [
-            h1 [text "Register"]
-            //client <@ Client.register () @>
-        ]
-
-
     let showSentJobApplications ctx =
         Templating.main ctx EndPoint.About "About" [
             h1 [text "About"]
@@ -215,9 +206,23 @@ module Site =
                         && x.ContentLength < maxUploadSize
                         && List.contains (Path.GetExtension(x.FileName).Substring(1)) supportedUnoconvFileTypes
                     then
+                        let convertedFilePath, hasBeenConverted =
+                            if List.contains (Path.GetExtension(x.FileName).Substring(1)) convertibleToOdtFormats
+                            then
+                                let tmpFilePath =
+                                    Path.Combine(
+                                          ConfigurationManager.AppSettings.["dataDirectory"]
+                                        , "tmp"
+                                        , Guid.NewGuid().ToString()
+                                        , x.FileName)
+                                Directory.CreateDirectory(Path.GetDirectoryName(tmpFilePath)) |> ignore
+                                x.SaveAs(tmpFilePath)
+                                Server.convertToOdt tmpFilePath |> Async.RunSynchronously, true
+                            else x.FileName, false
+
                         let (filePath, name) =
                             let filesWithSameExtension =
-                                Server.getFilesWithSameExtension x.FileName userId
+                                Server.getFilesWithSameExtension convertedFilePath userId
                                 |> Async.RunSynchronously
                             let oSameFile =
                                 filesWithSameExtension
@@ -228,26 +233,35 @@ module Site =
                                                 (Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], file)
                                                 , FileMode.Open
                                                 , FileAccess.Read)
-                                        Odt.areStreamsEqual x.InputStream fileStream
+                                        if hasBeenConverted
+                                        then
+                                            let uploadedFileStream = 
+                                                new FileStream(convertedFilePath
+                                                  , FileMode.Open
+                                                  , FileAccess.Read)
+                                            Odt.areStreamsEqual uploadedFileStream fileStream
+                                        else
+                                            Odt.areStreamsEqual x.InputStream fileStream
                                     )
                             match oSameFile with
                             | Some file ->
                                 (file, findFreeFileName file documentId)
                             | None ->
                                 let fileName =
-                                    if File.Exists(Path.Combine(absoluteDir, x.FileName))
-                                    then findFreeFileName x.FileName documentId
-                                    else x.FileName
-                                x.SaveAs(Path.Combine(absoluteDir, fileName))
-                                (Path.Combine(relativeDir, fileName), fileName)
-                        try
-                            async {
-                                do! Server.addFilePage documentId filePath pageIndex name
-                                do! Server.setLastEditedDocumentId userId documentId
-                            } |> Async.RunSynchronously
-                        with
-                        | e ->
-                            reraise()
+                                    if File.Exists(Path.Combine(absoluteDir, convertedFilePath))
+                                    then findFreeFileName convertedFilePath documentId
+                                    else convertedFilePath
+                                if hasBeenConverted
+                                then
+                                    File.Move(convertedFilePath, Path.Combine(absoluteDir, fileName))
+                                    Path.Combine(relativeDir, fileName), fileName
+                                else
+                                    x.SaveAs(Path.Combine(absoluteDir, fileName))
+                                    (Path.Combine(relativeDir, fileName), fileName)
+                        async {
+                            do! Server.addFilePage documentId filePath pageIndex name
+                            do! Server.setLastEditedDocumentId userId documentId
+                        } |> Async.RunSynchronously
                 )
         | _ -> ()
         Content.RedirectPermanentToUrl "/"
@@ -288,7 +302,7 @@ module Site =
             match oFilePathAndName with
             | None -> return Content.NotFound
             | Some (filePath, name) ->
-                let file = FileInfo(filePath)
+                let file = FileInfo(Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], filePath))
                 return
                     if file.Exists then
                         Content.File(file.FullName, true, "application/pdf")
@@ -306,8 +320,6 @@ module Site =
             match (ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously, endpoint) with
             | Some _, EndPoint.Home -> templatesPage ctx
             | Some _, EndPoint.ShowSentJobApplications -> showSentJobApplications ctx
-            | Some _, EndPoint.Register -> registerPage ctx
-            | None, EndPoint.Register -> registerPage ctx
             | Some _, EndPoint.About -> aboutPage ctx
             | Some _, EndPoint.Upload -> uploadPage ctx
             | Some _, EndPoint.ConfirmEmail -> confirmEmailPage ctx
@@ -323,18 +335,16 @@ module Site =
         Application.MultiPage (fun (ctx : Context<EndPoint>) endpoint ->
             Content.RedirectPermanentToUrl "https://www.bewerbungsspam.de"
         )
-        
 
 
-        
 module SelfHostedServer =
-
     open global.Owin
     open Microsoft.Owin.Hosting
     open Microsoft.Owin.StaticFiles
     open Microsoft.Owin.FileSystems
     open WebSharper.Owin
     open LetsEncrypt.Owin
+    open JobApplicationSpam
 
     [<EntryPoint>]
     let main args =

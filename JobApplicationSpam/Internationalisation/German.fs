@@ -32,7 +32,7 @@ module German =
         | PleaseChooseAFile -> "Bitte eine Datei aussuchen"
         | AddAttachment -> "Anhang hinzufügen"
         | YouMightWantToReplaceSomeWordsInYourFileWithVariables -> "Du kannst Worte oder Phrasen in deiner Datei durch Variablen ersetzen."
-        | VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication -> "Jedesmal, wenn du eine Bewerbung versendest, werden die Variablen automatisch durch die richtigen Werte ersetzt. Der Datei-Typ muss dafür *.odt, *.docx oder ein einfaches Textformat wie *.txt oder *.csv sein."
+        | VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication -> "Jedesmal, wenn du eine Bewerbung versendest, werden die Variablen automatisch durch die richtigen Werte ersetzt."
         | Male -> "männlich"
         | Female -> "weiblich"
         | UnknownGender -> "unbekannt"

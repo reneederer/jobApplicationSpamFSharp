@@ -130,7 +130,7 @@ module Client =
                                             | Bad _ -> JS.Alert("Entschuldigung, es trat ein Fehler auf")
                                         } |> Async.Start
 
-                                for (company, jobName, appliedOn, url) in sentApplications do
+                                for (company, jobName, (appliedOn : DateTime), url) in sentApplications do
                                    yield!
                                      [ tr
                                          [ td
@@ -159,101 +159,90 @@ module Client =
         
 
 
-        let createInputWithColumnSizes1 column1Size column2Size labelText (ref : IRef<string>) (validFun : string -> string) =
+        let createInput labelText (ref : IRef<string>) (validFun : string -> string) =
           let guid = Guid.NewGuid().ToString("N")
           divAttr
-            [attr.``class`` "form-group row"]
+            [ attr.``class`` "form-group bottom-distanced"]
             [ labelAttr
-                [ attr.``class`` (column1Size + " col-form-label"); attr.``for`` guid ]
+                [ attr.``for`` guid
+                  attr.style "font-weight: bold"
+                ]
                 [ text labelText ]
-              divAttr
-                [ attr.``class`` column2Size]
-                [ Doc.Input
-                    [ attr.id guid
-                      attr.``class`` "form-control"
-                      attr.``type`` "text"
-                      on.blur (fun el _ ->
-                        let validResult = validFun el?value
-                        ()
-                        (*
-                        if valid
-                        then
-                            JQuery(el).RemoveClass("is-invalid") |> ignore
-                            JQuery(el).AddClass("is-valid") |> ignore
-                            JQuery(el).Parent().Next().Hide() |> ignore
-                        else
-                            JQuery(el).RemoveClass("is-valid") |> ignore
-                            JQuery(el).AddClass("is-invalid") |> ignore
-                            JQuery(el).Parent().Next().Toggle(true) |> ignore
-                            JQuery(el).Parent().Next().First().Html(textInvalid) |> ignore
-                            *)
-                      )
+              Doc.Input
+                [ attr.id guid
+                  attr.``class`` "form-control"
+                  attr.``type`` "text"
+                  on.blur (fun el _ ->
+                    let validResult = validFun el?value
+                    ()
+                    (*
+                    if valid
+                    then
+                        JQuery(el).RemoveClass("is-invalid") |> ignore
+                        JQuery(el).AddClass("is-valid") |> ignore
+                        JQuery(el).Parent().Next().Hide() |> ignore
+                    else
+                        JQuery(el).RemoveClass("is-valid") |> ignore
+                        JQuery(el).AddClass("is-invalid") |> ignore
+                        JQuery(el).Parent().Next().Toggle(true) |> ignore
+                        JQuery(el).Parent().Next().First().Html(textInvalid) |> ignore
+                        *)
+                  )
 
-                    ]
-                    ref
                 ]
-              divAttr
-                [ attr.``class`` column1Size
-                  attr.style "display: none"
-                ]
-                [ smallAttr
-                    [ attr.``class`` "text-danger"
-                    ]
-                    [ text "Must be 8-20 characters" ]
-                ]
+                ref
             ]
 
+        let createInputWithPlaceholder (placeholder : string) labelText (ref : IRef<string>) (validFun : string -> string) =
+            let d = createInput labelText ref validFun
+            d.Dom.ChildNodes.[1]?placeholder <- placeholder
+            d
 
-        let createRadioWithColumnSizes1 column1Size column2Size (labelText : string) (radioValuesList : list<string * 'a * (IRef<'a>) * string>) =
+
+        let createRadio (labelText : string) (radioValuesList : list<string * 'a * (IRef<'a>) * string>) =
           let radioGroup = Guid.NewGuid().ToString("N")    
-          div
+          divAttr
+            [attr.``class`` "bottom-distanced"]
+            ([ labelAttr
+                 [ attr.style "font-weight: bold" ]
+                 [ text labelText ]
+             ]
+            @
             (radioValuesList |> List.mapi (fun i (radioText, value, ref, ``checked``) ->
                 let guid = Guid.NewGuid().ToString("N")
                 divAttr
-                  [attr.``class`` "form-group row"]
-                  [ labelAttr
-                       [attr.``class`` (column1Size + " col-form-label")]
-                       [text (if i = 0 then labelText else "")]
-                    divAttr
-                      [ attr.``class`` column2Size
+                  [ attr.``class`` "form-group"]
+                  [ Doc.Radio
+                      [ attr.id guid
+                        attr.``type`` "radio"
+                        attr.name radioGroup
+                        attr.``checked`` ``checked``
                       ]
-                      [ Doc.Radio
-                          [ attr.id guid
-                            attr.``type`` "radio"
-                            attr.name radioGroup
-                            attr.``checked`` ``checked``
-                          ]
-                          value
-                          ref
-                        labelAttr
-                          [ attr.``for`` guid]
-                          [ text radioText ]
-                      ]
+                      value
+                      ref
+                    labelAttr
+                      [ attr.``for`` guid]
+                      [ text radioText ]
+                    
                   ] :> Doc
+                )
             )
             )
-        let createTextareaWithColumnSizes column1Size column2Size labelText ref minHeight =
+
+        let createTextarea labelText ref minHeight =
           let guid = Guid.NewGuid().ToString("N")
           divAttr
-            [attr.``class`` "form-group row"]
+            [attr.``class`` "form-group bottom-distanced"]
             [ labelAttr
-                [attr.``class`` (column1Size + " col-form-label"); attr.``for`` guid]
+                [attr.``for`` guid; attr.style "font-weight: bold" ]
                 [text labelText]
-              divAttr
-                [attr.``class`` column2Size]
-                [ Doc.InputArea
-                    [ attr.id guid
-                      attr.``class`` "form-control"
-                      attr.style ("wrap: soft; white-space: nowrap; overflow: auto; min-height: " + minHeight)
-                    ]
-                    ref
+              Doc.InputArea
+                [ attr.id guid
+                  attr.``class`` "form-control"
+                  attr.style ("wrap: soft; white-space: nowrap; overflow: auto; min-height: " + minHeight)
                 ]
+                ref
             ]
-
-        let createInput = createInputWithColumnSizes1 "col-lg-3" "col-lg-9"
-        let createRadio = createRadioWithColumnSizes1 "col-lg-3" "col-lg-9"
-        let createTextArea = createTextareaWithColumnSizes "col-lg-3" "col-lg-9"
-            
 
         let fillDocumentValues() =
             async {
@@ -851,7 +840,7 @@ module Client =
               [ attr.id "divEmail"; attr.style "display: none"]
               [ h4 [text (t German Email) ]
                 createInput (t German EmailSubject) documentEmailSubject (fun s -> "")
-                (createTextArea (t German EmailBody) documentEmailBody "400px")
+                (createTextarea (t German EmailBody) documentEmailBody "400px")
               ]
             divAttr
               [ attr.id "divChoosePageType"; attr.style "display: none" ]
@@ -930,10 +919,12 @@ module Client =
                                 let fileExtension = fileName.Substring(fileName.LastIndexOf(".") + 1)
                                 if (el?files)?item(0)?size > maxUploadSize
                                 then
-                                    JS.Alert(t German FileIsTooBig + "\n" + String.Format(t German UploadLimit, (maxUploadSize / 1000000) |> string))
+                                    JS.Alert(t German FileIsTooBig + "\n"
+                                             + String.Format(t German UploadLimit, (maxUploadSize / 1000000) |> string))
                                 elif not (supportedUnoconvFileTypes |> List.contains fileExtension)
                                 then
-                                    JS.Alert(String.Format("Entschuldigung.\n*.{0} Dateien können zur Zeit nicht ins PDF-Format verwandelt werden.\nTypische Dateitypen zum Uploaden sind *.odt, *.docx und *.pdf.", fileExtension))
+                                    JS.Alert(String.Format("Entschuldigung.\n*.{0} Dateien können zur Zeit nicht ins PDF-Format verwandelt werden.
+                                                          \nTypische Dateitypen zum Uploaden sind *.odt, *.docx und *.pdf.", fileExtension))
                                 else
                                     el.ParentElement?submit()
                             } |> Async.Start
@@ -944,6 +935,7 @@ module Client =
                     inputAttr [ attr.``type`` "hidden"; attr.id "hiddenNextPageIndex"; attr.name "pageIndex"; attr.value "1" ] []
                   ]
                 br []
+                hr []
                 br []
                 h4 [ text (t German YouMightWantToReplaceSomeWordsInYourFileWithVariables) ]
                 text <| t German VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication
@@ -1008,6 +1000,13 @@ module Client =
             divAttr
               [ attr.id "divEditUserValues"; attr.style "display: none" ]
               [ h4 [ text (t German YourValues) ]
+                b
+                  [ text "Tipp: Dies sind keine Pflichtangaben."
+                  ]
+                br []
+                text "Lass Felder, die du nicht als Variablen verwenden willst einfach leer."
+                br []
+                br []
                 createInput (t German Degree) userDegree (fun s -> "")
                 createRadio
                   (t German Gender)
@@ -1066,28 +1065,23 @@ module Client =
                       ]
                   ] 
                 divAttr
-                  [ attr.``class`` "form-group row"
-                  ]
-                  [ divAttr
-                      [ attr.``class`` "col-12"
+                  [ attr.``class`` "form-group row col-12" ]
+                  [ buttonAttr
+                      [ attr.``type`` "button"
+                        attr.``class`` "btnLikeLink btn-block"
+                        attr.style "min-height: 40px; font-size: 20px"
+                        attr.id "btnApplyNowTop"
+                        on.click (fun _ _ ->
+                          btnApplyNowClicked () |> Async.Start
+                        )
                       ]
-                      [ buttonAttr
-                          [ attr.``type`` "button"
-                            attr.``class`` "btnLikeLink btn-block"
-                            attr.style "min-height: 40px; font-size: 20px"
-                            attr.id "btnApplyNowTop"
-                            on.click (fun _ _ ->
-                              btnApplyNowClicked () |> Async.Start
-                            )
+                      [ iAttr
+                          [ attr.``class`` "fa fa-icon"
+                            attr.id "faBtnApplyNowTop"
+                            attr.style "color: #08a81b; margin-right: 10px"
                           ]
-                          [ iAttr
-                              [ attr.``class`` "fa fa-icon"
-                                attr.id "faBtnApplyNowTop"
-                                attr.style "color: #08a81b; margin-right: 10px"
-                              ]
-                              []
-                            text <| t German ApplyNow
-                          ]
+                          []
+                        text <| t German ApplyNow
                       ]
                   ]
                 createInput (t German CompanyName) employerCompany (fun (s : string) -> "")
@@ -1103,7 +1097,7 @@ module Client =
                 createInput (t German Degree) employerDegree (fun s -> "")
                 createInput (t German FirstName) employerFirstName (fun s -> "")
                 createInput (t German LastName) employerLastName (fun (s : string) -> "")
-                createInput (t German Email) employerEmail (fun (s : string) -> "")
+                createInputWithPlaceholder "Tipp: Zum Testen eigene Email eintragen" (t German Email) employerEmail (fun (s : string) -> "")
                 createInput (t German Phone) employerPhone (fun s -> "")
                 createInput (t German MobilePhone) employerMobilePhone (fun s -> "")
                 buttonAttr

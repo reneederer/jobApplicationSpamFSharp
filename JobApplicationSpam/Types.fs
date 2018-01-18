@@ -207,6 +207,10 @@ module Types =
     let maxUploadSize =
         5000000 // 5 MB
 
+    let convertibleToOdtFormats =
+        [ "doc"; "docx"; "fodt"; "ott"; "rtf"; "stw"; "sxw"; "uot" ]
+
+
 
 
 

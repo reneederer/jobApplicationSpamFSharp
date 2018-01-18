@@ -41,9 +41,9 @@ module Database =
         log.Debug(sprintf "(email = %s) = %A" email oUserId)
         oUserId
 
-    let setLastLoginToToday dbConn (userId : int) =
+    let insertLastLogin dbConn (userId : int) =
         log.Debug(sprintf "(userId = %i)" userId)
-        use command = new NpgsqlCommand("update users set lastLogin = current_date where id = :userId", dbConn)
+        use command = new NpgsqlCommand("insert into login (userId, loggedInAt) values (:userId, current_timestamp)", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.ExecuteNonQuery() |> ignore
         log.Debug(sprintf "(userId = %i) = ()" userId)
@@ -109,7 +109,7 @@ module Database =
     
     let userEmailExists (email : string) =
         log.Debug(sprintf "(email = %s)" email)
-        let emailExists = db.Users.Where(fun x -> x.Email = email).Any()
+        let emailExists = db.Users.Any(fun x -> x.Email = email)
         log.Debug(sprintf "(email = %s) = %b" email emailExists)
         emailExists
 
@@ -123,7 +123,7 @@ module Database =
 
     let insertNewUser (dbConn : NpgsqlConnection) (email : string) (password : string) (salt : string) (guid : string) =
         log.Debug(sprintf "(email = %s, password = %s, salt = %s, guid = %s)" email password salt guid)
-        use command = new NpgsqlCommand("insert into users(email, password, salt, guid, createdOn, lastLogin) values(:email, :password, :salt, :guid, current_date, current_date) returning id", dbConn)
+        use command = new NpgsqlCommand("insert into users(email, password, salt, guid, createdOn) values(:email, :password, :salt, :guid, current_date) returning id", dbConn)
         command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("password", password)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("salt", salt)) |> ignore

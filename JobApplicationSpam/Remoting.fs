@@ -139,7 +139,7 @@ module Server =
                 | Some (userId, hashedPassword, salt, None) ->
                     if generateHash password salt 1000 64 = hashedPassword
                     then
-                        Database.setLastLoginToToday dbConn userId
+                        Database.insertLastLogin dbConn userId
                         return ok <| string userId
                     else return fail "Email oder Passwort ist falsch."
                 |  Some (_, _, _, Some guid) -> return fail "Bitte bestätige deine Email-Adresse."
@@ -357,7 +357,7 @@ module Server =
                 then
                     return
                         Odt.replaceInOdt
-                            filePath
+                            (Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], filePath))
                             (Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], sprintf "tmp/%s/extracted/" guid))
                             (Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], sprintf "tmp/%s/replaced/" guid))
                             map
@@ -714,3 +714,10 @@ module Server =
                 return Database.tryFindSentApplication userId employer
             | None -> return failwith "Nobody is logged in"
         }
+    
+    [<Remote>]
+    let convertToOdt filePath =
+        async {
+            return Odt.convertToOdt filePath
+        }
+

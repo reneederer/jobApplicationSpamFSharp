@@ -12,18 +12,64 @@ open System.Text.RegularExpressions
 open System.Linq
 open Translation
 open Phrases
+open Variables
 
 
 module Server =
-    open System.Web
     open System.Net.Mail
     open System.IO
     open WebSharper.Web.Remoting
-    open WebSharper.Core
-    open System.Transactions
 
     let log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().GetType())
 
+    [<Remote>]
+    let toCV (employer : Employer) (userValues : UserValues) (userEmail : string) (jobName : string) (customVariablesStr : string) =
+        async {
+            let predefinedVariables =
+                [ ("$firmaName = ", employer.company)
+                  ("$firmaStrasse", employer.street)
+                  ("$firmaPlz", employer.postcode)
+                  ("$firmaStadt",employer.city)
+                  ("$chefGeschlecht", employer.gender.ToString())
+                  ("$chefTitel", employer.degree)
+                  ("$chefVorname", employer.firstName)
+                  ("$chefNachname", employer.lastName)
+                  ("$chefEmail", employer.email)
+                  ("$chefTelefon", employer.phone)
+                  ("$chefMobil", employer.mobilePhone)
+
+                  ("$meinGeschlecht", userValues.gender.ToString())
+                  ("$meinTitel", userValues.degree)
+                  ("$meinVorname", userValues.firstName)
+                  ("$meinNachname", userValues.lastName)
+                  ("$meineStrasse", userValues.street)
+                  ("$meinePlz", userValues.postcode)
+                  ("$meinePostleitzahl", userValues.postcode)
+                  ("$meineStadt", userValues.city)
+                  ("$meineEmail", userEmail)
+                  ("$meineTelefonnummer", userValues.phone)
+                  ("$meineTelefonnr", userValues.phone)
+                  ("$meinTelefon", userValues.phone)
+                  ("$meinMobilTelefon", userValues.mobilePhone)
+                  ("$meineMobilnummer", userValues.mobilePhone)
+                  ("$meineMobilnr", userValues.mobilePhone)
+                  ("$tag", sprintf "%02i" DateTime.Today.Day)
+                  ("$monat", sprintf "%02i" DateTime.Today.Month)
+                  ("$jahr", sprintf "%04i" DateTime.Today.Year)
+                  ("$beruf", jobName)
+                ]
+            let customVariables =
+                let parsedVariables = parse customVariablesStr
+                if parsedVariables.IsNone then failwith "Your variables could not be parsed"
+
+                parsedVariables.Value
+                |> List.map (fun (k : AssignedVariable, v : Expression) -> 
+                          (k
+                        , (tryGetValue v predefinedVariables |> Option.defaultValue ""))
+                    )
+
+            return (predefinedVariables @ customVariables) |> List.sortByDescending (fun (k, v) -> k.Length)
+        }
 
     [<Remote>]
     let getEmailByUserId userId =
@@ -297,7 +343,7 @@ module Server =
         }
     
     [<Remote>]
-    let replaceMap (userEmail : string) (userValues : UserValues) (employer : Employer) (jobName : string) =
+    let replaceMap (userEmail : string) (userValues : UserValues) (employer : Employer) (jobName : string) (variableDefinitions : list<Expression>) : Async<list<string * string>>=
         async {
             return
                 [ ("$firmaName", employer.company)
@@ -345,13 +391,17 @@ module Server =
         }
 
     [<Remote>]
-    let replaceVariables (filePath : string) (userValues : UserValues) (employer : Employer) (document : Document)=
+    let replaceVariables
+            (filePath : string)
+            (userValues : UserValues)
+            (employer : Employer)
+            (document : Document) =
         match getCurrentUserId() |> Async.RunSynchronously with
         | Some userId ->
             async {
                 let! userEmail = getEmailByUserId userId
                 let guid = Guid.NewGuid().ToString("N")
-                let! map = replaceMap (userEmail |> Option.defaultValue "") userValues employer document.jobName
+                let! map = toCV employer userValues (userEmail |> Option.defaultValue "") document.jobName document.customVariables
                 Directory.CreateDirectory(Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "tmp", guid)) |> ignore
                 if filePath.EndsWith(".odt") || filePath.EndsWith(".docx")
                 then
@@ -371,7 +421,7 @@ module Server =
         | None -> async { return "" }
          
     [<Remote>]
-    let emailSentApplicationToUser (sentApplicationOffset : int) =
+    let emailSentApplicationToUser (sentApplicationOffset : int) (customVariablesString : string)=
         let oUserId = getCurrentUserId() |> Async.RunSynchronously
         async {
             match oUserId with 
@@ -384,7 +434,13 @@ module Server =
                     match Database.getSentApplication dbConn sentApplicationOffset userId with
                     | None -> return fail "The requested application could not be not found"
                     | Some sentApplication ->
-                        let! myList = replaceMap sentApplication.userEmail sentApplication.userValues sentApplication.employer sentApplication.jobName
+                        let! myList =
+                            toCV
+                                sentApplication.employer
+                                sentApplication.userValues
+                                sentApplication.userEmail
+                                sentApplication.jobName
+                                customVariablesString
                         let tmpPath = Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "tmp", Guid.NewGuid().ToString("N"))
                         let odtPaths =
                             [ for (path, pageIndex) in sentApplication.filePages do
@@ -439,7 +495,11 @@ module Server =
         }
 
     [<Remote>]
-    let applyNow (employer : Employer) (document : Document) (userValues : UserValues) (url : string) =
+    let applyNow
+            (employer : Employer)
+            (document : Document)
+            (userValues : UserValues)
+            (url : string) =
         let oUserId = getCurrentUserId() |> Async.RunSynchronously
         async {
             match oUserId with 
@@ -467,7 +527,14 @@ module Server =
                             (document.pages |> List.choose(fun x -> match x with FilePage p -> Some (p.path, p.pageIndex) | HtmlPage _ -> None))
                             document.jobName
                             url
-                    let! myList = replaceMap userEmail userValues employer document.jobName
+                            document.customVariables
+                    let! myList =
+                            toCV
+                                employer
+                                userValues
+                                userEmail
+                                document.jobName
+                                document.customVariables
                     let tmpPath = Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "tmp", Guid.NewGuid().ToString("N"))
                     let odtPaths =
                         [ for item in document.pages do

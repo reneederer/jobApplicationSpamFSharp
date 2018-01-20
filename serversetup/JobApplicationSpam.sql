@@ -26,7 +26,7 @@ create table login (id serial primary key, userId int not null, loggedInAt times
 create table userValues(id serial primary key, userId int unique not null, gender text not null, degree text not null, firstName text not null, lastName text not null, street text not null, postcode text not null, city text not null, phone text not null, mobilePhone text not null, foreign key(userId) references users(id));
 create table employer(id serial primary key, userId int not null, company text not null, street text not null, postcode text not null, city text not null, gender text not null, degree text not null, firstName text not null, lastName text not null, email text not null, phone text not null, mobilePhone text not null, foreign key(userId) references users(id));
 create table htmlPageTemplate(id serial primary key, name text unique not null, odtPath text unique not null, html text not null);
-create table document(id serial primary key, userId int not null, name text not null, jobName text not null, foreign key(userId) references users(id));
+create table document(id serial primary key, userId int not null, name text not null, jobName text not null, customVariables text not null, foreign key(userId) references users(id));
 create table lastEditedDocumentId(userId int unique primary key not null, documentId int not null, foreign key(userId) references users(id), foreign key(documentId) references document(id));
 create table filePage(id serial primary key, documentId int not null, path text not null, pageIndex int not null, name text not null, foreign key(documentId) references document(id), constraint filePage_unique unique(documentId, pageIndex));
 create table htmlPage(id serial primary key, documentId int not null, templateId int null, pageIndex int not null, name text not null, foreign key(documentId) references document(id), foreign key(templateId) references htmlPageTemplate(id), constraint htmlPage_unique unique(documentId, pageIndex));
@@ -35,14 +35,13 @@ create table pageMap(id serial primary key, documentId int not null, pageIndex i
 
 create table sentDocumentEmail(id serial primary key, subject text not null, body text not null);
 create table sentUserValues(id serial primary key, email text not null, gender text not null, degree text not null, firstName text not null, lastName text not null, street text not null, postcode text not null, city text not null, phone text not null, mobilePhone text not null);
-create table sentDocument(id serial primary key, employerId int not null, sentDocumentEmailId int not null, sentUserValuesId int not null, jobName text not null, foreign key(sentUserValuesId) references sentUserValues(id) on update cascade, foreign key(employerId) references employer(id), foreign key(sentDocumentEmailId) references sentDocumentEmail(id) on update cascade);
+create table sentDocument(id serial primary key, employerId int not null, sentDocumentEmailId int not null, sentUserValuesId int not null, jobName text not null, customVariables text not null, foreign key(sentUserValuesId) references sentUserValues(id) on update cascade, foreign key(employerId) references employer(id), foreign key(sentDocumentEmailId) references sentDocumentEmail(id) on update cascade);
 create table sentFilePage(id serial primary key, sentDocumentId int not null, path text not null, pageIndex int not null, foreign key(sentDocumentId) references sentDocument(id) on update cascade);
 
 create table sentApplication(id serial primary key, userId int not null, sentDocumentId int not null, url text not null, foreign key(userId) references users(id), foreign key(sentDocumentId) references sentDocument(id) on update cascade);
 create table sentStatusValue(id int primary key, status text not null);
 create table sentStatus(id serial primary key, sentApplicationId int not null, statusChangedOn date not null, dueOn timestamp null, sentStatusValueId int not null, statusMessage text not null, foreign key(sentApplicationId) references sentApplication(id), foreign key(sentStatusValueId) references sentStatusValue(id));
 create table link(id serial primary key, path text not null, guid text not null, name text not null);
-
 
 insert into users(email, password, salt, guid, createdOn) values('rene.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null, current_date);
 /*

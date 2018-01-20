@@ -159,17 +159,21 @@ module Database =
             (email : DocumentEmail)
             (userEmailAndValues : string * UserValues)
             (sentFilePages : list<string * int>) // path * pageIndex
-            (jobName : string) (url : string) =
+            (jobName : string)
+            (url : string)
+            (customVariables : string) =
         log.Debug(
             sprintf
-                "(userId = %i, employerId = %i, email = %A, userEmailAndValues = %A, sentFilePages = %A, jobName = %s, url = %s)"
+                "(userId = %i ,employerId = %i ,email = %A, userEmailAndValues = %A, sentFilePages = %A, jobName = %s, url = %s, customVariables = %s)"
                 userId
                 employerId
                 email
                 userEmailAndValues
                 sentFilePages
                 jobName
-                url)
+                url
+                customVariables
+        )
         use command = new NpgsqlCommand("""insert into sentDocumentEmail(subject, body) values(:subject, :body) returning id""", dbConn)
         command.Parameters.Add(new NpgsqlParameter("subject", email.subject)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("body", email.body)) |> ignore
@@ -195,12 +199,14 @@ module Database =
         let sentUserValuesId = command.ExecuteScalar() |> string |> Int32.Parse
         command.Dispose()
 
-        use command = new NpgsqlCommand("""insert into sentDocument(employerId, sentDocumentEmailId, sentUserValuesId, jobName)
-                                           values(:employerId, :sentDocumentEmailId, :sentUserValuesId, :jobName) returning id""", dbConn)
+        use command =
+            new NpgsqlCommand("""insert into sentDocument(employerId, sentDocumentEmailId, sentUserValuesId, jobName, customVariables)
+                                 values(:employerId, :sentDocumentEmailId, :sentUserValuesId, :jobName, :customVariables) returning id""", dbConn)
         command.Parameters.Add(new NpgsqlParameter("employerId",employerId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("sentDocumentEmailId", sentDocumentEmailId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("sentUserValuesId", sentUserValuesId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("jobName", jobName)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("customVariables", customVariables)) |> ignore
         let sentDocumentId = command.ExecuteScalar() |> string |> Int32.Parse
         command.Dispose()
 
@@ -230,14 +236,16 @@ module Database =
         command.Dispose()
         log.Debug(
             sprintf
-                "(userId = %i, employerId = %i, email = %A, userEmailAndValues = %A, sentFilePages = %A, jobName = %s, url = %s) = ()"
+                "(userId = %i, employerId = %i, email = %A, userEmailAndValues = %A, sentFilePages = %A, jobName = %s, url = %s, customVariables = %s) = ()"
                 userId
                 employerId
                 email
                 userEmailAndValues
                 sentFilePages
                 jobName
-                url)
+                url
+                customVariables
+        )
 
 
 
@@ -256,7 +264,8 @@ module Database =
                 select ( employer.Company
                        , sentDocument.Jobname
                        , sentStatus.Statuschangedon
-                       , sentApplication.Url)
+                       , sentApplication.Url
+                )
             } |> List.ofSeq
         log.Debug(sprintf "(userId = %i, startDate = %A, endDate = %A) = %A" userId startDate endDate sentApplications)
         sentApplications
@@ -292,6 +301,7 @@ module Database =
                     , sentUserValues.mobilePhone
                     , sentDocument.jobName
                     , sentDocument.id
+                    sentDocument.customVariables
                 from sentApplication
                 join sentDocument on sentApplication.sentDocumentId = sentDocument.id
                 join employer on sentDocument.employerId = employer.id
@@ -335,12 +345,14 @@ module Database =
             let userMobilePhone = reader.GetString(23)
             let jobName = reader.GetString(24)
             let sentDocumentId = reader.GetInt32(25)
+            let sentCustomVariables = reader.GetString(26)
             let oSentApplication =
                 Some
                     { jobName = jobName
                       sentDate = statusChangedOn.ToString("dd.MM.yyyy")
                       email = { subject = subject; body = body }
                       userEmail = userEmail
+                      customVariables = sentCustomVariables
                       userValues =
                         { gender = Gender.fromString userGender
                           degree = userDegree
@@ -386,12 +398,15 @@ module Database =
 
 
 
-    let overwriteDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) =
+    let overwriteDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) (customVariables : string) =
         log.Debug(sprintf "(document = %A, userId = %i)" document userId)
-        use command = new NpgsqlCommand("update document set (name, jobName) = (:name, :jobName) where id = :documentId", dbConn)
+        use command = new NpgsqlCommand("""update document
+                                           set (name, jobName, customVariables) = (:name, :jobName, :customVariables)
+                                           where id = :documentId", dbConn)""", dbConn)
         command.Parameters.Add(new NpgsqlParameter("name", document.name)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("jobName", document.jobName)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("customVariables",customVariables)) |> ignore
         if command.ExecuteNonQuery() <> 1
         then failwith "An error occurred"
         command.Dispose()
@@ -458,10 +473,12 @@ module Database =
     
     let saveNewDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) =
         log.Debug(sprintf "(document = %A, userId = %i)" document userId)
-        use command = new NpgsqlCommand("insert into document (userId, name, jobName) values (:userId, :name, :jobName) returning id", dbConn)
+        use command = new NpgsqlCommand("insert into document (userId, name, jobName, customVariables)
+                                         values (:userId, :name, :jobName, :customVariables) returning id", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("name", document.name)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("jobName", document.jobName)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("customVariables", document.customVariables)) |> ignore
         let documentId = command.ExecuteScalar() |> string |> Int32.Parse
         command.Dispose()
         use command = new NpgsqlCommand("insert into documentEmail (documentId, subject, body) values (:documentId, :subject, :body)", dbConn)
@@ -544,13 +561,13 @@ module Database =
                 for document in db.Document do
                 join documentEmail in db.Documentemail on (document.Id = documentEmail.Documentid)
                 where (document.Id = documentId)
-                select (Some (document.Name, document.Jobname, documentEmail.Subject, documentEmail.Body))
+                select (Some (document.Name, document.Jobname, documentEmail.Subject, documentEmail.Body, document.Customvariables))
             }).SingleOrDefault()
         match oDocumentValues with
         | None ->
             log.Debug(sprintf "(documentId = %i) = None" documentId)
             None
-        | Some (documentName, jobName, emailSubject, emailBody) ->
+        | Some (documentName, jobName, emailSubject, emailBody, customVariables) ->
             let htmlPages = 
                 db.Htmlpage
                   .Where(fun x -> x.Documentid = documentId)
@@ -582,6 +599,7 @@ module Database =
                   pages = (htmlPages @ filePages) |> List.sortBy (fun x -> x.PageIndex())
                   email = {subject = emailSubject; body = emailBody}
                   jobName = jobName
+                  customVariables = customVariables
                 }
             log.Debug(sprintf "(documentId = %i) = %A" documentId document)
             Some document
@@ -694,9 +712,12 @@ module Database =
         log.Debug (sprintf "(documentId: %i, path: %s, pageIndex: %i) = ()" documentId path pageIndex)
 
     let addNewDocument (dbConn : NpgsqlConnection) (userId : int) (name : string) =
-        use command = new NpgsqlCommand("insert into document (userId, name, jobName) values (:userId, :name, '')", dbConn)
+        use command = new NpgsqlCommand("insert into document (userId, name, jobName, customVariables)
+                                         values (:userId, :name, '', :customVariables)", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("name", name)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("customVariables", """$anrede = \
+        hallo""")) |> ignore
         command.ExecuteNonQuery() |> ignore
 
     let addHtmlPage dbConn (documentId : int) (oTemplateId : option<int>) (pageIndex : int) (name : string) =

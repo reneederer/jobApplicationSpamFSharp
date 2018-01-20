@@ -8,9 +8,73 @@ open Npgsql
 open System
 open System.IO
 open Types
+open Variables
 
 module MyTests =
-    open WebSharper.UI.Next.CSharp.Client.Html.on
+    [<Test>]
+    let parseVariable00 () =
+        parse """ $hallo = "we" + "lt" + $a"""
+        |> should equal <| Some ["$hallo", VariableExpression "welt$a"]
+
+    [<Test>]
+    let parseVariable01 () =
+        parse """$hallo = "welt" """
+        |> should equal <| Some ["$hallo", VariableExpression "welt"]
+
+    [<Test>]
+    let parseVariable02 () =
+        parse """ $hallo = "welt" + "da" + $bist + "du" """
+        |> should equal <| Some [("$hallo", VariableExpression "weltda$bistdu")]
+
+    [<Test>]
+    let parseVariable03 () =
+        parse """  $hallo = "welt" +$da +"bist du"
+        """
+        |> should equal <| Some ["$hallo", VariableExpression "welt$dabist du"]
+
+    [<Test>]
+    let parseVariable04 () =
+        parse """  $hallo = $welt   """
+        |> should equal <| Some ["$hallo", VariableExpression "$welt"]
+
+    [<Test>]
+    let parseVariable05 () =
+        parse """    $hallo = match $welt with
+                              | "a" -> "b"
+                              | "c" -> "d"
+            """
+        |> should equal <| Some ["$hallo", (MatchExpression ("$welt", ["a", "b"; "c", "d"]))]
+
+    [<Test>]
+    let parseVariable06 () =
+        parse """    $hallo =match $welt with
+                               | "a" -> "b"
+                               | "c" -> "d"
+                    $a = $b
+                    $c = "d" + "e" + $f
+                   $g = match $h with
+                                | "i" -> "j"
+                                | "k" -> "l" """
+
+        |> should equal <| Some [ "$hallo", (MatchExpression ("$welt", ["a", "b"; "c", "d"]))
+                                  "$a", VariableExpression "$b"
+                                  "$c", VariableExpression "de$f"
+                                  "$g", (MatchExpression ("$h", ["i", "j"; "k", "l"])) ]
+
+
+    [<Test>]
+    let parseVariable07 () =
+         parse "$datumHeute = $tag + \".\" + $monat + \".\" + $jahr\n\n$anredeZeile =\n\tmatch $chefGeschlecht with\n\t| \"m\" -> \"Sehr geehrter Herr $chefTitel $chefNachname,\"\n\t| \"f\" -> \"Sehr geehrte Frau $chefTitel $chefNachname,\"\n\t| \"u\" -> \"Sehr geehrte Damen und Herren,\"\n\n$chefAnrede =\n\tmatch $chefGeschlecht with\n\t| \"m\" -> \"Herr\"\n\t| \"f\" -> \"Frau\"\n\n$chefAnredeBriefkopf =\n\tmatch $chefGeschlecht with\n\t| \"m\" -> \"Herrn\"\n\t| \"f\" -> \"Frau\"\n\n"
+         |> should equal <| Some 
+                [ "$datumHeute", VariableExpression "$tag.$monat.$jahr"
+                  "$anredeZeile", (MatchExpression
+                                    ( "$chefGeschlecht"
+                                    , [ "m", "Sehr geehrter Herr $chefTitel $chefNachname,"
+                                        "f", "Sehr geehrte Frau $chefTitel $chefNachname,"
+                                        "u", "Sehr geehrte Damen und Herren,"]))
+                  "$chefAnrede", (MatchExpression ("$chefGeschlecht", ["m", "Herr"; "f", "Frau"]))
+                  "$chefAnredeBriefkopf", (MatchExpression ("$chefGeschlecht", ["m", "Herrn"; "f", "Frau"]))
+                ]
 
     [<Test>]
     let deleteLine00 () =

@@ -13,7 +13,6 @@ module Client =
     open WebSharper.JQuery
     open System
     open WebSharper.UI.Next.Client.HtmlExtensions
-    open WebSharper.UI.V
     open Phrases
     open Translation
 
@@ -22,7 +21,7 @@ module Client =
         div
           [ formAttr
               [ attr.action "/login"; attr.method "POST" ]
-              [ h4 [text (t German Login) ]
+              [ h3 [text (t German Login) ]
                 divAttr
                   [ attr.``class`` "form-group" ]
                   [ labelAttr
@@ -67,6 +66,7 @@ module Client =
         let documentEmailSubject : IRef<string> = varDocument.Lens (fun x -> x.email.subject) (fun x v -> { x with email = {x.email with subject = v }})
         let documentEmailBody : IRef<string> = varDocument.Lens (fun x -> x.email.body) (fun x v -> { x with email = {x.email with body = v }})
         let documentJobName : IRef<string> = varDocument.Lens (fun x -> x.jobName) (fun x v -> { x with jobName = v })
+        let customVariables : IRef<string> = varDocument.Lens (fun x -> x.customVariables) (fun x v -> { x with customVariables = v })
 
         let varUserValues : Var<UserValues> = Var.Create emptyUserValues
         let userGender : IRef<Gender> = varUserValues.Lens (fun x -> x.gender) (fun x v -> { x with gender = v })
@@ -124,7 +124,7 @@ module Client =
                               [ let emailSentApplicationToUserFun =
                                     fun (el : Dom.Element) (ev : Dom.MouseEvent) ->
                                         async {
-                                            let! result = Server.emailSentApplicationToUser (el.ParentElement.ParentElement?rowIndex - 1)
+                                            let! result = Server.emailSentApplicationToUser (el.ParentElement.ParentElement?rowIndex - 1) ""
                                             match result with
                                             | Ok _ -> ()
                                             | Bad _ -> JS.Alert("Entschuldigung, es trat ein Fehler auf")
@@ -656,7 +656,7 @@ module Client =
           [ divAttr
               [ attr.style "width : 100%"
               ]
-              [ h4 [text (t German YourApplicationDocuments)]
+              [ h3 [text (t German YourApplicationDocuments)]
                 selectAttr
                   [ attr.id "slctDocumentName";
                     on.change
@@ -717,7 +717,12 @@ module Client =
               [ attr.id "divVariables"
                 attr.style "display: none"
               ]
-              [ h4 [ text "Variablen" ]
+              [ h3Attr
+                  [ attr.``class`` "distanced-bottom" ]
+                    [ text "Variablen" ]
+                h4Attr
+                  [ attr.``class`` "distanced-bottom" ]
+                  [ text "Vordefiniert" ]
                 b [ text "Arbeitgeber" ]
                 br []
                 text "$firmaName"
@@ -727,12 +732,6 @@ module Client =
                 text "$firmaPlz"
                 br []
                 text "$firmaStadt"
-                br []
-                text "$chefAnredeBriefkopf"
-                br []
-                text "$chefAnrede"
-                br []
-                text "$geehrter"
                 br []
                 text "$chefTitel"
                 br []
@@ -765,21 +764,51 @@ module Client =
                 br []
                 text "$meineEmail"
                 br []
-                text "$meinMobilnr"
+                text "$meineMobilnr"
                 br []
                 text "$meineTelefonnr"
                 br []
                 hr []
+                b [ text "Datum" ]
+                br []
+                text "$tag"
+                br []
+                text "$monat"
+                br []
+                text "$jahr"
+                br []
+                hr []
                 b [ text "Sonstige" ]
                 br []
-                text "$datumHeute"
-                br []
                 text "$jobName"
+                br []
+                br []
+                hr []
+                br[]
+                h4Attr
+                  [attr.``class`` "distanced-bottom"]
+                  [ text "Benutzerdefiniert" ]
+                Doc.InputArea
+                    [ attr.style "width: 100%; min-height: 500px"
+                      on.keyDown (fun el ev ->
+                          if ev?keyCode=9
+                          then
+                            let v = el?value |> string
+                            let s = el?selectionStart |> int
+                            let e = el?selectionEnd |> int
+                            el?value <- v.Substring(0, s) + "\t" + v.Substring(e)
+                            el?selectionStart <- s + 1
+                            el?selectionEnd <- s + 1
+                            ev.StopPropagation()
+                            ev.PreventDefault()
+                      )
+                    ]
+                    customVariables
               ]
             divAttr
               [ attr.id "divAttachments"; attr.style "display: none"
               ]
-              [ h4 [ text (t German YourAttachments) ]
+              [ h3 [ text (t German YourAttachments) ]
                 divAttr
                   [ attr.id "divAttachmentButtons"
                   ]
@@ -807,7 +836,7 @@ module Client =
             divAttr
               [ attr.id "divAddDocument"; attr.style "display: none" ]
               [ br []
-                h4 [ text (t German AddDocument)]
+                h3 [ text (t German AddDocument)]
                 br []
                 labelAttr
                   [ attr.``for`` "txtNewDocumentName" ]
@@ -883,7 +912,11 @@ module Client =
                                         let! path =
                                             if chkReplaceVariables.Prop("checked")
                                             then
-                                                Server.replaceVariables filePage.path varUserValues.Value varEmployer.Value varDocument.Value
+                                                Server.replaceVariables
+                                                    filePage.path
+                                                    varUserValues.Value
+                                                    varEmployer.Value
+                                                    varDocument.Value
                                             else async { return filePage.path }
                                         let fileName =
                                             let extension = filePage.path.Substring(filePage.path.LastIndexOf('.') + 1)
@@ -902,7 +935,7 @@ module Client =
               ]
             divAttr
               [ attr.id "divEmail"; attr.style "display: none"]
-              [ h4 [text (t German Email) ]
+              [ h3 [text (t German Email) ]
                 createInput (t German EmailSubject) documentEmailSubject (fun s -> "")
                 (createTextarea (t German EmailBody) documentEmailBody "400px")
               ]
@@ -1001,7 +1034,7 @@ module Client =
                 br []
                 hr []
                 br []
-                h4 [ text (t German YouMightWantToReplaceSomeWordsInYourFileWithVariables) ]
+                h3 [ text (t German YouMightWantToReplaceSomeWordsInYourFileWithVariables) ]
                 text <| t German VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication
                 br []
                 br []
@@ -1063,7 +1096,7 @@ module Client =
               ]
             divAttr
               [ attr.id "divEditUserValues"; attr.style "display: none" ]
-              [ h4 [ text (t German YourValues) ]
+              [ h3 [ text (t German YourValues) ]
                 b
                   [ text "Tipp: Dies sind keine Pflichtangaben."
                   ]
@@ -1090,7 +1123,7 @@ module Client =
                 attr.style "display: none"
               ]
               [ createInput (t German JobName) documentJobName (fun s -> "")
-                h4 [text (t German Employer)]
+                h3 [text (t German Employer)]
                 divAttr
                   [ attr.``class`` "form-group row" ]
                   [ divAttr

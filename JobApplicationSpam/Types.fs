@@ -125,6 +125,7 @@ module Types =
           pages : list<DocumentPage>
           email : DocumentEmail
           jobName : string
+          customVariables : string
         }
 
     [<JavaScript>]
@@ -150,6 +151,7 @@ module Types =
           userEmail : string
           employer : Employer
           filePages : list<string * int>
+          customVariables : string
         }
 
     [<JavaScript>]
@@ -191,6 +193,8 @@ module Types =
               body = String.Format("$anredeZeile{0}{0}anbei sende ich Ihnen meine Bewerbungsunterlagen.{0}Über eine Einladung zu einem Bewerbungsgespräch würde ich mich sehr freuen.{0}{0}Mit freundlichen Grüßen{0}{0}$meinTitel $meinVorname $meinNachname{0}$meineStrasse{0}$meinePlz $meineStadt{0}Telefon: $meineTelefonnr_{0}Mobil: $meineMobilnr", newLine)
             }
           jobName=""
+          customVariables = "$datumHeute = $tag + \".\" + $monat + \".\" + $jahr\n\n$anredeZeile =\n\tmatch $chefGeschlecht with\n\t| \"m\" -> \"Sehr geehrter Herr $chefTitel $chefNachname,\"\n\t| \"f\" -> \"Sehr geehrte Frau $chefTitel $chefNachname,\"\n\t| \"u\" -> \"Sehr geehrte Damen und Herren,\"\n\n$chefAnrede =\n\tmatch $chefGeschlecht with\n\t| \"m\" -> \"Herr\"\n\t| \"f\" -> \"Frau\"\n\n$chefAnredeBriefkopf =\n\tmatch $chefGeschlecht with\n\t| \"m\" -> \"Herrn\"\n\t| \"f\" -> \"Frau\"\n\n"
+
         }   
     
 

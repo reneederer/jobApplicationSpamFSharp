@@ -218,7 +218,18 @@ module Site =
                                 Directory.CreateDirectory(Path.GetDirectoryName(tmpFilePath)) |> ignore
                                 x.SaveAs(tmpFilePath)
                                 Server.convertToOdt tmpFilePath |> Async.RunSynchronously, true
-                            else x.FileName, false
+                            elif x.FileName.ToLower().EndsWith(".odt")
+                            then
+                                let tmpFilePath =
+                                    Path.Combine
+                                        ( ConfigurationManager.AppSettings.["dataDirectory"]
+                                        , "tmp"
+                                        , Guid.NewGuid().ToString()
+                                        , x.FileName)
+                                Directory.CreateDirectory(Path.GetDirectoryName(tmpFilePath)) |> ignore
+                                x.SaveAs(tmpFilePath)
+                                tmpFilePath, false
+                            else Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "users", userId |> string, x.FileName), false
 
                         let (filePath, name) =
                             let filesWithSameExtension =
@@ -228,19 +239,17 @@ module Site =
                                 filesWithSameExtension
                                 |> Seq.tryFind
                                     (fun file ->
-                                        use fileStream =
-                                            new FileStream
-                                                (Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], file)
-                                                , FileMode.Open
-                                                , FileAccess.Read)
-                                        if hasBeenConverted
+                                        if hasBeenConverted || convertedFilePath.ToLower().EndsWith(".odt")
                                         then
-                                            let uploadedFileStream = 
-                                                new FileStream(convertedFilePath
-                                                  , FileMode.Open
-                                                  , FileAccess.Read)
-                                            Odt.areStreamsEqual uploadedFileStream fileStream
+                                            Odt.areOdtFilesEqual
+                                                convertedFilePath
+                                                (Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], file))
                                         else
+                                            use fileStream =
+                                                new FileStream
+                                                    ( Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], file)
+                                                    , FileMode.Open
+                                                    , FileAccess.Read)
                                             Odt.areStreamsEqual x.InputStream fileStream
                                     )
                             match oSameFile with
@@ -249,11 +258,15 @@ module Site =
                             | None ->
                                 let fileName =
                                     if File.Exists(Path.Combine(absoluteDir, convertedFilePath))
-                                    then findFreeFileName convertedFilePath documentId
-                                    else convertedFilePath
+                                    then findFreeFileName (Path.GetFileName(convertedFilePath)) documentId
+                                    else Path.GetFileName(convertedFilePath)
                                 if hasBeenConverted
                                 then
-                                    File.Move(convertedFilePath, Path.Combine(absoluteDir, fileName))
+                                    if File.Exists (Path.Combine(absoluteDir, fileName))
+                                    then
+                                        File.Replace(convertedFilePath, Path.Combine(absoluteDir, fileName), "")
+                                    else
+                                        File.Move(convertedFilePath, Path.Combine(absoluteDir, fileName))
                                     Path.Combine(relativeDir, fileName), fileName
                                 else
                                     x.SaveAs(Path.Combine(absoluteDir, fileName))
@@ -306,9 +319,9 @@ module Site =
                 return
                     if file.Exists then
                         Content.File(file.FullName, true, "application/pdf")
-                        |> Content.MapResponse (fun resp ->
-                            { resp with
-                                Headers = Seq.append resp.Headers 
+                        |> Content.MapResponse (fun response ->
+                            { response with
+                                Headers = Seq.append response.Headers 
                                     [Http.Header.Custom "Content-Disposition" ("attachment; filename=" + name)]
                             }
                         )

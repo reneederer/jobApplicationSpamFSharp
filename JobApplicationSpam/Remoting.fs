@@ -23,10 +23,51 @@ module Server =
     let log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().GetType())
 
     [<Remote>]
+    let predefinedVariables =
+        [ ( "employer"
+            , [ "$firma"
+                "$firmaStrasse"
+                "$firmaPlz"
+                "$firmaStadt"
+                "$chefGeschlecht"
+                "$chefTitel"
+                "$chefVorname"
+                "$chefNachname"
+                "$chefEmail"
+                "$chefTelefon"
+                "$chefMobil"
+              ]
+          );
+          ( "yourValues"
+          , [ "$meinGeschlecht"
+              "$meinTitel"
+              "$meinVorname"
+              "$meinNachname"
+              "$meineStrasse"
+              "$meinePlz"
+              "$meinePostleitzahl"
+              "$meineStadt"
+              "$meineEmail"
+              "$meineTelefonnr"
+              "$meineMobilnr"
+            ]
+          );
+          ( "date"
+          , [ "$tagHeute"
+              "$monatHeute"
+              "$jahrHeute"
+            ]
+          );
+          ( "others"
+          , [ "$beruf" ]
+          )
+        ]
+
+    [<Remote>]
     let toCV (employer : Employer) (userValues : UserValues) (userEmail : string) (jobName : string) (customVariablesStr : string) =
         async {
             let predefinedVariables =
-                [ ("$firmaName = ", employer.company)
+                [ ("$firma", employer.company)
                   ("$firmaStrasse", employer.street)
                   ("$firmaPlz", employer.postcode)
                   ("$firmaStadt",employer.city)
@@ -47,26 +88,22 @@ module Server =
                   ("$meinePostleitzahl", userValues.postcode)
                   ("$meineStadt", userValues.city)
                   ("$meineEmail", userEmail)
-                  ("$meineTelefonnummer", userValues.phone)
                   ("$meineTelefonnr", userValues.phone)
-                  ("$meinTelefon", userValues.phone)
-                  ("$meinMobilTelefon", userValues.mobilePhone)
-                  ("$meineMobilnummer", userValues.mobilePhone)
                   ("$meineMobilnr", userValues.mobilePhone)
-                  ("$tag", sprintf "%02i" DateTime.Today.Day)
-                  ("$monat", sprintf "%02i" DateTime.Today.Month)
-                  ("$jahr", sprintf "%04i" DateTime.Today.Year)
+                  ("$tagHeute", sprintf "%02i" DateTime.Today.Day)
+                  ("$monatHeute", sprintf "%02i" DateTime.Today.Month)
+                  ("$jahrHeute", sprintf "%04i" DateTime.Today.Year)
                   ("$beruf", jobName)
                 ]
             let customVariables =
-                let parsedVariables = parse customVariablesStr
-                if parsedVariables.IsNone then failwith "Your variables could not be parsed"
-
-                parsedVariables.Value
-                |> List.map (fun (k : AssignedVariable, v : Expression) -> 
-                          (k
-                        , (tryGetValue v predefinedVariables |> Option.defaultValue ""))
-                    )
+                match parse customVariablesStr with
+                | Bad xs -> failwith (String.Concat xs)
+                | Ok (parsedVariables, _) ->
+                    parsedVariables
+                    |> List.map (fun (k : AssignedVariable, v : Expression) -> 
+                              (k
+                            , (tryGetValue v predefinedVariables |> Option.defaultValue ""))
+                        )
 
             return (predefinedVariables @ customVariables) |> List.sortByDescending (fun (k, v) -> k.Length)
         }
@@ -142,7 +179,7 @@ module Server =
 
 
     [<Remote>]
-    let addUserValues (userValues : UserValues) =
+    let setUserValues (userValues : UserValues) =
         let oUserId = getCurrentUserId() |> Async.RunSynchronously
         async {
             match oUserId with
@@ -151,7 +188,7 @@ module Server =
                 dbConn.Open()
                 use transaction = dbConn.BeginTransaction()
                 try
-                    let insertedUserValuesId = Database.setUserValues userValues userId
+                    Database.setUserValues userValues userId
                     transaction.Commit()
                     return ok "User values have been updated."
                 with
@@ -286,9 +323,8 @@ module Server =
                 dbConn.Open()
                 use transaction = dbConn.BeginTransaction()
                 try
-                    let documentId = Database.overwriteDocument dbConn document userId
+                    Database.overwriteDocument dbConn document userId
                     transaction.Commit()
-                    return documentId
                 with
                 | e ->
                     transaction.Rollback()

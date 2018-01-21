@@ -398,18 +398,19 @@ module Database =
 
 
 
-    let overwriteDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) (customVariables : string) =
+    let overwriteDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) =
         log.Debug(sprintf "(document = %A, userId = %i)" document userId)
         use command = new NpgsqlCommand("""update document
                                            set (name, jobName, customVariables) = (:name, :jobName, :customVariables)
-                                           where id = :documentId", dbConn)""", dbConn)
+                                           where id = :documentId""", dbConn)
         command.Parameters.Add(new NpgsqlParameter("name", document.name)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("jobName", document.jobName)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("documentId", document.id)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("customVariables",customVariables)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("customVariables", document.customVariables)) |> ignore
         if command.ExecuteNonQuery() <> 1
         then failwith "An error occurred"
         command.Dispose()
+
         use command =
             new NpgsqlCommand(
                 """insert into documentEmail(documentId, subject, body) values (:documentId, :subject, :body)
@@ -469,7 +470,6 @@ module Database =
                 command.ExecuteNonQuery() |> ignore
                 command.Dispose()
         log.Debug(sprintf "(document = %A, userId = %i) = %i" document userId document.id)
-        document.id
     
     let saveNewDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) =
         log.Debug(sprintf "(document = %A, userId = %i)" document userId)
@@ -543,6 +543,11 @@ module Database =
         command.Dispose()
 
         use command = new NpgsqlCommand("delete from documentEmail where documentId = :documentId", dbConn)
+        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
+        command.ExecuteNonQuery() |> ignore
+        command.Dispose()
+
+        use command = new NpgsqlCommand("delete from lastEditedDocumentId where documentId = :documentId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
         command.ExecuteNonQuery() |> ignore
         command.Dispose()

@@ -1,6 +1,7 @@
 ﻿namespace JobApplicationSpam
 module Variables =
     open FParsec
+    open Chessie.ErrorHandling
 
     type AssignedVariable = string
     type MatchValue = string
@@ -131,6 +132,6 @@ module Variables =
 
     let parse str =
         match run pDefinitions str with
-        | Success (result, _, _) -> Some result
-        | Failure (result, _, _) -> None
+        | Success (result, _, _) -> ok result
+        | Failure (result, _, _) -> fail result
 

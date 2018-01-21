@@ -193,11 +193,6 @@ module Client =
                 ref
             ]
 
-        let createInputWithPlaceholder (placeholder : string) labelText (ref : IRef<string>) (validFun : string -> string) =
-            let d = createInput labelText ref validFun
-            d.Dom.ChildNodes.[1]?placeholder <- placeholder
-            d
-
 
         let createRadio (labelText : string) (radioValuesList : list<string * 'a * (IRef<'a>) * string>) =
           let radioGroup = Guid.NewGuid().ToString("N")    
@@ -382,18 +377,19 @@ module Client =
         let setDocument () =
             async {
                 let slctDocumentNameEl = JS.Document.GetElementById("slctDocumentName")
-                let! oDocument = Server.getDocumentOffset slctDocumentNameEl?selectedIndex
+                let! oDocument =
+                    if slctDocumentNameEl?selectedIndex >= 0
+                    then Server.getDocumentOffset slctDocumentNameEl?selectedIndex
+                    else async { return None }
                 match oDocument with
                 | Some document ->
                     varDocument.Value <- document
                     JS.Document.GetElementById("hiddenDocumentId")?value <- varDocument.Value.id |> string
-                    JS.Document.GetElementById("btnAddPage")?style?visibility <- "visible"
                     JS.Document.GetElementById("btnApplyNowTop")?disabled <- false
                     JS.Document.GetElementById("btnApplyNowBottom")?disabled <- false
                     show ["divAttachments"]
                 | None ->
                     varDocument.Value <- emptyDocument
-                    JS.Document.GetElementById("btnAddPage")?style?visibility <- "hidden"
                     JS.Document.GetElementById("btnApplyNowTop")?disabled <- true
                     JS.Document.GetElementById("btnApplyNowBottom")?disabled <- true
                     show ["divAddDocument"]
@@ -422,6 +418,7 @@ module Client =
                                                         | [] -> before
                                             
                                         }
+                                    JS.Alert(varDocument.Value.pages |> List.length |> string)
                                     async {
                                         let! _ = Server.overwriteDocument varDocument.Value
                                         do! setDocument()
@@ -529,7 +526,7 @@ module Client =
                 let regex = RegExp(emailRegexStr)
                 if not <| regex?test(employerEmail.Value)
                 then
-                    JS.Alert(t German TheEmailOfYourEmployerDoesNotLookValid)
+                    JS.Alert(t German TheEmailOfYourEmployerDoesNotLookValid + ", " + employerEmail.Value)
                 elif documentJobName.Value.Trim() = ""
                 then
                     JS.Alert(String.Format(t German FieldIsRequired, (t German JobName)))
@@ -600,8 +597,8 @@ module Client =
                     show ["divSentApplications"]
                 } |> Async.Start
             ) |> ignore
-            addMenuEntry (t German EditYourValues) (fun _ _ -> show ["divEditUserValues"]) |> ignore
             addMenuEntry "Variablen" (fun _ _ -> show ["divVariables"]) |> ignore
+            addMenuEntry (t German EditYourValues) (fun _ _ -> show ["divEditUserValues"]) |> ignore
             addMenuEntry (t German EditEmail) (fun _ _ -> show ["divEmail"]) |> ignore
             addMenuEntry (t German EditAttachments) (fun _ _ -> show ["divAttachments"]) |> ignore
             addMenuEntry (t German AddEmployerAndApply) (fun _ _ -> show ["divAddEmployer"]) |> ignore
@@ -632,6 +629,12 @@ module Client =
                 do! Async.Sleep 10
             for htmlPageTemplate in htmlPageTemplates do
                 addSelectOption slctHtmlPageTemplateEl htmlPageTemplate.name
+            JS.Window.Onbeforeunload <- (fun _ ->
+                async {
+                    do! Server.overwriteDocument varDocument.Value
+                    do! Server.setUserValues varUserValues.Value
+                } |> Async.Start
+                )
         } |> Async.Start
 
         let readFromWebsite () =
@@ -814,12 +817,17 @@ module Client =
                   ]
                   [ buttonAttr
                       [ attr.id "btnAddPage"
-                        attr.style "margin:0; visibility : hidden"
+                        attr.style "margin:0;"
                         attr.``class`` "btnLikeLink"
                         on.click
                           (fun el _ ->
-                              show ["divChoosePageType"; "divAttachments"; "divCreateFilePage"]
-                              JS.Document.GetElementById("rbFilePage")?``checked`` <- true;
+                              if JS.Document.GetElementById("slctDocumentName")?selectedIndex >= 0
+                              then
+                                  show ["divChoosePageType"; "divAttachments"; "divCreateFilePage"]
+                                  JS.Document.GetElementById("rbFilePage")?``checked`` <- true;
+                              else
+                                  JS.Alert("Bitte erst eine neue Bewerbungsmappe anlegen")
+                                  show ["divAddDocument"]
                           )
                       ]
                       [ iAttr
@@ -1033,60 +1041,6 @@ module Client =
                   ]
                 br []
                 hr []
-                br []
-                h3 [ text (t German YouMightWantToReplaceSomeWordsInYourFileWithVariables) ]
-                text <| t German VariablesWillBeReplacedWithTheRightValuesEveryTimeYouSendYourApplication
-                br []
-                br []
-                text "$firmaName"
-                br []
-                text "$firmaStrasse"
-                br []
-                text "$firmaPlz"
-                br []
-                text "$firmaStadt"
-                br []
-                text "$chefAnredeBriefkopf"
-                br []
-                text "$chefAnrede"
-                br []
-                text "$geehrter"
-                br []
-                text "$chefTitel"
-                br []
-                text "$chefVorname"
-                br []
-                text "$chefNachname"
-                br []
-                text "$chefEmail"
-                br []
-                text "$chefTelefon"
-                br []
-                text "$chefMobil"
-                br []
-                text "$meinGeschlecht"
-                br []
-                text "$meinTitel"
-                br []
-                text "$meinVorname"
-                br []
-                text "$meinNachname"
-                br []
-                text "$meineStrasse"
-                br []
-                text "$meinePlz"
-                br []
-                text "$meineStadt"
-                br []
-                text "$meineEmail"
-                br []
-                text "$meinMobilTelefon"
-                br []
-                text "$meineTelefonnr"
-                br []
-                text "$datumHeute"
-                br []
-                text "$jobName"
               ]
             divAttr
               [ attr.id "divSentApplications"
@@ -1098,7 +1052,7 @@ module Client =
               [ attr.id "divEditUserValues"; attr.style "display: none" ]
               [ h3 [ text (t German YourValues) ]
                 b
-                  [ text "Tipp: Dies sind keine Pflichtangaben."
+                  [ text "Dies sind keine Pflichtangaben."
                   ]
                 br []
                 text "Lass Felder, die du nicht als Variablen verwenden willst einfach leer."
@@ -1194,7 +1148,27 @@ module Client =
                 createInput (t German Degree) employerDegree (fun s -> "")
                 createInput (t German FirstName) employerFirstName (fun s -> "")
                 createInput (t German LastName) employerLastName (fun (s : string) -> "")
-                createInputWithPlaceholder "Tipp: Zum Testen eigene Email eintragen" (t German Email) employerEmail (fun (s : string) -> "")
+                divAttr
+                  [ attr.``class`` "form-group bottom-distanced"]
+                  [ div
+                      [ labelAttr
+                          [ attr.``for`` "txtEmployerEmail"
+                            attr.style "font-weight: bold"
+                          ]
+                          [ text "Email" ]
+                        buttonAttr
+                          [ on.click (fun _ _ -> employerEmail.Value <- varUserEmail.Value)
+                            attr.``class`` "distanced"
+                          ]
+                          [text "an dich"]
+                      ]
+                    Doc.Input
+                      [ attr.id "txtEmployerEmail"
+                        attr.``class`` "form-control"
+                        attr.``type`` "text"
+                      ]
+                      employerEmail
+                  ]
                 createInput (t German Phone) employerPhone (fun s -> "")
                 createInput (t German MobilePhone) employerMobilePhone (fun s -> "")
                 buttonAttr

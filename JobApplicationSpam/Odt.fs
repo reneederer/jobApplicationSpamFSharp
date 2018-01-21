@@ -33,25 +33,104 @@ module Odt =
 
 
 
+
     let areStreamsEqual (fs1 : Stream) (fs2 : Stream) =
-        let chunkSize = 2048
+        let chunkSize = 10
         let mutable (b1 : array<byte>) = Array.zeroCreate (chunkSize)
         let mutable (b2 : array<byte>) = Array.zeroCreate (chunkSize)
 
-        let rec areFileStreamsEqual () =
+        let rec areStreamsEqual' () =
 
-            let length = fs1.Read(b1, 0, chunkSize)
-            fs2.Read(b2, 0, chunkSize) |> ignore
-            if (Array.take length b1) <> (Array.take length b2) then
+            let length1 = fs1.Read(b1, 0, chunkSize)
+            let length2 = fs2.Read(b2, 0, chunkSize)
+            if length1 <> length2
+            then
                 false
-            elif length <> chunkSize then
+            elif (Array.take length1 b1) <> (Array.take length2 b2) then
+                Console.WriteLine(fs1.Position |> string)
+                Array.zip b1 b2 |> Array.skipWhile(fun (x1, x2) -> x1 = x2)
+                |> Array.iter
+                    (fun x -> printf "%A " x)
+                false
+            elif length1 <> chunkSize then
                 true
             else
-                areFileStreamsEqual ()
+                areStreamsEqual' ()
 
-        if fs1.Length <> fs2.Length
-        then false
-        else areFileStreamsEqual ()
+        areStreamsEqual' ()
+
+
+    let rec applyRec path f : list<'a> =
+        let directories = Directory.EnumerateDirectories(path)
+        let xs =
+            [ for directory in directories do
+                yield! applyRec directory f
+            ]
+
+        let files = Directory.EnumerateFiles(path)
+        xs
+        @
+        [ for file in files do
+            yield f file ]
+
+
+    let areOdtFilesEqual odtPath1 odtPath2 =
+        printfn "o1: %s, o2: %s" odtPath1 odtPath2
+        let guid1 = Guid.NewGuid().ToString("N")
+        let extractedOdtDirectory1 =
+            Path.Combine(
+                ( ConfigurationManager.AppSettings.["dataDirectory"])
+                , "tmp"
+                , guid1)
+
+        let guid2 = Guid.NewGuid().ToString("N")
+        let extractedOdtDirectory2 =
+            Path.Combine(
+                ( ConfigurationManager.AppSettings.["dataDirectory"])
+                , "tmp"
+                , guid2)
+
+        ZipFile.ExtractToDirectory(odtPath1, extractedOdtDirectory1)
+        ZipFile.ExtractToDirectory(odtPath2, extractedOdtDirectory2)
+
+
+        applyRec
+            extractedOdtDirectory1
+            (fun fileName1 ->
+                if fileName1.ToLower().EndsWith("meta.xml")
+                then true
+                else
+                    Console.WriteLine("p: " + Path.GetDirectoryName(fileName1).Substring(extractedOdtDirectory1.Length))
+                    use fs1 = 
+                        new FileStream
+                            ( Path.Combine
+                                ( ConfigurationManager.AppSettings.["dataDirectory"]
+                                , "tmp" 
+                                , guid1
+                                , fileName1
+                                )
+                            , FileMode.Open
+                            , FileAccess.Read)
+                    use fs2 = 
+                        new FileStream
+                            ( Path.Combine
+                                ( ConfigurationManager.AppSettings.["dataDirectory"]
+                                , "tmp" 
+                                , guid2
+                                , Path.GetDirectoryName(fileName1).Substring(extractedOdtDirectory1.Length)
+                                , fileName1
+                                )
+                            , FileMode.Open
+                            , FileAccess.Read)
+
+                    areStreamsEqual fs1 fs2
+            )
+        |> List.forall id
+
+
+
+        //log.Debug (sprintf "(odtPath=%s, extractedOdtDirectory=%s, replacedOdtDirectory=%s) = %s" odtPath extractedOdtDirectory replacedOdtDirectory replacedOdtPath)
+
 
 
 
@@ -114,7 +193,7 @@ module Odt =
                                 let replaceValue =
                                     match emptyTextTagAction with
                                     | Replace -> System.Security.SecurityElement.Escape(replacedV)
-                                    | Ignore -> replacedV
+                                    | Ignore -> System.Security.SecurityElement.Escape(replacedV)
                                 s.Replace(k1 + "_", replaceValue).Replace(k1, replaceValue)
                         let stateWithReplacedUderScoreVar = replace state (k + "_") v
                         replace stateWithReplacedUderScoreVar k v
@@ -125,35 +204,23 @@ module Odt =
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     let replaceInFile path map emptyTextTagAction =
         let content = File.ReadAllText(path)
         let replacedText = replaceInString content map emptyTextTagAction
         File.WriteAllText(path, replacedText)
 
-    let rec private replaceInDirectory path map emptyTextTagAction =
-        let files = Directory.EnumerateFiles(path)
-        for file in files do
-            if file.EndsWith(".xml") then replaceInFile file map Replace
-        let directories = Directory.EnumerateDirectories(path)
-        for directory in directories do
-            replaceInDirectory directory map emptyTextTagAction
+    
+
+    let rec replaceInDirectory path map emptyTextTagAction =
+        applyRec
+            path
+            (fun fileName ->
+                if fileName.ToLower().EndsWith (".xml")
+                then replaceInFile fileName map Replace
+                else replaceInFile fileName map Ignore
+            ) |> ignore
+
+
     
     let replaceInOdt odtPath extractedOdtDirectory replacedOdtDirectory map =
         log.Debug (sprintf "(odtPath=%s, extractedOdtDirectory=%s, replacedOdtDirectory=%s)" odtPath extractedOdtDirectory replacedOdtDirectory)
@@ -196,14 +263,17 @@ module Odt =
     let convertToOdt filePath =
         log.Debug (sprintf "(filePath = %s)" filePath)
         let outputPath = Path.ChangeExtension(filePath, ".odt")
+        if File.Exists(outputPath) then File.Delete(outputPath)
         use process1 = new System.Diagnostics.Process()
         process1.StartInfo.FileName <- ConfigurationManager.AppSettings.["python"]
         process1.StartInfo.UseShellExecute <- false
         process1.StartInfo.Arguments <-
             sprintf
-                """ "%s" --format odt "%s" """
+                """ "%s" --format odt --output="%s" "%s" """
                 (ConfigurationManager.AppSettings.["unoconv"])
+                outputPath
                 filePath
+        printfn "%s" process1.StartInfo.Arguments
         process1.StartInfo.CreateNoWindow <- true
         process1.Start() |> ignore
         process1.WaitForExit()

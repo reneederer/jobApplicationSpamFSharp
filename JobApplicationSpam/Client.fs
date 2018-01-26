@@ -6,21 +6,119 @@ open WebSharper.UI.Next.Client
 open WebSharper.UI.Next.Html
 open WebSharper.JavaScript
 
-
 module Client =
     open Chessie.ErrorHandling
     open JobApplicationSpam.Types
     open WebSharper.JQuery
     open System
-    open WebSharper.UI.Next.Client.HtmlExtensions
     open Phrases
     open Translation
+
+
+    [<JavaScript>]
+    let togglePassword id =
+        let el = JQuery("#" + id)
+        if el.Attr("type") = "password"
+        then
+            el.Attr("type", "text") |> ignore
+        else
+            el.Attr("type", "password") |> ignore
+        el.Next().ToggleClass("fa-eye fa-eye-slash") |> ignore
+        el.Focus() |> ignore
+        ()
+
+
+    [<JavaScript>]
+    let loginOrOutButton () =
+        let varIsGuest = Var.Create(Bad [""])
+        async {
+            let! isGuest = Server.isLoggedInAsGuest()
+            varIsGuest.Value <- isGuest
+        } |> Async.Start
+        match varIsGuest.Value with
+        | Bad _
+        | Ok (true, _) ->
+            formAttr
+              [ attr.action "/ghi" ]
+              [ buttonAttr
+                  [ attr.``type`` "submit"
+                  ]
+                  [text "Login"]
+              ]
+            :> Doc
+        | Ok (false, _) ->
+            formAttr
+              [ attr.action "/logout" ]
+              [ buttonAttr
+                  [ attr.``type`` "submit"
+                  ]
+                  [text "Logout"]
+              ]
+            :> Doc
+
+    [<JavaScript>]
+    let logout () =
+        Cookies.Expire("user")        
+        div
+          []
+
+    [<JavaScript>]
+    let changePassword() =
+        div
+          [ formAttr
+              [ on.submit (fun _ _ ->
+                    async {
+                        do! Server.setPassword (JS.Document.GetElementById("txtNewPassword")?value)
+                    } |> Async.Start
+                )
+              ]
+              [ h3 [text (t German ChangePassword) ]
+                divAttr
+                  [ attr.``class`` "form-group" ]
+                  [ b
+                      [ labelAttr
+                          [ attr.``for`` "txtNewPassword" ] 
+                          [text "Neues Password"]
+                      ]
+                    div
+                      [ inputAttr
+                          [ attr.``type`` "text"
+                            attr.``class`` "form-control"
+                            attr.name "txtNewPassword"
+                            attr.id "txtNewPassword" ]
+                          []
+                        iAttr
+                          [ attr.``class`` "fa fa-eye fa-2x";
+                            Attr.Create "aria-hidden" "true"
+                            attr.style "float: right; position: relative; margin-top: -36px; margin-right: 15px"
+                            on.click (fun _ _ ->
+                                togglePassword "txtNewPassword")
+                          ]
+                          []
+                      ]
+                  ]
+                inputAttr
+                  [ attr.``type`` "submit"
+                    attr.value (t German ChangePassword)
+                  ]
+                  []
+              ]
+          ]
+
+    [<JavaScript>]
+    let setSessionCookie () =
+        let guid = Guid.NewGuid().ToString("N")
+        Cookies.Set("user", guid, Cookies.Options(Expires = Date(Date.Now() + 604800000)))
+        async {
+            do! Server.setSessionGuid guid
+        } |> Async.Start
+        div []
 
     [<JavaScript>]
     let login () =
         div
           [ formAttr
-              [ attr.action "/login"; attr.method "POST" ]
+              [ attr.action "/ghi"; attr.method "POST" ]
               [ h3 [text (t German Login) ]
                 divAttr
                   [ attr.``class`` "form-group" ]
@@ -49,15 +147,41 @@ module Client =
                     attr.name "btnLogin"
                   ]
                   []
-                inputAttr
-                  [ attr.``type`` "submit"
-                    attr.style "margin-left: 30px;"
-                    attr.name "btnRegister"
-                    attr.value "Register"
-                  ]
-                  []
               ]
           ]
+
+
+    [<JavaScript>]
+    let doLogin () =
+        let loginAsGuest' () =
+            async {
+                let sessionGuid = Guid.NewGuid().ToString("N")
+                Cookies.Set("user", sessionGuid)
+                do! Server.loginAsGuest sessionGuid
+            }
+
+        async {
+            if Cookies.Get("user").Value <> JS.Undefined
+            then
+                let! loginResult = Server.loginUserBySessionGuid (Cookies.Get("user").Value)
+                match loginResult with
+                | Ok _ ->
+                    let! email = Server.getCurrentUserEmail()
+                    ()
+                | Bad _ ->
+                    do! loginAsGuest' ()
+            else
+                do! loginAsGuest' ()
+            let mutable shouldWaitForLogin = true
+            while shouldWaitForLogin do
+                let! userLoggedIn = Server.isUserLoggedIn()
+                do! Async.Sleep 20
+                shouldWaitForLogin <- not userLoggedIn
+            JS.Window.Location.Href <- "/"
+        } |> Async.Start 
+        div []
+
+
 
 
     [<JavaScript>]
@@ -80,6 +204,7 @@ module Client =
         let userMobilePhone : IRef<string> = varUserValues.Lens (fun x -> x.mobilePhone) (fun x v -> { x with mobilePhone = v })
 
         let varUserEmail = Var.CreateWaiting<string>()
+        let varUserEmailInput = Var.CreateWaiting<Doc>()
 
         let varEmployer = Var.Create emptyEmployer
         let employerCompany : IRef<string> = varEmployer.Lens (fun x -> x.company) (fun x v -> { x with company = v })
@@ -104,13 +229,94 @@ module Client =
 
         
         let getSentApplications () =
+            let createEmployerModal (employer : Employer) (url : string) =
+                divAttr
+                  [ attr.``class`` "modal fade in";
+                    attr.id "employerModal"
+                    attr.tabindex "-1"
+                    Attr.Create "role" "dialog"
+                    Attr.Create "aria-labelledby" "exampleModalLabel"
+                    Attr.Create "aria-hidden" "true"
+                  ]
+                  [ divAttr
+                      [ attr.``class`` "modal-dialog"
+                        Attr.Create "role" "document"
+                      ]
+                      [ divAttr
+                          [ attr.``class`` "modal-content"
+                          ]
+                          [ divAttr
+                              [ attr.``class`` "modal-header"
+                              ]
+                              [ h5Attr
+                                  [ attr.``class`` "modal-title"
+                                    attr.id "exampleModalLabel"
+                                  ]
+                                  [ text employer.company ]
+                                buttonAttr
+                                  [ attr.``type`` "button"
+                                    attr.``class`` "close"
+                                    Attr.Create "aria-label" "Close"
+                                    attr.``data-`` "dismiss" "modal"
+                                  ]
+                                  [ spanAttr
+                                      [ Attr.Create "aria-hidden" "true"
+                                      ]
+                                      [ text "x" ]
+                                  ]
+                              ]
+                            divAttr
+                              [ attr.``class`` "modal-body"
+                              ]
+                              [ text employer.company
+                                br []
+                                text employer.street
+                                br []
+                                text (employer.postcode + " " + employer.city)
+                                br []
+                                text ( (if employer.degree <>  "" then employer.degree + " " else "")
+                                           + employer.degree + " " + employer.firstName + " " + employer.lastName)
+                                br []
+                                text employer.email
+                                br []
+                                text employer.phone
+                                br []
+                                text employer.mobilePhone
+                                br []
+                                (if url.Contains("://")
+                                 then
+                                     aAttr
+                                       [ attr.href url
+                                         attr.target "blank"
+                                       ]
+                                       [ text url ]
+                                 else text url :?> Elt)
+                              ]
+                            divAttr
+                              [ attr.``class`` "modal-footer"
+                              ]
+                              [ buttonAttr
+                                  [ attr.``type`` "button"
+                                    attr.``class`` "btn btn-primary"
+                                    attr.``class`` "close"
+                                    Attr.Create "aria-label" "Close"
+                                    attr.``data-`` "dismiss" "modal"
+                                  ]
+                                  [ text "Close" ]
+                              ]
+                          ]
+                      ]
+                  ]
+            let varEmployerModal = Var.Create(createEmployerModal emptyEmployer "")
+
             async {
-                let! sentApplications = Server.getSentApplications DateTime.Now DateTime.Now
+                let! sentApplications = Server.getSentApplications (DateTime.Parse("1970-01-01")) DateTime.Now
                 varDivSentApplications.Value <-
                     divAttr
                       [ attr.style "width: 100%; height: 100%; overflow: auto"
                       ]
-                      [ tableAttr
+                      [ Doc.EmbedView varEmployerModal.View
+                        tableAttr
                           [ attr.style "border-spacing: 10px; border-collapse: separate" ]
                           [ thead
                               [ tr
@@ -123,35 +329,56 @@ module Client =
                             tbody
                               [ let emailSentApplicationToUserFun =
                                     fun (el : Dom.Element) (ev : Dom.MouseEvent) ->
-                                        async {
+                                        async { 
                                             let! result = Server.emailSentApplicationToUser (el.ParentElement.ParentElement?rowIndex - 1) ""
                                             match result with
                                             | Ok _ -> ()
                                             | Bad _ -> JS.Alert("Entschuldigung, es trat ein Fehler auf")
                                         } |> Async.Start
 
-                                for (company, jobName, (appliedOn : DateTime), url) in sentApplications do
-                                   yield!
-                                     [ tr
-                                         [ td
-                                             [ text company ]
-                                           td
-                                             [ text (sprintf "%02i.%02i.%04i" appliedOn.Day appliedOn.Month appliedOn.Year) ]
-                                           td
-                                             [ text jobName ]
-                                           td
-                                             [ buttonAttr
-                                                 [ on.click emailSentApplicationToUserFun
-                                                 ]
-                                                 [ iAttr
-                                                     [ attr.``class`` "fa fa-envelope"; (Attr.Create "aria-hidden" "true")
-                                                     ]
-                                                     []
-                                                 ]
-                                             ]
-                                         ]
-                                       :> Doc
-                                     ]
+                                for (employer, jobName, (appliedOn : DateTime), url) in sentApplications do
+                                    yield!
+                                      [ tr
+                                          [ td
+                                              [ buttonAttr
+                                                  [ on.click (fun el _ ->
+                                                        async {
+                                                            varEmployerModal.Value <- createEmployerModal employer url
+                                                            do! Async.Sleep 100
+                                                            JQuery("#btnHelperShowEmployerModal").Click() |> ignore
+                                                        } |> Async.Start
+                                                    )
+                                                    attr.``type`` "button"
+                                                    attr.``class`` "btn btn-primary"
+                                                  ]
+                                                  [ text employer.company ]
+                                                buttonAttr
+                                                  [
+                                                    attr.id "btnHelperShowEmployerModal"
+                                                    attr.``class`` "btn btn-primary"
+                                                    attr.``data-`` "toggle" "modal"
+                                                    attr.``data-`` "target" "#employerModal"
+                                                    attr.style "visibility: hidden"
+                                                  ]
+                                                  [ text "" ]
+                                              ]
+                                            td
+                                              [ text (sprintf "%02i.%02i.%04i" appliedOn.Day appliedOn.Month appliedOn.Year) ]
+                                            td
+                                              [ text jobName ]
+                                            td
+                                              [ buttonAttr
+                                                  [ on.click emailSentApplicationToUserFun
+                                                  ]
+                                                  [ iAttr
+                                                      [ attr.``class`` "fa fa-envelope"; (Attr.Create "aria-hidden" "true")
+                                                      ]
+                                                      []
+                                                  ]
+                                              ]
+                                          ]
+                                        :> Doc
+                                      ]
                               ]
                           ]
                       ]
@@ -373,6 +600,12 @@ module Client =
             for hideElId in showHideMutualElements do
                 if not <| List.contains hideElId elIds
                 then JS.Document.GetElementById(hideElId)?style?display <- "none"
+        
+        let addSelectOption el value =
+            let optionEl = JS.Document.CreateElement("option")
+            optionEl.TextContent <- value
+            el?add(optionEl)
+        
 
         let setDocument () =
             async {
@@ -384,15 +617,12 @@ module Client =
                 match oDocument with
                 | Some document ->
                     varDocument.Value <- document
-                    JS.Document.GetElementById("hiddenDocumentId")?value <- varDocument.Value.id |> string
-                    JS.Document.GetElementById("btnApplyNowTop")?disabled <- false
-                    JS.Document.GetElementById("btnApplyNowBottom")?disabled <- false
-                    show ["divAttachments"]
                 | None ->
-                    varDocument.Value <- emptyDocument
-                    JS.Document.GetElementById("btnApplyNowTop")?disabled <- true
-                    JS.Document.GetElementById("btnApplyNowBottom")?disabled <- true
-                    show ["divAddDocument"]
+                    let! documentId = Server.saveNewDocument emptyDocument
+                    varDocument.Value <- { emptyDocument with oId = Some documentId }
+                    addSelectOption slctDocumentNameEl varDocument.Value.name
+                JS.Document.GetElementById("hiddenDocumentId")?value <- varDocument.Value.oId |> Option.get |> string
+                show ["divAttachments"]
             }
         
 
@@ -418,9 +648,8 @@ module Client =
                                                         | [] -> before
                                             
                                         }
-                                    JS.Alert(varDocument.Value.pages |> List.length |> string)
                                     async {
-                                        let! _ = Server.overwriteDocument varDocument.Value
+                                        do! Server.overwriteDocument varDocument.Value
                                         do! setDocument()
                                         do! setPageButtons()
                                     } |> Async.Start
@@ -444,7 +673,7 @@ module Client =
                                                         | [] -> before
                                             
                                         }
-                                    let! _ = Server.overwriteDocument varDocument.Value
+                                    do! Server.overwriteDocument varDocument.Value
                                     do! setDocument()
                                     do! setPageButtons()
                                 } |> Async.Start
@@ -470,7 +699,7 @@ module Client =
                                                         | [] -> before
                                             
                                         }
-                                    let! _ = Server.overwriteDocument varDocument.Value
+                                    do! Server.overwriteDocument varDocument.Value
                                     do! setDocument()
                                     do! setPageButtons()
                                 } |> Async.Start
@@ -515,80 +744,138 @@ module Client =
                 JS.Document.GetElementById("hiddenNextPageIndex")?value <- ((JQuery("#divAttachmentButtons").Children("div").Length + 1) |> string)
             }
         
-        let addSelectOption el value =
-            let optionEl = JS.Document.CreateElement("option")
-            optionEl.TextContent <- value
-            el?add(optionEl)
-        
         let btnApplyNowClicked () =
             async {
+                let! isGuestResult = Server.isLoggedInAsGuest()
+
                 let emailRegexStr = """^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$"""
                 let regex = RegExp(emailRegexStr)
-                if not <| regex?test(employerEmail.Value)
-                then
-                    JS.Alert(t German TheEmailOfYourEmployerDoesNotLookValid + ", " + employerEmail.Value)
-                elif documentJobName.Value.Trim() = ""
-                then
-                    JS.Alert(String.Format(t German FieldIsRequired, (t German JobName)))
-                else
-                    let! sentApplication (*TODO this is an option<int> instead of option<SentApplication> as placeholder*) =
-                        Server.tryFindSentApplication varEmployer.Value
+                let! sentApplication (*TODO this is an option<int> instead of option<SentApplication> as placeholder*) =
+                    Server.tryFindSentApplication varEmployer.Value
+
+                let userEmailValid() =
+                    let varRet = Var.Create(true)
+                    match isGuestResult with
+                    | Bad _ ->
+                        JS.Alert("Sorry, an error occurred")
+                        false
+                    | Ok (isGuest, _) when isGuest = true ->
+                        if not <| regex?test(varUserEmail.Value)
+                          then
+                             JS.Alert("Deine Email scheint ungültig zu sein.")
+                             false
+                          else
+                             async {
+                                 let! setUserEmailResult = Server.setUserEmail varUserEmail.Value
+                                 match setUserEmailResult with
+                                 | Ok _ -> varRet.Value <- true
+                                 | Bad xs ->
+                                     JS.Alert(String.Concat(xs))
+                                     varRet.Value <- false
+                             } |> Async.Start
+                             varRet.Value
+                    | Ok (isGuest, _) when isGuest = false ->
+                        true
+
+                let employerValid() =
+                    if not <| regex?test(employerEmail.Value)
+                     then
+                         JS.Alert(t German TheEmailOfYourEmployerDoesNotLookValid + ", " + employerEmail.Value)
+                         false
+                     else true
+                    
+                let jobNameValid () =
+                     if documentJobName.Value.Trim() = ""
+                     then
+                         JS.Alert(String.Format(t German FieldIsRequired, (t German JobName)))
+                         false
+                     else true
+                
+                let sentAlreadyValid() =
                     if sentApplication.IsNone || (sentApplication.IsSome && JS.Confirm("Du hast dich schon einmal bei dieser Firmen-Email-Adresse beworben.\nBewerbung trotzdem abschicken?"))
-                    then
-                        let btnLoadFromWebsite = JQuery("#btnLoadFromWebsite")
-                        let fontAwesomeEls =
-                            [ JQuery("#faBtnApplyNowBottom")
-                              JQuery("#faBtnApplyNowTop")
-                            ]
-                        fontAwesomeEls
-                        |> List.iter (fun faEl ->
-                            faEl.Css("color", "black") |> ignore
-                            faEl.AddClass("fa-spinner fa-spin") |> ignore
-                            )
-                        btnLoadFromWebsite.Prop("disabled", true) |> ignore
-                        JQuery("#divJobApplicationContent").Find("input,textarea,button,select").Prop("disabled", true) |> ignore
+                    then true
+                    else false
+                
+                if userEmailValid() && employerValid() && jobNameValid() && sentAlreadyValid()
+                then
+                    do! Server.overwriteDocument varDocument.Value
 
-                        let! applyResult =
-                            Server.applyNow
-                                varEmployer.Value
-                                varDocument.Value
-                                varUserValues.Value
-                                (JS.Document.GetElementById("txtReadEmployerFromWebsite")?value)
-
-                        fontAwesomeEls
-                        |> List.iter (fun faEl ->
-                            faEl.RemoveClass("fa-spinner fa-spin") |> ignore
+                    let btnLoadFromWebsite = JQuery("#btnLoadFromWebsite")
+                    let fontAwesomeEls =
+                        [ JQuery("#faBtnApplyNowBottom")
+                          JQuery("#faBtnApplyNowTop")
+                        ]
+                    fontAwesomeEls
+                    |> List.iter (fun faEl ->
+                        faEl.Css("color", "black") |> ignore
+                        faEl.AddClass("fa-spinner fa-spin") |> ignore
                         )
-                        btnLoadFromWebsite.Prop("disabled", false) |> ignore
-                        JQuery("#divJobApplicationContent").Find("input,textarea,button,select").Prop("disabled", false) |> ignore
-                        match applyResult with
-                        | Bad xs ->
-                            do! Async.Sleep 700
-                            JS.Alert(t German SorryAnErrorOccurred + "\n" + t German YourApplicationHasNotBeenSent)
-                        | Ok _ ->
-                            fontAwesomeEls
-                            |> List.iter (fun faEl ->
-                                faEl.Css("color", "#08a81b") |> ignore
-                                faEl.AddClass("fa-check") |> ignore
-                            )
+                    btnLoadFromWebsite.Prop("disabled", true) |> ignore
+                    JQuery("#divJobApplicationContent").Find("input,textarea,button,select").Prop("disabled", true) |> ignore
 
-                            varEmployer.Value <- emptyEmployer
-                            JS.Document.GetElementById("txtReadEmployerFromWebsite")?value <- ""
+                    let! applyResult =
+                        Server.applyNow
+                            varEmployer.Value
+                            varDocument.Value
+                            varUserValues.Value
+                            (JS.Document.GetElementById("txtReadEmployerFromWebsite")?value)
 
-                            do! Async.Sleep 4500
+                    fontAwesomeEls
+                    |> List.iter (fun faEl ->
+                        faEl.RemoveClass("fa-spinner fa-spin") |> ignore
+                    )
+                    btnLoadFromWebsite.Prop("disabled", false) |> ignore
+                    JQuery("#divJobApplicationContent").Find("input,textarea,button,select").Prop("disabled", false) |> ignore
+                    match applyResult with
+                    | Bad xs ->
+                        do! Async.Sleep 700
+                        JS.Alert(t German SorryAnErrorOccurred + "\n" + t German YourApplicationHasNotBeenSent)
+                    | Ok _ ->
+                        fontAwesomeEls
+                        |> List.iter (fun faEl ->
+                            faEl.Css("color", "#08a81b") |> ignore
+                            faEl.AddClass("fa-check") |> ignore
+                        )
 
-                            fontAwesomeEls
-                            |> List.iter (fun faEl ->
-                                faEl.RemoveClass("fa-check") |> ignore
-                            )
+                        varEmployer.Value <- emptyEmployer
+                        JS.Document.GetElementById("txtReadEmployerFromWebsite")?value <- ""
+
+                        do! Async.Sleep 4500
+
+                        fontAwesomeEls
+                        |> List.iter (fun faEl ->
+                            faEl.RemoveClass("fa-check") |> ignore
+                        )
             }
+
+        let saveChanges () =
+            async {
+                do! Server.overwriteDocument varDocument.Value
+                do! Server.setUserValues varUserValues.Value
+            }
+        
             
+
+
+
         async {
+            while Cookies.Get("user") = Undefined do
+                do! Async.Sleep 20
+            let! isGuest = Server.isLoggedInAsGuest()
+            match isGuest with
+            | Ok (true, _) ->
+                varUserEmailInput.Value <- createInput "Deine Email" varUserEmail (fun x -> "")
+            | Ok (false, _) ->
+                varUserEmailInput.Value <- text ""
+            | Bad _ ->
+                ()
+
             let divMenu = JS.Document.GetElementById("divSidebarMenu")
             while divMenu = null do
                 do! Async.Sleep 10
+
             let addMenuEntry entry (f : Dom.Element -> Event -> unit) = 
-                let li = JQuery(sprintf """<li><button class="btnLikeLink1">%s</button></li>""" entry).On("click", f)
+                let li = JQuery(sprintf """<li><button class="btnLikeLink1">%s</button></li>""" entry).On("click", ((*saveChanges();*) f))
                 JQuery(divMenu).Append(li)
 
             addMenuEntry (t German SentApplications) (fun _ _ ->
@@ -597,6 +884,7 @@ module Client =
                     show ["divSentApplications"]
                 } |> Async.Start
             ) |> ignore
+
             addMenuEntry "Variablen" (fun _ _ -> show ["divVariables"]) |> ignore
             addMenuEntry (t German EditYourValues) (fun _ _ -> show ["divEditUserValues"]) |> ignore
             addMenuEntry (t German EditEmail) (fun _ _ -> show ["divEmail"]) |> ignore
@@ -606,11 +894,14 @@ module Client =
             let! oUserEmail = Server.getCurrentUserEmail()
             varUserEmail.Value <- oUserEmail |> Option.defaultValue ""
         
-            let! userValues = Server.getCurrentUserValues()
-            varUserValues.Value <- userValues
+            let! oUserValues = Server.getCurrentUserValues()
+            varUserValues.Value <- (oUserValues |> Option.defaultValue emptyUserValues)
 
-            let! documentNames = Server.getDocumentNames()
 
+            let! documentNames =
+                async {
+                    return! Server.getDocumentNames()
+                }
             let slctDocumentNameEl = JS.Document.GetElementById("slctDocumentName")
             while JS.Document.GetElementById("slctDocumentName") = null do
                 do! Async.Sleep 10
@@ -629,12 +920,6 @@ module Client =
                 do! Async.Sleep 10
             for htmlPageTemplate in htmlPageTemplates do
                 addSelectOption slctHtmlPageTemplateEl htmlPageTemplate.name
-            JS.Window.Onbeforeunload <- (fun _ ->
-                async {
-                    do! Server.overwriteDocument varDocument.Value
-                    do! Server.setUserValues varUserValues.Value
-                } |> Async.Start
-                )
         } |> Async.Start
 
         let readFromWebsite () =
@@ -651,7 +936,6 @@ module Client =
                 | Bad (xs) ->
                     JS.Alert(List.fold (fun state x -> state + x + "\n") "" xs)
             }
-
 
         divAttr
           [ attr.id "divJobApplicationContent"
@@ -693,18 +977,20 @@ module Client =
                             let slctEl = JS.Document.GetElementById("slctDocumentName")
                             if slctEl?selectedIndex >= 0 && JS.Confirm(String.Format(t German ReallyDeleteDocument, varDocument.Value.name))
                             then
-                                do! Server.deleteDocument varDocument.Value.id
-                                let slctEl = JS.Document.GetElementById("slctDocumentName")
-                                slctEl.RemoveChild(slctEl?(slctEl?selectedIndex)) |> ignore
-                                if slctEl?length = 0
+                                match varDocument.Value.oId with
+                                | Some documentId -> do! Server.deleteDocument documentId
+                                | None -> ()
+                                let slctDocumentNameEl = JS.Document.GetElementById("slctDocumentName")
+                                slctDocumentNameEl.RemoveChild(slctDocumentNameEl?(slctDocumentNameEl?selectedIndex)) |> ignore
+                                if slctDocumentNameEl?length = 0
                                 then
                                     el?style?display <- "none"
                                     varDocument.Value <- emptyDocument
-                                    show ["divAddDocument"]
-                                else
-                                    show ["divAttachments"]
-                                do! setDocument()
-                                do! setPageButtons()
+                                show ["divAttachments"]
+                            else
+                                varDocument.Value <- emptyDocument
+                            do! setDocument()
+                            do! setPageButtons()
                         } |> Async.Start
                     )
                   ]
@@ -723,7 +1009,7 @@ module Client =
               [ h3Attr
                   [ attr.``class`` "distanced-bottom" ]
                     [ text "Variablen" ]
-                h4Attr
+                h5Attr
                   [ attr.``class`` "distanced-bottom" ]
                   [ text "Vordefiniert" ]
                 b [ text "Arbeitgeber" ]
@@ -774,11 +1060,11 @@ module Client =
                 hr []
                 b [ text "Datum" ]
                 br []
-                text "$tag"
+                text "$tagHeute"
                 br []
-                text "$monat"
+                text "$monatHeute"
                 br []
-                text "$jahr"
+                text "$jahrHeute"
                 br []
                 hr []
                 b [ text "Sonstige" ]
@@ -788,7 +1074,7 @@ module Client =
                 br []
                 hr []
                 br[]
-                h4Attr
+                h5Attr
                   [attr.``class`` "distanced-bottom"]
                   [ text "Benutzerdefiniert" ]
                 Doc.InputArea
@@ -867,7 +1153,7 @@ module Client =
                             else
                                 varDocument.Value <- { varDocument.Value with name = newDocumentName }
                                 let! newDocumentId = Server.saveNewDocument varDocument.Value
-                                varDocument.Value <- { varDocument.Value with id = newDocumentId }
+                                varDocument.Value <- { varDocument.Value with oId = Some newDocumentId }
                                 let slctEl = JS.Document.GetElementById("slctDocumentName")
                                 addSelectOption slctEl newDocumentName
                                 JS.Document.GetElementById("divAddDocument")?style?display <- "none"
@@ -1055,7 +1341,7 @@ module Client =
                   [ text "Dies sind keine Pflichtangaben."
                   ]
                 br []
-                text "Lass Felder, die du nicht als Variablen verwenden willst einfach leer."
+                text """Diese Angaben setzen die Werte von Variablen die mit "$mein" beginnen, zum Beispiel "$meinVorname". Statt hier deine Daten einzutragen kannst du alle Vorkommen dieser Variablen auch direkt ersetzen."""
                 br []
                 br []
                 createInput (t German Degree) userDegree (fun s -> "")
@@ -1077,6 +1363,7 @@ module Client =
                 attr.style "display: none"
               ]
               [ createInput (t German JobName) documentJobName (fun s -> "")
+                Doc.EmbedView varUserEmailInput.View
                 h3 [text (t German Employer)]
                 divAttr
                   [ attr.``class`` "form-group row" ]

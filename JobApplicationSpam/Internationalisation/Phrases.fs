@@ -58,5 +58,6 @@ module Phrases =
         | FileIsTooBig
         | UploadLimit
         | ReplaceVariables
-
+        | ChangePassword
+        | NewPassword
 

@@ -4,6 +4,26 @@ module Types =
     open WebSharper
     open System
 
+    type LoggedInData =
+        { userId : int
+          email : string
+          confirmEmailGuid : option<string>
+          sessiongGuid : option<string>
+        }
+    
+    type LoginData =
+        { userEmail : string
+          password : string
+        }
+    
+    type ValidateLoginData =
+        { userId : int
+          userEmail : string
+          hashedPassword : string
+          salt : string
+          confirmEmailGuid : option<string>
+        }
+
     type EmptyTextTagAction =
     | Replace
     | Ignore
@@ -28,12 +48,6 @@ module Types =
             | "f" -> Gender.Female
             | "u" -> Gender.Unknown
             | x -> failwith ("Failed to convert string to gender: " + x)
-
-    [<JavaScript>]
-    type Login =
-        { email : string
-          password : string
-        }
 
 
     [<JavaScript>]
@@ -120,7 +134,7 @@ module Types =
 
     [<JavaScript>]
     type Document =
-        { id : int
+        { oId : option<int>
           name : string
           pages : list<DocumentPage>
           email : DocumentEmail
@@ -156,48 +170,46 @@ module Types =
 
     [<JavaScript>]
     let emptyUserValues =
-        { gender = Gender.Unknown
+        { gender = Gender.Male
           degree = ""
-          firstName = ""
-          lastName = ""
-          street = ""
-          postcode = ""
-          city = ""
-          phone = ""
-          mobilePhone = ""
+          firstName = "Max"
+          lastName = "Mustermann"
+          street = "Musterstraße 3a"
+          postcode = "90403"
+          city = "Nürnberg"
+          phone = "0911 9876543"
+          mobilePhone = "0151 1234567"
         }
 
     [<JavaScript>]
     let emptyEmployer =
-        { company = ""
-          gender = Gender.Unknown
-          degree = ""
-          firstName = ""
-          lastName = ""
-          street = ""
-          postcode = ""
-          city = ""
-          email = ""
-          phone = ""
-          mobilePhone = ""
+        { company = "Beispielfirma"
+          gender = Gender.Female
+          degree = "Dr."
+          firstName = "Martina"
+          lastName = "Hase"
+          street = "Alleestr. 12"
+          postcode = "20095"
+          city = "Hamburg"
+          email = "martina.hase@beispielfirma.de"
+          phone = "040 11111111"
+          mobilePhone = "0175 5555555"
         }
 
 
     [<JavaScript>]
     let emptyDocument =
-        { id=0
-          name=""
-          pages=[]
+        { oId = None
+          name="Bewerbungsmappe1"
+          pages= [FilePage { name = "beispiel_anschreiben.odt"; path="files/anschreiben.odt"; pageIndex = 1; }]
           email=
             { subject = "Bewerbung als $beruf"
-              body = String.Format("$anredeZeile{0}{0}anbei sende ich Ihnen meine Bewerbungsunterlagen.{0}Über eine Einladung zu einem Bewerbungsgespräch würde ich mich sehr freuen.{0}{0}Mit freundlichen Grüßen{0}{0}$meinTitel $meinVorname $meinNachname{0}$meineStrasse{0}$meinePlz $meineStadt{0}Telefon: $meineTelefonnr_{0}Mobil: $meineMobilnr", newLine)
+              body = String.Format("$anredeZeile{0}{0}anbei sende ich Ihnen meine Bewerbungsunterlagen.{0}Über eine Einladung zu einem Bewerbungsgespräch würde ich mich sehr freuen.{0}{0}Mit freundlichen Grüßen{0}{0}$meinTitel $meinVorname $meinNachname{0}$meineStrasse{0}$meinePlz $meineStadt{0}Telefon: $meineTelefonnr{0}Mobil: $meineMobilnr", newLine)
             }
           jobName=""
-          customVariables = "$datumHeute = $tag + \".\" + $monat + \".\" + $jahr\n\n$anredeZeile =\n\tmatch $chefGeschlecht with\n\t| \"m\" -> \"Sehr geehrter Herr $chefTitel $chefNachname,\"\n\t| \"f\" -> \"Sehr geehrte Frau $chefTitel $chefNachname,\"\n\t| \"u\" -> \"Sehr geehrte Damen und Herren,\"\n\n$chefAnrede =\n\tmatch $chefGeschlecht with\n\t| \"m\" -> \"Herr\"\n\t| \"f\" -> \"Frau\"\n\n$chefAnredeBriefkopf =\n\tmatch $chefGeschlecht with\n\t| \"m\" -> \"Herrn\"\n\t| \"f\" -> \"Frau\"\n\n"
-
+          customVariables = "$datumHeute = $tagHeute + \".\" + $monatHeute + \".\" + $jahrHeute\n\n$anredeZeile =\n\tmatch $chefGeschlecht with\n\t| \"m\" -> \"Sehr geehrter Herr $chefTitel $chefNachname,\"\n\t| \"f\" -> \"Sehr geehrte Frau $chefTitel $chefNachname,\"\n\t| \"u\" -> \"Sehr geehrte Damen und Herren,\"\n\n$chefAnrede =\n\tmatch $chefGeschlecht with\n\t| \"m\" -> \"Herr\"\n\t| \"f\" -> \"Frau\"\n\n$chefAnredeBriefkopf =\n\tmatch $chefGeschlecht with\n\t| \"m\" -> \"Herrn\"\n\t| \"f\" -> \"Frau\"\n\n"
         }   
     
-
 
     type DataBinding =
         | TextBinding of IRef<string>
@@ -215,6 +227,10 @@ module Types =
         [ "doc"; "docx"; "fodt"; "ott"; "rtf"; "stw"; "sxw"; "uot" ]
 
 
+    let toRootedPath path =
+        if System.IO.Path.IsPathRooted path
+        then path
+        else System.IO.Path.Combine(System.Configuration.ConfigurationManager.AppSettings.["dataDirectory"], path)
 
 
 

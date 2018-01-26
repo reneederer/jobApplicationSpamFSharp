@@ -96,34 +96,27 @@ module Odt =
 
         applyRec
             extractedOdtDirectory1
-            (fun fileName1 ->
-                if fileName1.ToLower().EndsWith("meta.xml")
+            (fun path1 ->
+                if path1.ToLower().EndsWith("meta.xml")
                 then true
                 else
-                    Console.WriteLine("p: " + Path.GetDirectoryName(fileName1).Substring(extractedOdtDirectory1.Length))
-                    use fs1 = 
-                        new FileStream
-                            ( Path.Combine
-                                ( ConfigurationManager.AppSettings.["dataDirectory"]
-                                , "tmp" 
-                                , guid1
-                                , fileName1
-                                )
-                            , FileMode.Open
-                            , FileAccess.Read)
-                    use fs2 = 
-                        new FileStream
-                            ( Path.Combine
-                                ( ConfigurationManager.AppSettings.["dataDirectory"]
-                                , "tmp" 
-                                , guid2
-                                , Path.GetDirectoryName(fileName1).Substring(extractedOdtDirectory1.Length)
-                                , fileName1
-                                )
-                            , FileMode.Open
-                            , FileAccess.Read)
+                    let path2 = Path.Combine(extractedOdtDirectory2, path1.Substring(extractedOdtDirectory1.Length + 1))
 
-                    areStreamsEqual fs1 fs2
+                    if not <| File.Exists path1 || not <| File.Exists path2
+                    then false
+                    else
+                        use fs1 = 
+                            new FileStream(
+                                  path1
+                                , FileMode.Open
+                                , FileAccess.Read)
+                        use fs2 = 
+                            new FileStream(
+                                  path2
+                                , FileMode.Open
+                                , FileAccess.Read)
+
+                        areStreamsEqual fs1 fs2
             )
         |> List.forall id
 
@@ -211,13 +204,13 @@ module Odt =
 
     
 
-    let rec replaceInDirectory path map emptyTextTagAction =
+    let rec replaceInExtractedOdtDirectory path map emptyTextTagAction =
         applyRec
             path
             (fun fileName ->
                 if fileName.ToLower().EndsWith (".xml")
                 then replaceInFile fileName map Replace
-                else replaceInFile fileName map Ignore
+                else ()
             ) |> ignore
 
 
@@ -230,7 +223,7 @@ module Odt =
         if Directory.Exists extractedOdtDirectory then Directory.Delete(extractedOdtDirectory, true)
         if File.Exists(replacedOdtPath) then File.Delete(replacedOdtPath)
         ZipFile.ExtractToDirectory(odtPath, extractedOdtDirectory)
-        replaceInDirectory extractedOdtDirectory map Replace
+        replaceInExtractedOdtDirectory extractedOdtDirectory map Replace
         ZipFile.CreateFromDirectory(extractedOdtDirectory, replacedOdtPath)
         Directory.Delete(extractedOdtDirectory, true)
         log.Debug (sprintf "(odtPath=%s, extractedOdtDirectory=%s, replacedOdtDirectory=%s) = %s" odtPath extractedOdtDirectory replacedOdtDirectory replacedOdtPath)

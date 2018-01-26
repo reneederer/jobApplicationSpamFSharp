@@ -15,16 +15,20 @@ drop table if exists filePage cascade;
 drop table if exists documentEmail cascade;
 drop table if exists document cascade;
 drop table if exists htmlPageTemplate cascade;
+drop table if exists jobRequirement cascade;
+drop table if exists jobOffer cascade;
 drop table if exists employer cascade;
 drop table if exists userValues cascade;
 drop table if exists login cascade;
 drop table if exists users cascade;
 
 
-create table users (id serial primary key, email text unique not null, password text not null, salt text not null, guid text null, createdOn date not null);
+create table users (id serial primary key, email text unique null, password text not null, salt text not null, confirmEmailGuid text null, sessionGuid text unique null, createdOn date not null);
 create table login (id serial primary key, userId int not null, loggedInAt timestamp with time zone, foreign key(userId) references users(id));
-create table userValues(id serial primary key, userId int unique not null, gender text not null, degree text not null, firstName text not null, lastName text not null, street text not null, postcode text not null, city text not null, phone text not null, mobilePhone text not null, foreign key(userId) references users(id));
+create table userValues(id serial primary key, userId int unique not null, gender text not null, degree text not null, firstName text not null, lastName text not null, street text not null, postcode text not null, city text not null,phone text not null, mobilePhone text not null, foreign key(userId) references users(id));
 create table employer(id serial primary key, userId int not null, company text not null, street text not null, postcode text not null, city text not null, gender text not null, degree text not null, firstName text not null, lastName text not null, email text not null, phone text not null, mobilePhone text not null, foreign key(userId) references users(id));
+create table jobOffer(id serial primary key, url text not null, jobName text not null);
+create table jobRequirement(id serial primary key, jobOfferId int not null, key text not null, value text not null, foreign key(jobOfferId) references jobOffer(id));
 create table htmlPageTemplate(id serial primary key, name text unique not null, odtPath text unique not null, html text not null);
 create table document(id serial primary key, userId int not null, name text not null, jobName text not null, customVariables text not null, foreign key(userId) references users(id));
 create table lastEditedDocumentId(userId int unique primary key not null, documentId int not null, foreign key(userId) references users(id), foreign key(documentId) references document(id));
@@ -43,7 +47,7 @@ create table sentStatusValue(id int primary key, status text not null);
 create table sentStatus(id serial primary key, sentApplicationId int not null, statusChangedOn date not null, dueOn timestamp null, sentStatusValueId int not null, statusMessage text not null, foreign key(sentApplicationId) references sentApplication(id), foreign key(sentStatusValueId) references sentStatusValue(id));
 create table link(id serial primary key, path text not null, guid text not null, name text not null);
 
-insert into users(email, password, salt, guid, createdOn) values('rene.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null, current_date);
+insert into users(email, password, salt, confirmEmailGuid, sessionGuid, createdOn) values('ene.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null, '1234', current_date);
 /*
 insert into users(email, password, salt, guid) values('ren.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null);
 insert into users(email, password, salt, guid) values('helmut.goerke@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', 'someguid');
@@ -128,22 +132,14 @@ insert into htmlPageTemplate(name, odtPath, html) values('Deckblatt', 'c:/users/
 hallo div!</div>
 ');
 insert into htmlPageTemplate(name, odtPath, html) values('Lebenslauf', 'c:/users/rene/desktop/bewerbung_lebenslauf.odt', '<div id="insertDiv"><b>Lebenslauf...</b></div>');
-/*
-insert into document(userId, name, jobName) values(1, 'mein htmlTemplate', 'Fachinformatiker');
-insert into document(userId, name, jobName) values(1, 'mein zweites htmlTemplate', 'Automechaniker');
+insert into document(userId, name, jobName, customVariables) values(1, 'mein htmlTemplate', 'Fachinformatiker', '');
+insert into document(userId, name, jobName, customVariables) values(1, 'mein zweites htmlTemplate', 'Automechaniker', '');
 insert into documentEmail(documentId, subject, body) values(1, 'Bewerbung als $beruf', 'Sehr $geehrter $chefAnrede $chefTitel $chefNachname,\n\nanbei sende ich Ihnen meine Bewerbungsunterlagen.\nÜber eine Einladung zu einem Bewerbungsgespräch freue ich mich sehr.\n\nMit freundlichen Grüßen\n\n\n$meinTitel $meinVorname $meinNachname\n$meineStrasse\n$meinePlz $meineStadt\n$meineMobilnummer');
-insert into documentEmail(documentId, subject, body) values(2, 'titel2', 'body2');
 insert into filePage(documentId, path, pageIndex, name) values(1, 'Users/1/bewerbung_neu.odt', 1, 'Anschreibenhaha');
 insert into filePage(documentId, path, pageIndex, name) values(1, 'Users/1/labenwolf_zeugnis_small.pdf', 2, 'Labenwolf Zeugnis');
 insert into filePage(documentId, path, pageIndex, name) values(1, 'Users/1/bewerbung_neu1.odt', 3, 'Anschreiben');
 insert into filePage(documentId, path, pageIndex, name) values(1, 'Users/1/segitz_zeugnis_small.pdf', 4, 'Labenwolf Zeugnis');
-insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 1, 1, 'mein zweites Anschreiben');
-insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 1, 2, 'mein zweites Deckblatt');
-insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 2, 3, 'mein drittes Deckblatt');
-insert into htmlPage(documentId, templateId, pageIndex, name) values(2, 3, 4, 'mein dritter Lebenslauf');
-insert into filePage(documentId, path, pageIndex, name) values(2, 'labenwolf_zeugnis_small.pdf', 5, 'LabenwolfZeugnis');
 insert into pageMap(documentId, pageIndex, key, value) values (1, 2, 'mainText', 'nur ein gruß');
-*/
 
 insert into sentStatusValue(id, status) values(1, 'Waiting for reply after sending job application');
 insert into sentStatusValue(id, status) values(2, 'Appointment for job interview');
@@ -151,6 +147,28 @@ insert into sentStatusValue(id, status) values(3, 'Job application rejected with
 insert into sentStatusValue(id, status) values(4, 'Waiting for reply after job interview');
 insert into sentStatusValue(id, status) values(5, 'Job application rejected after interview');
 insert into sentStatusValue(id, status) values(6, 'Job application accepted after interview');
+
+insert into sentDocumentEmail (subject, body) values ('subject', 'body');
+insert into sentDocumentEmail (subject, body) values ('subject', 'body');
+insert into sentUserValues(email, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone)
+             values('rene.ederer.nbg@gmail.com', 'm', '', 'René', 'Ederer', 'Raabstr. 24A', '90429', 'Nürnberg', 'meinTelefon', 'meinMobiltelefon');
+insert into sentUserValues(email, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone)
+             values('rene.ederer.nbg@gmail.com', 'm', '', 'René', 'Ederer', 'Raabstr. 24A', '90429', 'Nürnberg', 'meinTelefon', 'meinMobiltelefon');
+insert into employer(userId, company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'BJC BEST JOB IT SERVICES GmbH', 'Alte Rabenstraße 32', '20148', 'Hamburg', 'f', '', 'Katrin', 'Thoms', 'Katrin.Thoms@bjc-its.de', '+49 (40) 5 14 00 7180', '');
+insert into employer(userId, company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'BJC BEST JOB IT SERVICES GmbH', 'Alte Rabenstraße 32', '20148', 'Hamburg', 'f', '', 'Der', 'Chef', 'Katrin.Thoms@bjc-its.de', '+49 (40) 5 14 00 7180', '');
+insert into  sentDocument    (employerId, sentDocumentEmailId, sentUserValuesId, jobName, customVariables)
+           values (1, 1, 1, 'Fachinformatiker', '');
+insert into  sentDocument    (employerId, sentDocumentEmailId, sentUserValuesId, jobName, customVariables)
+           values (2, 2, 2, 'Schiffskapitän', '');
+
+insert into sentApplication(userId, sentDocumentId, url)
+                      values(1, 1, 'meineUrl');
+insert into sentApplication(userId, sentDocumentId, url)
+                      values(1, 2, 'meineUrl');
+insert into sentStatus(sentApplicationId, statusChangedOn, dueOn, sentStatusValueId, statusMessage)
+                 values(1, current_date, null, 1, '');
+insert into sentStatus(sentApplicationId, statusChangedOn, dueOn, sentStatusValueId, statusMessage)
+                 values(2, current_date, null, 1, '');
 
 /*
 insert into sentApplication(userId, employerId, appliedAs) values(1, 1, 'Industriemechaniker');
@@ -165,4 +183,7 @@ insert into sentStatus(sentApplicationId, statusChangedOn, dueOn, sentStatusValu
     values(3, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 1, '');
 
 */
+
+
+
 

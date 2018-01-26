@@ -6,20 +6,24 @@ open WebSharper.UI.Next
 open WebSharper.UI.Next.Server
 open System.IO
 open Chessie.ErrorHandling
+open Types
 
 type EndPoint =
-    | [<EndPoint "/">] Home
-    | [<EndPoint "/login">] Login
-    | [<EndPoint "/showsentjobapplications">] ShowSentJobApplications
+    | [<EndPoint "/ghi">] Login
     | [<EndPoint "/about">] About
     | [<EndPoint "/confirmemail">] ConfirmEmail
     | [<EndPoint "/templates">] Templates
     | [<EndPoint "/upload">] Upload
-    | [<EndPoint "/logout">] Logout
+    | [<EndPoint "/abc">] Logout
     | [<EndPoint "/download">] Download of guid:string
+    | [<EndPoint "/changepassword">] ChangePassword
+    | [<EndPoint "/dologin">] DoLogin
+    | [<EndPoint "/">] Home
 
 module Templating =
     open WebSharper.UI.Next.Html
+    open System
+    open Client
 
 
     type MainTemplate = Templating.Template<"Main.html">
@@ -52,11 +56,13 @@ module Templating =
         ]
     
     let loggedInUserEmail (ctx: Context<EndPoint>) =
-        ctx.UserSession.GetLoggedInUser()
-        |> Async.RunSynchronously
-        |> Option.map System.Int32.Parse
-        |> Option.bind (Server.getEmailByUserId >> Async.RunSynchronously)
-        |> Option.defaultValue ""
+        let userId = ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously |> Option.map Int32.Parse
+        userId |> Option.bind (Server.getEmailByUserId >> Async.RunSynchronously)
+        |> Option.map (fun email ->
+            match ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously with
+            | Some user -> email
+            | None -> "Gast " + email)
+        |> Option.defaultValue (sprintf "Gast %A" userId)
 
 
     let atSign (ctx: Context<EndPoint>) =
@@ -64,18 +70,10 @@ module Templating =
             |> Async.RunSynchronously
             |> Option.isSome
         then "@"
-        else ""
+        else "@"
 
-    let btnLogout (ctx: Context<EndPoint>) (endpoint : EndPoint) : Doc =
-        formAttr
-          [ attr.action "/logout" ]
-          [ buttonAttr
-              [ attr.``type`` "submit"
-                attr.style ("display: " + (if ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously |> Option.isSome then "inline" else "none"))
-              ]
-              [text "Logout"]
-          ]
-        :> Doc
+    let btnLoginOrOut (ctx: Context<EndPoint>) : Doc =
+        client <@ Client.loginOrOutButton() @>
 
     let main (ctx : Context<EndPoint>) (action : EndPoint) (title: string) (body: Doc list) : Async<Content<'a>>=
         Content.Page(
@@ -84,8 +82,8 @@ module Templating =
                 .AtSign(atSign ctx)
                 .MenuBar(MenuBar ctx action)
                 .Body(body)
+                .BtnLoginOrOut(btnLoginOrOut ctx)
                 .LoggedInUserEmail(loggedInUserEmail ctx)
-                .BtnLogout(btnLogout ctx action)
                 .Doc()
         )
 
@@ -93,25 +91,21 @@ module Templating =
 module Site =
     open WebSharper.UI.Next.Html
     open System.Web
-    open System.Net.Mime
-    open Chessie.ErrorHandling.Trial
-    open Chessie.ErrorHandling
-    open System.Web
-    open WebSharper.UI.Next.Client
     open System
-    open System.IO
-    open WebSharper.JavaScript
     open System.Configuration
     open Client
-    open WebSharper.Formlets.Controls
     open WebSharper.Sitelets.Content
-    open Types
 
 
     let homePage (ctx : Context<EndPoint>) =
         Templating.main ctx EndPoint.Home "Home" [
             h1 [text "Say Hi to the server!"]
             //div [client <@ Client.editUserValues () @>]
+        ]
+
+    let doLoginPage (ctx : Context<EndPoint>) =
+        Templating.main ctx EndPoint.Home "Home" [
+            client <@ Client.doLogin() @>
         ]
     
     let loginPage (ctx : Context<EndPoint>) =
@@ -122,7 +116,12 @@ module Site =
             | Ok (_, _) ->
                 let userId = Server.getUserIdByEmail email |> Async.RunSynchronously |> Option.get
                 ctx.UserSession.LoginUser (string userId, true) |> Async.RunSynchronously
-                Content.RedirectPermanentToUrl "/"
+                Templating.main ctx EndPoint.Login "Login failed" [
+                    div 
+                      [ client <@ Client.setSessionCookie() @>
+                        client <@ Client.templates() @>
+                      ]
+                ]
             | Bad xs ->
                 Templating.main ctx EndPoint.Login "Login failed" [
                     h1 [text "Login"]
@@ -157,13 +156,6 @@ module Site =
                 client <@ Client.login () @>
             ]
     
-
-    let showSentJobApplications ctx =
-        Templating.main ctx EndPoint.About "About" [
-            h1 [text "About"]
-            p [text "This is a template WebSharper client-server application."]
-        ]
-
     let aboutPage ctx =
         Templating.main ctx EndPoint.About "About" [
             h1 [text "About"]
@@ -172,7 +164,11 @@ module Site =
 
     let logoutPage (ctx : Context<EndPoint>) =
         ctx.UserSession.Logout() |> Async.RunSynchronously
-        Content.RedirectPermanentToUrl "/"
+        Templating.main ctx EndPoint.Logout "Logout" [
+            client <@ Client.logout() @>
+            client <@ Client.doLogin() @>
+            client <@ Client.templates() @>
+        ]
     
     let uploadPage (ctx : Context<EndPoint>) =
         match ctx.Request.Post.["documentId"] |> Option.map Int32.TryParse
@@ -181,10 +177,8 @@ module Site =
             with
         | Some (true, documentId), Some (true, userId), Some (true, pageIndex) ->
             let relativeDir = Path.Combine("users", userId.ToString())
-            let absoluteDir = Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], relativeDir)
-            if not <| Directory.Exists absoluteDir then Directory.CreateDirectory absoluteDir |> ignore
+            if not <| Directory.Exists (toRootedPath relativeDir) then Directory.CreateDirectory (toRootedPath relativeDir) |> ignore
             let findFreeFileName file documentId =
-
                 let fileNameWithoutExtension = Path.GetFileNameWithoutExtension(file)
                 let extension = Path.GetExtension(file)
                 let files =
@@ -239,37 +233,38 @@ module Site =
                                 filesWithSameExtension
                                 |> Seq.tryFind
                                     (fun file ->
-                                        if hasBeenConverted || convertedFilePath.ToLower().EndsWith(".odt")
+                                        if convertedFilePath.ToLower().EndsWith(".odt")
                                         then
                                             Odt.areOdtFilesEqual
                                                 convertedFilePath
-                                                (Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], file))
+                                                (toRootedPath file)
                                         else
                                             use fileStream =
                                                 new FileStream
-                                                    ( Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], file)
+                                                    ( toRootedPath file
                                                     , FileMode.Open
                                                     , FileAccess.Read)
                                             Odt.areStreamsEqual x.InputStream fileStream
                                     )
                             match oSameFile with
                             | Some file ->
-                                (file, findFreeFileName file documentId)
+                                (file, findFreeFileName convertedFilePath documentId)
                             | None ->
                                 let fileName =
-                                    if File.Exists(Path.Combine(absoluteDir, convertedFilePath))
+                                    if File.Exists(Path.Combine(toRootedPath relativeDir, convertedFilePath))
                                     then findFreeFileName (Path.GetFileName(convertedFilePath)) documentId
                                     else Path.GetFileName(convertedFilePath)
+                                printfn "%s, %s" fileName convertedFilePath
                                 if hasBeenConverted
                                 then
-                                    if File.Exists (Path.Combine(absoluteDir, fileName))
+                                    if File.Exists (Path.Combine(toRootedPath relativeDir, fileName))
                                     then
-                                        File.Replace(convertedFilePath, Path.Combine(absoluteDir, fileName), "")
+                                        File.Replace(convertedFilePath, Path.Combine(toRootedPath relativeDir, fileName), "")
                                     else
-                                        File.Move(convertedFilePath, Path.Combine(absoluteDir, fileName))
-                                    Path.Combine(relativeDir, fileName), fileName
+                                        File.Move(convertedFilePath, Path.Combine(toRootedPath relativeDir, fileName))
+                                    (Path.Combine(relativeDir, fileName), fileName)
                                 else
-                                    x.SaveAs(Path.Combine(absoluteDir, fileName))
+                                    x.SaveAs(Path.Combine(toRootedPath relativeDir, fileName))
                                     (Path.Combine(relativeDir, fileName), fileName)
                         async {
                             do! Server.addFilePage documentId filePath pageIndex name
@@ -283,6 +278,11 @@ module Site =
         Templating.main ctx EndPoint.Templates "Bewerbungsspam" [
             client <@ Client.templates() @>
         ]
+
+    let changePasswordPage (ctx : Context<EndPoint>) =
+        Templating.main ctx EndPoint.Templates "Bewerbungsspam" [
+            div [client <@ Client.changePassword () @>]
+        ]
     
     let confirmEmailPage (ctx : Context<EndPoint>) =
         async {
@@ -295,7 +295,7 @@ module Site =
                         match oUserId with
                         | Some userId ->
                             do! ctx.UserSession.LoginUser (userId |> string)
-                            return templatesPage ctx
+                            return changePasswordPage ctx
                         | None ->
                             return loginPage ctx
                     | Bad vs -> return loginPage ctx
@@ -309,9 +309,9 @@ module Site =
         } |> Async.RunSynchronously
 
 
-    let downloadPage (ctx : Context<EndPoint>) (guid : string) =
+    let downloadPage (ctx : Context<EndPoint>) (linkGuid : string) =
         async {
-            let! oFilePathAndName = Server.tryGetPathAndNameByGuid guid
+            let! oFilePathAndName = Server.tryGetPathAndNameByLinkGuid linkGuid
             match oFilePathAndName with
             | None -> return Content.NotFound
             | Some (filePath, name) ->
@@ -331,20 +331,27 @@ module Site =
     let main =
         Application.MultiPage (fun (ctx : Context<EndPoint>) endpoint ->
             match (ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously, endpoint) with
+            | (_ , EndPoint.Logout) -> logoutPage ctx
+            | None, EndPoint.DoLogin -> doLoginPage ctx
+            | None , EndPoint.Home ->
+                doLoginPage ctx
+            | None , EndPoint.Templates ->
+                doLoginPage ctx
             | Some _, EndPoint.Home -> templatesPage ctx
-            | Some _, EndPoint.ShowSentJobApplications -> showSentJobApplications ctx
-            | Some _, EndPoint.About -> aboutPage ctx
             | Some _, EndPoint.Upload -> uploadPage ctx
             | Some _, EndPoint.ConfirmEmail -> confirmEmailPage ctx
             | None, EndPoint.ConfirmEmail -> confirmEmailPage ctx
             | Some _ , EndPoint.Templates -> templatesPage ctx
-            | Some _ , EndPoint.Logout -> logoutPage ctx
+            | Some _ , EndPoint.ChangePassword -> changePasswordPage ctx
+            | None , EndPoint.ChangePassword -> changePasswordPage ctx
+            | _ , EndPoint.Login -> loginPage ctx
             | Some _ , EndPoint.Download guid ->
                 downloadPage ctx guid
-            | _ -> loginPage ctx
+            | a, b ->
+                templatesPage ctx
         )
     
-    let redirectHttpToHttps = 
+    let redirectHttpToHttps =
         Application.MultiPage (fun (ctx : Context<EndPoint>) endpoint ->
             Content.RedirectPermanentToUrl "https://www.bewerbungsspam.de"
         )

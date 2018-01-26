@@ -14,13 +14,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="google-signin-client_id" content="611050726514-ktutu8ts96fpligq7b0rq4q80km6l28p.apps.googleusercontent.com">
     <title>${Title}</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.6/umd/popper.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
     <!--script src="https://apis.google.com/js/platform.js" async defer></script-->
     <style>
+        .modal1
+        {
+            display : block;
+        }
         h4 {
             margin-bottom: 30px;
         }
@@ -124,7 +128,7 @@
         <div style="color:white; float:right" id="otherContent" class="navbar-collapse collapse">
             <ul style="list-style-type:none; float: right; color:white; margin: auto; margin-right:0">
                 <li>${LoggedInUserEmail}</li>
-                <li><div ws-replace="BtnLogout"></div></li>
+                <li><div ws-replace="BtnLoginOrOut"></div></li>
             </ul>
         </div>
     </nav>

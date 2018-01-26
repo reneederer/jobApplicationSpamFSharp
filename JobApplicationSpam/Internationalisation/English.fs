@@ -59,4 +59,6 @@ module English =
         | FileIsTooBig -> "The chosen file is too big."
         | UploadLimit -> "The upload limit is {0} MB."
         | ReplaceVariables -> "Replace variables"
+        | ChangePassword -> "Change password"
+        | NewPassword -> "New Password"
 

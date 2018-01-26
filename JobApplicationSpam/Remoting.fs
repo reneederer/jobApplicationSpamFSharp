@@ -138,18 +138,18 @@ module Server =
         async {
             match oUserId with
             | Some userId ->
-                let! userEmail = getEmailByUserId userId
-                return userEmail
-            | None -> return failwith "Nobody is logged in"
+                let! oUserEmail = getEmailByUserId userId
+                return oUserEmail
+            | None -> return None
         }
+    
+
 
 
 
     let sendEmail fromAddress fromName toAddress subject body (attachmentPathsAndNames : list<string * string>) =
         use smtpClient = new SmtpClient(ConfigurationManager.AppSettings.["emailServer"], ConfigurationManager.AppSettings.["emailPort"] |> Int32.TryParse |> snd)
         smtpClient.EnableSsl <- true
-        //smtpClient.UseDefaultCredentials <- false
-        //smtpClient.DeliveryMethod <- SmtpDeliveryMethod.Network
         smtpClient.Credentials <- new System.Net.NetworkCredential(ConfigurationManager.AppSettings.["emailUsername"], ConfigurationManager.AppSettings.["emailPassword"])
         let fromAddress = new MailAddress(fromAddress, fromName, System.Text.Encoding.UTF8)
         let toAddress = new MailAddress(toAddress)
@@ -167,16 +167,15 @@ module Server =
     
     [<Remote>]
     let getCurrentUserValues () =
-        match getCurrentUserId() |> Async.RunSynchronously with
-        | Some userId ->
-            async {
-                use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
-                dbConn.Open()
-                return Database.getUserValues userId
-            }
-        | None -> failwith "There is no user logged in."
-
-
+        let oUserId = getCurrentUserId() |> Async.RunSynchronously
+        async {
+            match oUserId with
+            | Some userId ->
+                    use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+                    dbConn.Open()
+                    return Some (Database.getUserValues userId)
+            | None -> return None
+        }
 
     [<Remote>]
     let setUserValues (userValues : UserValues) =
@@ -186,19 +185,9 @@ module Server =
             | Some userId ->
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
-                use transaction = dbConn.BeginTransaction()
-                try
-                    Database.setUserValues userValues userId
-                    transaction.Commit()
-                    return ok "User values have been updated."
-                with
-                | e ->
-                    transaction.Rollback()
-                    return fail "Setting user values failed"
-            | None -> return fail "Please login."
+                Database.setUserValues userValues userId
+            | None -> return failwith "Nobody is logged in."
         }
-
-
 
     let generateSalt length =
         let (bytes : array<byte>) = Array.replicate length (0uy)
@@ -206,10 +195,33 @@ module Server =
         rng.GetBytes(bytes)
         bytes |> Convert.ToBase64String
 
-    let generateHash (password : string) (salt : string) iterations length =
-        use deriveBytes = new Rfc2898DeriveBytes(password |> System.Text.Encoding.UTF8.GetBytes, salt |> Convert.FromBase64String, iterations)
-        deriveBytes.GetBytes(length) |> Convert.ToBase64String
+    let generateHashWithSalt (password : string) (salt : string) iterations length =
+        async {
+            use deriveBytes = new Rfc2898DeriveBytes(password |> System.Text.Encoding.UTF8.GetBytes, salt |> Convert.FromBase64String, iterations)
+            return deriveBytes.GetBytes(length) |> Convert.ToBase64String
+        }
 
+    [<Remote>]
+    let generateHash (word : string) : Async<string> =
+        async {
+            use sha256Managed = new SHA256Managed()
+            let bytes = sha256Managed.ComputeHash(word |> System.Text.Encoding.UTF8.GetBytes)
+            return bytes |> Convert.ToBase64String
+        }
+
+    [<Remote>]
+    let setPassword password =
+        let oUserId = getCurrentUserId() |> Async.RunSynchronously
+        async {
+            match oUserId with
+            | Some userId ->
+                let salt =  generateSalt 64
+                let! hashedPassword = generateHashWithSalt password salt 1000 64
+                use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+                dbConn.Open()
+                Database.setPasswordSaltAndConfirmEmailGuid dbConn userId hashedPassword salt None
+            | None -> return failwith "Nobody is logged in"
+        }
 
     [<Remote>]
     let login (email : string) (password : string) =
@@ -218,20 +230,86 @@ module Server =
             try
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
-                match Database.getIdPasswordSaltAndGuid email with
-                | Some (userId, hashedPassword, salt, None) ->
-                    if generateHash password salt 1000 64 = hashedPassword
+                match Database.getValidateLoginData email with
+                | Some v when v.confirmEmailGuid.IsNone ->
+                    let! hash = generateHashWithSalt password v.salt 1000 64
+                    if hash = v.hashedPassword
                     then
-                        Database.insertLastLogin dbConn userId
-                        return ok <| string userId
+                        Database.insertLastLogin dbConn v.userId
+                        return ok <| string v.userId
                     else return fail "Email oder Passwort ist falsch."
-                |  Some (_, _, _, Some guid) -> return fail "Bitte bestätige deine Email-Adresse."
+                |  Some v when v.confirmEmailGuid.IsSome -> return fail "Bitte bestätige deine Email-Adresse."
                 | None -> return fail  "Email oder Passwort ist falsch."
             with
             | e ->
                 log.Error("", e)
                 return fail "An error occurred"
         }
+    
+    [<Remote>]
+    let setUserEmail (email : string) =
+        match GetContext().UserSession.GetLoggedInUser() |> Async.RunSynchronously with
+        | None -> async {return failwith "Nobody logged in"}
+        | Some userId ->
+            async {
+                try
+                    use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+                    dbConn.Open()
+                    return ok <| Database.setUserEmail dbConn (userId |> Int32.Parse) email
+                with
+                | e -> return fail "Diese Email existiert bereits"
+            }
+    
+    [<Remote>]
+    let loginUserBySessionGuid sessionGuid =
+            match Database.getUserIdBySessionGuid sessionGuid with
+            | None -> async {return fail "Session guid not found"}
+            | Some userId ->
+                GetContext().UserSession.LoginUser (userId |> string) |> Async.RunSynchronously
+                async {
+                    return ok ()
+                }
+    [<Remote>]
+    let setSessionGuid guid =
+        let oUserIdStr = GetContext().UserSession.GetLoggedInUser() |> Async.RunSynchronously
+        async {
+            match oUserIdStr with
+            | Some userIdStr -> 
+                use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+                dbConn.Open()
+                Database.setSessionGuid dbConn (userIdStr |> Int32.Parse) guid
+            | None -> return failwith "Nobody logged in"
+        }
+    
+    [<Remote>]
+    let loginAsGuest (sessionGuid : string) =
+        use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+        dbConn.Open()
+        let userId = Database.insertNewUser dbConn None "" "" (Some <| Guid.NewGuid().ToString("N")) (Some sessionGuid)
+        GetContext().UserSession.LoginUser (string userId) |> Async.RunSynchronously
+        async { return () }
+
+    [<Remote>]
+    let isUserLoggedIn () =
+        let loggedInUser = (GetContext().UserSession.GetLoggedInUser() |> Async.RunSynchronously)
+        async {
+            return loggedInUser.IsSome
+        }
+
+    
+    [<Remote>]
+    let isLoggedInAsGuest () =
+        match GetContext().UserSession.GetLoggedInUser() |> Async.RunSynchronously with
+        | Some userIdStr -> 
+            async {
+                use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
+                dbConn.Open()
+                return
+                    Database.getConfirmEmailGuidByUserId (Int32.Parse userIdStr)
+                    |> (fun x -> ok <| Option.isSome x)
+            }
+        | None -> async { return fail "Nobody is logged in." }
+
 
 
     [<Remote>]
@@ -251,16 +329,16 @@ module Server =
                     then
                         return fail "Diese Email-Adresse ist schon registriert."
                     else
-                        let salt = generateSalt(64)
-                        let hashedPassword = generateHash password salt 1000 64
-                        let guid = Guid.NewGuid().ToString("N")
-                        Database.insertNewUser dbConn email hashedPassword salt guid |> ignore
+                        let salt = generateSalt 64
+                        let! hashedPassword = generateHashWithSalt password salt 1000 64
+                        let confirmEmailGuid = Guid.NewGuid().ToString("N")
+                        Database.insertNewUser dbConn (Some email) hashedPassword salt (Some confirmEmailGuid) |> ignore
                         sendEmail
                             ConfigurationManager.AppSettings.["emailUsername"]
                             ConfigurationManager.AppSettings.["domainName"]
                             email
                             (t German PleaseConfirmYourEmailAddressEmailSubject)
-                            (String.Format(t German PleaseConfirmYourEmailAddressEmailBody, email, guid))
+                            (String.Format(t German PleaseConfirmYourEmailAddressEmailBody, email, confirmEmailGuid))
                             []
                         return ok "Please confirm your email"
             with
@@ -270,26 +348,24 @@ module Server =
         }
 
     [<Remote>]
-    let confirmEmail email guid =
+    let confirmEmail email confirmEmailGuid =
         async {
-            log.Debug (sprintf "(email = %s, guid = %s)" email guid)
+            log.Debug (sprintf "(email = %s, guid = %s)" email confirmEmailGuid)
             try
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
-                let oDbGuid = Database.getGuid email
-                match oDbGuid with
+                let oConfirmEmailGuid = Database.getConfirmEmailGuid email
+                match oConfirmEmailGuid with
                 | None -> return ok "Email already confirmed"
-                | Some dbGuid when guid = dbGuid ->
-                    use transaction = dbConn.BeginTransaction()
-                    let recordCount = Database.setGuidToNull email
+                | Some guid when guid = confirmEmailGuid ->
+                    let recordCount = Database.setConfirmEmailGuidToNull email
                     if recordCount <> 1
                     then
-                        log.Error("Email does not exist or guid was already null: " + email)
+                        log.Error("Email does not exist or confirmEmailGuid was already null: " + email)
                         return fail "An error occurred."
                     else return ok "Email has been confirmed."
                 | Some _ ->
-                    return fail "Unknown guid"
-
+                    return fail "Unknown confirmEmailGuid"
             with
             | e ->
                 log.Error("", e)
@@ -362,7 +438,9 @@ module Server =
             Database.deleteDocument dbConn documentId
             let filePaths = Database.getDeletableFilePaths dbConn documentId
             for filePath in filePaths do
-                File.Delete <| Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], filePath)
+                if Path.IsPathRooted filePath
+                then File.Delete filePath
+                else File.Delete <| toRootedPath filePath
             Database.deleteDeletableDocumentFilePages dbConn documentId |> ignore
         }
 
@@ -377,54 +455,6 @@ module Server =
                 return Database.getDocumentOffset userId htmlJobApplicationOffset
             | None -> return failwith "No user logged in"
         }
-    
-    [<Remote>]
-    let replaceMap (userEmail : string) (userValues : UserValues) (employer : Employer) (jobName : string) (variableDefinitions : list<Expression>) : Async<list<string * string>>=
-        async {
-            return
-                [ ("$firmaName", employer.company)
-                  ("$firmaStrasse", employer.street)
-                  ("$firmaPlz", employer.postcode)
-                  ("$firmaStadt", employer.city)
-                  ("$chefAnredeBriefkopf", match employer.gender with Gender.Male -> "Herrn" | Gender.Female -> "Frau" | Gender.Unknown -> "")
-                  ("$chefAnrede", match employer.gender with Gender.Male -> "Herr" | Gender.Female -> "Frau" | Gender.Unknown -> "")
-                  ("$geehrter", match employer.gender with Gender.Male -> "geehrter" | Gender.Female -> "geehrte" | Gender.Unknown -> "")
-                  ("$anredeZeile",
-                        match (employer.gender, employer.lastName) with
-                        | Gender.Male, _ -> "Sehr geehrter Herr $chefTitel $chefNachname,"
-                        | Gender.Female, _ -> "Sehr geehrte Frau $chefTitel $chefNachname,"
-                        | _, s when s.Trim() = "" -> "Sehr geehrte Damen und Herren,"
-                        | Gender.Unknown, _ -> "Sehr geehrte Damen und Herren,")
-                  ("$telefonZeile", "Telefon: $meineTelefonnr")
-                  ("$chefTitel", employer.degree)
-                  ("$chefVorname", employer.firstName)
-                  ("$chefNachname", employer.lastName)
-                  ("$chefEmail", employer.email)
-                  ("$chefTelefon", employer.phone)
-                  ("$chefMobil", employer.mobilePhone)
-                  ("$meinGeschlecht", userValues.gender.ToString())
-                  ("$meinTitel", userValues.degree)
-                  ("$meinVorname", userValues.firstName)
-                  ("$meinNachname", userValues.lastName)
-                  ("$meineStrasse", userValues.street)
-                  ("$meinePlz", userValues.postcode)
-                  ("$meinePostleitzahl", userValues.postcode)
-                  ("$meineStadt", userValues.city)
-                  ("$meineEmail", userEmail)
-                  ("$meineTelefonnummer", userValues.phone)
-                  ("$meineTelefonnr", userValues.phone)
-                  ("$meinTelefon", userValues.phone)
-                  ("$meinMobilTelefon", userValues.mobilePhone)
-                  ("$meineMobilnummer", userValues.mobilePhone)
-                  ("$meineMobilnr", userValues.mobilePhone)
-                  ("$datumHeute", DateTime.Today.ToString("dd.MM.yyyy"))
-                  ("$beruf", jobName)
-                ]
-                |> fun xs ->
-                        (xs.OrderByDescending(fun (k, v) -> k.Length))
-                           .ThenBy(fun (k, v) -> if k.EndsWith("_") then 1 else -1)
-                |> List.ofSeq
-        }
 
     [<Remote>]
     let replaceVariables
@@ -435,23 +465,28 @@ module Server =
         match getCurrentUserId() |> Async.RunSynchronously with
         | Some userId ->
             async {
-                let! userEmail = getEmailByUserId userId
-                let guid = Guid.NewGuid().ToString("N")
-                let! map = toCV employer userValues (userEmail |> Option.defaultValue "") document.jobName document.customVariables
-                Directory.CreateDirectory(Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "tmp", guid)) |> ignore
-                if filePath.EndsWith(".odt") || filePath.EndsWith(".docx")
-                then
-                    return
-                        Odt.replaceInOdt
-                            (Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], filePath))
-                            (Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], sprintf "tmp/%s/extracted/" guid))
-                            (Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], sprintf "tmp/%s/replaced/" guid))
-                            map
-                else
-                    let newFilePath = Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "tmp", guid, (Path.GetFileName(filePath)))
-                    File.Copy(Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], filePath), newFilePath, true)
-                    Odt.replaceInFile newFilePath map Ignore
-                    return newFilePath
+                try
+                    let! oUserEmail = getEmailByUserId userId
+                    let tmpDirectory = Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "tmp", Guid.NewGuid().ToString("N"))
+                    let! map = toCV employer userValues (oUserEmail |> Option.defaultValue "") document.jobName document.customVariables
+                    Directory.CreateDirectory(tmpDirectory) |> ignore
+                    if filePath.EndsWith(".odt") || filePath.EndsWith(".docx")
+                    then
+                        return
+                            Odt.replaceInOdt
+                                (toRootedPath filePath)
+                                (Path.Combine(tmpDirectory, "extracted"))
+                                (Path.Combine(tmpDirectory, "replaced"))
+                                map
+                    else
+                        let newFilePath = Path.Combine(tmpDirectory, (Path.GetFileName(filePath)))
+                        File.Copy(toRootedPath filePath, newFilePath, true)
+                        Odt.replaceInFile newFilePath map Ignore
+                        return newFilePath
+                with
+                | e ->
+                    log.Error ("", e)
+                    return failwith "An error occurred"
             }
 
         | None -> async { return "" }
@@ -477,25 +512,24 @@ module Server =
                                 sentApplication.userEmail
                                 sentApplication.jobName
                                 customVariablesString
-                        let tmpPath = Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "tmp", Guid.NewGuid().ToString("N"))
+                        let tmpDirectory = Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "tmp", Guid.NewGuid().ToString("N"))
                         let odtPaths =
                             [ for (path, pageIndex) in sentApplication.filePages do
                                     yield
                                         if path.EndsWith(".pdf")
-                                        then
-                                            Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], path)
+                                        then toRootedPath path
                                         elif path.EndsWith(".odt") || path.EndsWith(".docx")
                                         then
                                             let directoryGuid = Guid.NewGuid().ToString("N")
                                             Odt.replaceInOdt
-                                                (Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], path))
-                                                (Path.Combine(tmpPath, directoryGuid, "extractedOdt"))
-                                                (Path.Combine(tmpPath, directoryGuid, "replacedOdt"))
+                                                (toRootedPath path)
+                                                (Path.Combine(tmpDirectory, directoryGuid, "extractedOdt"))
+                                                (Path.Combine(tmpDirectory, directoryGuid, "replacedOdt"))
                                                 myList
                                         else
-                                            let copiedPath = Path.Combine(tmpPath, Guid.NewGuid().ToString("N"), Path.GetFileName(path))
+                                            let copiedPath = Path.Combine(tmpDirectory, Guid.NewGuid().ToString("N"), Path.GetFileName(path))
                                             Directory.CreateDirectory(Path.GetDirectoryName copiedPath) |> ignore
-                                            File.Copy(Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], path), copiedPath)
+                                            File.Copy(toRootedPath path, copiedPath)
                                             Odt.replaceInFile
                                                 copiedPath
                                                 myList
@@ -503,25 +537,33 @@ module Server =
                                             copiedPath
                             ]
 
-
-
-
-
                         let pdfPaths =
                             [ for odtPath in odtPaths do
                                 yield Odt.odtToPdf odtPath
                             ]
-                        let mergedPdfPath = Path.Combine(tmpPath, (sprintf "Bewerbung_%s_%s.pdf" sentApplication.userValues.firstName sentApplication.userValues.lastName))
+                        let mergedPdfPath =
+                            Path.Combine(
+                                tmpDirectory,
+                                (sprintf
+                                    "Bewerbung_%s_%s.pdf"
+                                    sentApplication.userValues.firstName
+                                    sentApplication.userValues.lastName
+                                ).Replace("_.", ".").Replace("_.", "."))
                         if pdfPaths <> [] then Odt.mergePdfs pdfPaths mergedPdfPath
                         sendEmail
                             ConfigurationManager.AppSettings.["emailUsername"]
-                            "Bewerbungsspam"
+                            "www.bewerbungsspam.de"
                             userEmail
                             (Odt.replaceInString sentApplication.email.subject myList Ignore)
                             (Odt.replaceInString (sentApplication.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Ignore)
                             (if pdfPaths = []
                              then []
-                             else [mergedPdfPath, sprintf "Bewerbung_%s_%s.pdf" sentApplication.userValues.firstName sentApplication.userValues.lastName]
+                             else [mergedPdfPath,
+                                   (sprintf
+                                        "Bewerbung_%s_%s.pdf"
+                                        sentApplication.userValues.firstName
+                                        sentApplication.userValues.lastName
+                                   ).Replace("_.", ".").Replace("_.", ".")]
                              )
                         return ok ()
                 with
@@ -537,108 +579,137 @@ module Server =
             (userValues : UserValues)
             (url : string) =
         let oUserId = getCurrentUserId() |> Async.RunSynchronously
+        let isGuestResult = isLoggedInAsGuest () |> Async.RunSynchronously
+
         async {
-            match oUserId with 
-            | None -> return failwith "No user logged in"
-            | Some userId ->
+            match oUserId, isGuestResult with 
+            | None, _ -> return failwith "No user logged in"
+            | Some _, Bad _ -> return failwith "An error occurred"
+            | Some userId, Ok (isGuest, _) ->
                 use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
                 dbConn.Open()
-                Database.setUserValues userValues userId |> ignore
-                Database.overwriteDocument dbConn document userId |> ignore
                 use transaction = dbConn.BeginTransaction()
-                use command = new NpgsqlCommand("set constraints all deferred", dbConn)
-                command.ExecuteNonQuery() |> ignore
-                command.Dispose()
                 try
-                    let userEmail = Database.getEmailByUserId userId |> Option.get
-                    let employerId = Database.addEmployer dbConn employer userId
-                    if userEmail <> employer.email || userEmail = "rene.ederer.nbg@gmail.com"
-                    then
-                        Database.insertSentApplication
-                            dbConn
-                            userId
-                            employerId
-                            document.email
-                            (userEmail, userValues)
-                            (document.pages |> List.choose(fun x -> match x with FilePage p -> Some (p.path, p.pageIndex) | HtmlPage _ -> None))
-                            document.jobName
-                            url
-                            document.customVariables
-                    let! myList =
-                            toCV
-                                employer
-                                userValues
-                                userEmail
+                    use command = new NpgsqlCommand("set constraints all deferred", dbConn)
+                    command.ExecuteNonQuery() |> ignore
+                    command.Dispose()
+                    Database.setUserValues userValues userId |> ignore
+                    let oUserEmail = Database.getEmailByUserId userId
+                    match oUserEmail with
+                    | None ->
+                        transaction.Rollback()
+                        return fail "User email was None"
+                    | Some userEmail ->
+                        let employerId = Database.addEmployer dbConn employer userId
+                        if (oUserEmail <> Some employer.email) || oUserEmail = (Some "rene.ederer.nbg@gmail.com")
+                        then
+                            Database.insertSentApplication
+                                dbConn
+                                userId
+                                employerId
+                                document.email
+                                (userEmail, userValues)
+                                (document.pages |> List.choose(fun x -> match x with FilePage p -> Some (p.path, p.pageIndex) | HtmlPage _ -> None))
                                 document.jobName
+                                url
                                 document.customVariables
-                    let tmpPath = Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "tmp", Guid.NewGuid().ToString("N"))
-                    let odtPaths =
-                        [ for item in document.pages do
-                            match item with
-                            | HtmlPage htmlPage ->
-                                let oPageTemplatePath = Option.bind (Database.getHtmlPageTemplatePath) htmlPage.oTemplateId
-                                let pageTemplatePath =
-                                    match oPageTemplatePath with
-                                    | None -> 
-                                        failwith "oPageTemplatePath was None"
-                                    | Some path -> path
-                                let lines = []
-                                    (*let emptyLines = List.init 50 (fun i -> sprintf "$line%i" (i + 1), "")
-                                    let pageLines = page.map.["mainText"].Split([|'\n'|])
-                                    let len = pageLines.Length
-                                    (pageLines
-                                    |> Array.mapi (fun i x -> sprintf "$line%i" (i + 1), x)
-                                    |> List.ofArray)
-                                    @ List.skip len emptyLines
-                                    |> List.sortByDescending (fun (key, _) -> key.Length)
-                                    *)
-                                yield Odt.replaceInOdt pageTemplatePath "c:/users/rene/myodt/" tmpPath (myList @ lines)
-                            | FilePage filePage ->
-                                yield
-                                    if filePage.path.EndsWith(".pdf")
-                                    then
-                                        Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], filePage.path)
-                                    elif filePage.path.EndsWith(".odt") || filePage.path.EndsWith(".docx")
-                                    then
-                                        let directoryGuid = Guid.NewGuid().ToString("N")
-                                        Odt.replaceInOdt
-                                            (Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], filePage.path))
-                                            (Path.Combine(tmpPath, directoryGuid, "extractedOdt"))
-                                            (Path.Combine(tmpPath, directoryGuid, "replacedOdt"))
-                                            myList
-                                    else
-                                        let copiedPath = Path.Combine(tmpPath, Guid.NewGuid().ToString("N"), Path.GetFileName(filePage.path))
-                                        Directory.CreateDirectory(Path.GetDirectoryName copiedPath) |> ignore
-                                        File.Copy(Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], filePage.path), copiedPath)
-                                        Odt.replaceInFile
+                        let! myList =
+                                toCV
+                                    employer
+                                    userValues
+                                    userEmail
+                                    document.jobName
+                                    document.customVariables
+                        let tmpDirectory = Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "tmp", Guid.NewGuid().ToString("N"))
+                        let odtPaths =
+                            [ for item in document.pages do
+                                match item with
+                                | HtmlPage htmlPage ->
+                                    let oPageTemplatePath = Option.bind (Database.getHtmlPageTemplatePath) htmlPage.oTemplateId
+                                    let pageTemplatePath =
+                                        match oPageTemplatePath with
+                                        | None -> 
+                                            failwith "oPageTemplatePath was None"
+                                        | Some path -> path
+                                    let lines = []
+                                        (*let emptyLines = List.init 50 (fun i -> sprintf "$line%i" (i + 1), "")
+                                        let pageLines = page.map.["mainText"].Split([|'\n'|])
+                                        let len = pageLines.Length
+                                        (pageLines
+                                        |> Array.mapi (fun i x -> sprintf "$line%i" (i + 1), x)
+                                        |> List.ofArray)
+                                        @ List.skip len emptyLines
+                                        |> List.sortByDescending (fun (key, _) -> key.Length)
+                                        *)
+                                    yield Odt.replaceInOdt pageTemplatePath "c:/users/rene/myodt/" tmpDirectory (myList @ lines)
+                                | FilePage filePage ->
+                                    yield
+                                        if filePage.path.EndsWith(".pdf")
+                                        then
+                                            toRootedPath filePage.path
+                                        elif filePage.path.EndsWith(".odt") || filePage.path.EndsWith(".docx")
+                                        then
+                                            let directoryGuid = Guid.NewGuid().ToString("N")
+                                            Odt.replaceInOdt
+                                                (toRootedPath filePage.path)
+                                                (Path.Combine(tmpDirectory, directoryGuid, "extractedOdt"))
+                                                (Path.Combine(tmpDirectory, directoryGuid, "replacedOdt"))
+                                                myList
+                                        else
+                                            let copiedPath = Path.Combine(tmpDirectory, Guid.NewGuid().ToString("N"), Path.GetFileName(filePage.path))
+                                            Directory.CreateDirectory(Path.GetDirectoryName copiedPath) |> ignore
+                                            File.Copy(toRootedPath filePage.path, copiedPath)
+                                            Odt.replaceInFile
+                                                copiedPath
+                                                myList
+                                                Ignore
                                             copiedPath
-                                            myList
-                                            Ignore
-                                        copiedPath
-                        ]
+                            ]
 
+                        let pdfPaths =
+                            [ for odtPath in odtPaths do
+                                yield Odt.odtToPdf odtPath
+                            ]
+                        let mergedPdfPath = Path.Combine(tmpDirectory, Guid.NewGuid().ToString() + ".pdf")
+                        if pdfPaths <> []
+                        then Odt.mergePdfs pdfPaths mergedPdfPath
 
+                        let oConfirmEmailGuid = Database.getConfirmEmailGuid userEmail
 
+                        sendEmail
+                            userEmail
+                            (userValues.firstName + " " + userValues.lastName)
+                            employer.email
+                            (Odt.replaceInString document.email.subject myList Ignore)
+                            (Odt.replaceInString (document.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Ignore)
 
+                            (if pdfPaths = []
+                             then []
+                             else [mergedPdfPath, (sprintf "Bewerbung_%s_%s.pdf" userValues.firstName userValues.lastName)]
+                             )
+                        sendEmail
+                            userEmail
+                            (userValues.firstName + " " + userValues.lastName)
+                            userEmail
+                            ("Deine Bewerbung wurde versandt - " + Odt.replaceInString document.email.subject myList Ignore)
+                            ((sprintf "Deine Bewerbung wurde am %A an %s versandt.\n\n" DateTime.Today employer.email) + Odt.replaceInString (document.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Ignore)
 
-                    let pdfPaths =
-                        [ for odtPath in odtPaths do
-                            yield Odt.odtToPdf odtPath
-                        ]
-                    let mergedPdfPath = Path.Combine(tmpPath, (sprintf "Bewerbung_%s_%s.pdf" userValues.firstName userValues.lastName))
-                    if pdfPaths <> [] then Odt.mergePdfs pdfPaths mergedPdfPath
-                    sendEmail
-                        userEmail
-                        (userValues.firstName + " " + userValues.lastName)
-                        employer.email
-                        (Odt.replaceInString document.email.subject myList Ignore)
-                        (Odt.replaceInString (document.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Ignore)
-                        (if pdfPaths = []
-                         then []
-                         else [mergedPdfPath, sprintf "Bewerbung_%s_%s.pdf" userValues.firstName userValues.lastName]
-                         )
-                    transaction.Commit()
-                    return ok ()
+                            (if pdfPaths = []
+                             then []
+                             else [mergedPdfPath, (sprintf "Bewerbung_%s_%s.pdf" userValues.firstName userValues.lastName)]
+                             )
+                        transaction.Commit()
+                        if isGuest && oConfirmEmailGuid.IsSome
+                        then
+                            sendEmail
+                                "registration@bewerbungsspam.de"
+                                "Bewerbungsspam"
+                                userEmail
+                                (t German PleaseConfirmYourEmailAddressEmailSubject)
+                                (String.Format((t German PleaseConfirmYourEmailAddressEmailBody), userEmail, oConfirmEmailGuid.Value))
+                                []
+
+                        return ok ()
                 with
                 | e ->
                     log.Error ("", e)
@@ -758,23 +829,23 @@ module Server =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.createLink dbConn (Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], filePath)) name
+            return Database.createLink dbConn filePath name
         }
 
     [<Remote>]
-    let tryGetPathAndNameByGuid guid =
+    let tryGetPathAndNameByLinkGuid linkGuid =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            return Database.tryGetPathAndNameByGuid guid
+            return Database.tryGetPathAndNameByLinkGuid linkGuid
         }
 
     [<Remote>]
-    let deleteLink guid =
+    let deleteLink linkGuid =
         async {
             use dbConn = new NpgsqlConnection(ConfigurationManager.AppSettings.["dbConnStr"])
             dbConn.Open()
-            Database.deleteLink dbConn guid
+            Database.deleteLink dbConn linkGuid
         }
 
 

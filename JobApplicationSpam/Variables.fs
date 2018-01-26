@@ -119,10 +119,6 @@ module Variables =
         |>> fun (assignedVariable, literalString) ->
                 assignedVariable, VariableExpression literalString
 
-
-
-
- 
     let pDefinitions =
         sepEndBy
             (attempt pMatchDefinition <|> attempt pVariableDefinition)

@@ -5,59 +5,70 @@ module Database =
     open log4net
     open System.Linq
     open System.Reflection
-    open FSharp.Data.Sql.Common
     open FSharp.Data.Sql
     open Types
-    open WebSharper.UI.Next.CSharp.Client.Html.SvgElements
-    open System.IO
-    open System.Configuration
-    open WebSharper.Web.Remoting
 
-    let [<Literal>] dbVendor = FSharp.Data.Sql.Common.DatabaseProviderTypes.POSTGRESQL
-    let [<Literal>] connString = "Server=localhost; Port=5432; User Id=spam; Password=Steinmetzstr9!@#$; Database=jobapplicationspam"
-    let [<Literal>] connexStringName = "DefaultConnectionString"
-    let [<Literal>] resPath = "bin"
-    let [<Literal>] indivAmount = 1000
-    let [<Literal>] useOptTypes  = true
     type DB =
         SqlDataProvider<
-            dbVendor,
-            connString,
+            FSharp.Data.Sql.Common.DatabaseProviderTypes.POSTGRESQL,
+            "Server=localhost; Port=5432; User Id=spam; Password=Steinmetzstr9!@#$; Database=jobapplicationspam",
             "",
-            resPath,
-            indivAmount,
-            useOptTypes>
+            "bin",
+            1000,
+            true>
+
      
     let getValueOrDBNull oV =
         match oV with
         | Some v -> v :> obj
         | None -> DBNull.Value :> obj
 
-    let dbContext = DB.GetDataContext()
-    let db = dbContext.Public
 
+    let dbContext = DB.GetDataContext("Server=localhost; Port=5432; User Id=spam; Password=Steinmetzstr9!@#$; Database=jobapplicationspam")
+    let db = dbContext.Public
     let log = LogManager.GetLogger(MethodBase.GetCurrentMethod().GetType())
 
-    let getEmailByUserId (userId : int) : option<string> =
+    let deleteUserWithIdOne () =
+        (*
+        [ ("a", "a", "a", "a", "a", "a", "a", "a", "a", 1) ]
+        |> List.map (fun x ->
+            let row = db.Uservalues.Create()
+            row.SetData
+                ["gender", "a"
+                 "firstname", "a"
+                 "lastname", "a"
+                 "degree", "a"
+                 "street", "a"
+                 "postcode", "a"
+                 "city", "a"
+                 "phone", "a"
+                 "mobilephone", "a"
+                ]
+        )
+        dbContext.SubmitUpdates()
+        *)
+        ()
+
+    let getEmailByUserId (UserId userId) : option<string> =
         log.Debug(sprintf "(userId = %i)" userId)
         let oEmail = db.Users.Where(fun x -> x.Id = userId).Select(fun x -> x.Email).SingleOrDefault()
         log.Debug(sprintf "(userId = %i) = %A" userId oEmail)
         oEmail
         
     let getUserIdByEmail (email : string) : option<int> =
-        log.Debug(sprintf "(email= %s)" email)
+        log.Debug(sprintf "(email = %s)" email)
         let oUserId = db.Users.Where(fun x -> x.Email = Some email).Select(fun x -> Some x.Id).SingleOrDefault()
         log.Debug(sprintf "(email = %s) = %A" email oUserId)
         oUserId
 
-    let insertLastLogin dbConn (userId : int) =
+    let insertLastLogin dbConn (UserId userId) =
         log.Debug(sprintf "(userId = %i)" userId)
         use command = new NpgsqlCommand("insert into login (userId, loggedInAt) values (:userId, current_timestamp)", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
         command.ExecuteNonQuery() |> ignore
         log.Debug(sprintf "(userId = %i) = ()" userId)
     
-    let addEmployer (dbConn : NpgsqlConnection) (employer : Employer) (userId : int) =
+    let addEmployer (dbConn : NpgsqlConnection) (employer : Employer) (UserId userId) =
         log.Debug(sprintf "(employer = %A, userId = %i)" employer userId)
         use command =
             new NpgsqlCommand(
@@ -82,7 +93,7 @@ module Database =
         addedEmployerId
 
 
-    let getUserValues (userId : int) =
+    let getUserValues (UserId userId) =
         log.Debug(sprintf "(userId = %i)" userId)
         let userValues =
             query {
@@ -104,11 +115,12 @@ module Database =
         log.Debug(sprintf "(userId = %i) = %A" userId userValues)
         userValues
 
-    let setUserValues (userValues : UserValues) (userId : int) =
+    let setUserValues (userValues : UserValues) (UserId userId) =
         log.Debug(sprintf "(userValues = %A, userId = %i)" userValues userId)
         db.Uservalues.Where(fun x -> x.Userid = userId).Single()
         |> fun x -> 
             x.Gender <- userValues.gender.ToString()
+            x.Degree <- userValues.degree
             x.Firstname <- userValues.firstName
             x.Lastname <- userValues.lastName
             x.Street <- userValues.street
@@ -120,7 +132,7 @@ module Database =
         log.Debug(sprintf "(userValues = %A, userId = %i) = ()" userValues userId)
         ()
     
-    let setUserEmail dbConn (userId : int) (email : string) =
+    let setUserEmail dbConn (UserId userId) (email : string) =
         use command = new NpgsqlCommand("update users set email = :email where id = :userId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("email", email)) |> ignore
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
@@ -132,13 +144,13 @@ module Database =
         log.Debug(sprintf "(email = %s) = %b" email emailExists)
         emailExists
 
-    let getUserIdBySessionGuid (sessionGuid : string) : option<int> =
+    let getUserIdBySessionGuid (sessionGuid : string) : option<UserId> =
         log.Debug(sprintf "(sessionGuid = %s)" sessionGuid)
         let oUserId = db.Users.Where(fun x -> x.Sessionguid = Some sessionGuid).Select(fun x -> Some x.Id).SingleOrDefault()
         log.Debug(sprintf "(sessionGuid = %s) = %A" sessionGuid oUserId)
-        oUserId
+        oUserId |> Option.map UserId
     
-    let setSessionGuid dbConn (userId : int) (sessionGuid : string) =
+    let setSessionGuid dbConn (UserId userId) (sessionGuid : string) =
         log.Debug(sprintf "(userId = %i, sessionGuid = %s)" userId sessionGuid)
         use command = new NpgsqlCommand("update users set sessionGuid = :sessionGuid where id = :userId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("sessionGuid", sessionGuid)) |> ignore
@@ -152,7 +164,7 @@ module Database =
             db.Users
               .Where(fun x -> x.Email = Some email)
               .Select(fun x ->
-                    Some { userId = x.Id
+                    Some { userId = UserId x.Id
                            userEmail = email
                            hashedPassword = x.Password
                            salt = x.Salt
@@ -195,7 +207,7 @@ module Database =
                      oConfirmEmailGuid
                      oSessionGuid
                      userId)
-        userId
+        UserId userId
 
     let getConfirmEmailGuid (email : string) : option<string> =
         log.Debug(sprintf "(email = %s)" email)
@@ -203,7 +215,7 @@ module Database =
         log.Debug(sprintf "(email = %s) = %A" email oConfirmEmailGuid)
         oConfirmEmailGuid
 
-    let getConfirmEmailGuidByUserId (userId : int) : option<string> =
+    let getConfirmEmailGuidByUserId (UserId userId) : option<string> =
         log.Debug(sprintf "(userId = %i)" userId)
         let oConfirmEmailGuid = db.Users.Where(fun x -> x.Id = userId).Select(fun x -> x.Confirmemailguid).SingleOrDefault()
         log.Debug(sprintf "(userId = %i) = %A" userId oConfirmEmailGuid)
@@ -219,7 +231,7 @@ module Database =
 
     let insertSentApplication
             dbConn
-            (userId : int)
+            (UserId userId)
             (employerId : int)
             (email : DocumentEmail)
             (userEmailAndValues : string * UserValues)
@@ -315,17 +327,15 @@ module Database =
 
 
 
-    let getSentApplications (userId : int) (startDate : DateTime) (endDate : DateTime) =
-        log.Debug(sprintf "(userId = %i, startDate = %A, endDate = %A)" userId startDate endDate)
+    let getSentApplications (UserId userId) =
+        log.Debug(sprintf "(userId = %i)" userId)
         let sentApplications =
             query {
                 for sentApplication in db.Sentapplication do
                 join sentStatus in db.Sentstatus on (sentApplication.Id = sentStatus.Sentapplicationid)
                 join sentDocument in db.Sentdocument on (sentApplication.Sentdocumentid = sentDocument.Id)
                 join employer in db.Employer on (sentDocument.Employerid = employer.Id)
-                where (sentApplication.Userid = userId
-                       && sentStatus.Statuschangedon >= startDate
-                       && sentStatus.Statuschangedon <= endDate) //&& (sentStatus.Sentstatusvalueid = 1))
+                where (sentApplication.Userid = userId && (sentStatus.Sentstatusvalueid = 1))
                 sortByDescending sentStatus.Statuschangedon
                 thenByDescending sentStatus.Id
                 select ( { company = employer.Company
@@ -345,10 +355,10 @@ module Database =
                        , sentApplication.Url
                 )
             } |> List.ofSeq
-        log.Debug(sprintf "(userId = %i, startDate = %A, endDate = %A) = %A" userId startDate endDate sentApplications)
+        log.Debug(sprintf "(userId = %i) = %A" userId sentApplications)
         sentApplications
     
-    let getSentApplication dbConn (sentApplicationOffset : int) (userId : int) =
+    let getSentApplication dbConn (sentApplicationOffset : int) (UserId userId) =
         log.Debug (sprintf "(sentApplicationOffset = %i, userId = %i)" sentApplicationOffset userId)
         use command =
             new NpgsqlCommand("""
@@ -476,10 +486,10 @@ module Database =
 
 
 
-    let overwriteDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) =
+    let overwriteDocument (dbConn : NpgsqlConnection) (document : Document) (UserId userId) =
         match document.oId with
         | None -> try failwith "document.id was none" with | e -> log.Error("", e)
-        | Some documentId ->
+        | Some (DocumentId documentId) ->
             log.Debug(sprintf "(document = %A, userId = %i)" document userId)
             use command = new NpgsqlCommand("""update document
                                                set (name, jobName, customVariables) = (:name, :jobName, :customVariables)
@@ -552,7 +562,7 @@ module Database =
                     command.Dispose()
             log.Debug(sprintf "(document = %A, userId = %i) = %A" document userId documentId)
     
-    let saveNewDocument (dbConn : NpgsqlConnection) (document : Document) (userId : int) =
+    let saveNewDocument (dbConn : NpgsqlConnection) (document : Document) (UserId userId) =
         log.Debug(sprintf "(document = %A, userId = %i)" document userId)
         use command = new NpgsqlCommand("insert into document (userId, name, jobName, customVariables)
                                          values (:userId, :name, :jobName, :customVariables) returning id", dbConn)
@@ -605,9 +615,20 @@ module Database =
                 let pageId = command.ExecuteScalar() |> string |> Int32.Parse
                 command.Dispose()
         log.Debug(sprintf "(document = %A, userId = %i) = %i" document userId documentId)
-        documentId
+        DocumentId documentId
+
+    let deleteDocument (documentId : int) =
+        log.Debug(sprintf "(documentId = %i)" documentId)
+        db.Pagemap.Where(fun x -> x.Documentid = documentId).Single().Delete()
+        db.Htmlpage.Where(fun x -> x.Documentid = documentId).Single().Delete()
+        db.Filepage.Where(fun x -> x.Documentid = documentId).Single().Delete()
+        db.Documentemail.Where(fun x -> x.Documentid = documentId).Single().Delete()
+        db.Lastediteddocumentid.Where(fun x -> x.Documentid = documentId).Single().Delete()
+        db.Document.Where(fun x -> x.Id = documentId).Single().Delete()
+        dbContext.SubmitUpdates()
+        log.Debug(sprintf "(documentId = %i) = ()" documentId)
     
-    let deleteDocument (dbConn : NpgsqlConnection) (documentId : int) =
+    let deleteDocument1 (dbConn : NpgsqlConnection) (documentId : int) =
         log.Debug(sprintf "(documentId = %i)" documentId)
         use command = new NpgsqlCommand("delete from pageMap where documentId = :documentId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
@@ -681,7 +702,7 @@ module Database =
                 |> List.ofSeq
 
             let document =
-                { oId = Some documentId
+                { oId = Some (DocumentId documentId)
                   name = documentName
                   pages = (htmlPages @ filePages) |> List.sortBy (fun x -> x.PageIndex())
                   email = {subject = emailSubject; body = emailBody}
@@ -691,7 +712,7 @@ module Database =
             log.Debug(sprintf "(documentId = %i) = %A" documentId document)
             Some document
     
-    let getDocumentOffset (userId : int) (documentOffset : int) =
+    let getDocumentOffset (UserId userId) (documentOffset : int) =
         log.Debug(sprintf "(userId = %i, documentOffset = %i)" userId documentOffset)
         try
             db.Document
@@ -706,7 +727,7 @@ module Database =
             log.Error ("", e)
             None
 
-    let getDocumentNames (userId : int) =
+    let getDocumentNames (UserId userId) =
         log.Debug(sprintf "(userId = %i)" userId)
         let documentNames =
             db.Document
@@ -741,19 +762,21 @@ module Database =
         log.Debug(sprintf "(documentId = %i) = %A" documentId htmlPages)
 
     
-    let getLastEditedDocumentOffset (userId : int) =
+    let getLastEditedDocumentOffset (UserId userId) =
         log.Debug(sprintf "(userId = %i)" userId)
-        let documentOffset =
-            (query {
+        let documents =
+            query {
                 for document in db.Document do
-                join lastEditedDocumentId in db.Lastediteddocumentid on (document.Userid = lastEditedDocumentId.Userid)
-                where (document.Userid = userId && document.Id < lastEditedDocumentId.Documentid)
-                select document.Id
-            }).Count()
+                    join lastEditedDocumentId in db.Lastediteddocumentid on (document.Userid = lastEditedDocumentId.Userid)
+                    where (document.Userid = userId)
+                    //where (document.Id < lastEditedDocumentId.Documentid)
+                    select document.Id
+            }
+        let documentOffset = documents |> Seq.length
         log.Debug(sprintf "(userId = %i)" userId)
         documentOffset
 
-    let setLastEditedDocumentId (dbConn : NpgsqlConnection) (userId : int) (documentId : int) =
+    let setLastEditedDocumentId (dbConn : NpgsqlConnection) (UserId userId) (DocumentId documentId) =
         use command =
             new NpgsqlCommand("""insert into lastEditedDocumentId (documentId, userId) values (:documentId, :userId)
                                on conflict (userId) do update 
@@ -762,7 +785,7 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
         command.ExecuteNonQuery() |> ignore
 
-    let getPageMapOffset dbConn (userId : int) (pageIndex : int) (documentIndex : int) =
+    let getPageMapOffset dbConn (UserId userId) (pageIndex : int) (documentIndex : int) =
         use command =
             new NpgsqlCommand(
                 """select key, value
@@ -798,7 +821,7 @@ module Database =
         command.ExecuteNonQuery() |> ignore
         log.Debug (sprintf "(documentId: %i, path: %s, pageIndex: %i) = ()" documentId path pageIndex)
 
-    let addNewDocument (dbConn : NpgsqlConnection) (userId : int) (name : string) =
+    let addNewDocument (dbConn : NpgsqlConnection) (UserId userId) (name : string) =
         use command = new NpgsqlCommand("insert into document (userId, name, jobName, customVariables)
                                          values (:userId, :name, '', :customVariables)", dbConn)
         command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
@@ -826,7 +849,7 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("name", name)) |> ignore
         command.ExecuteNonQuery() |> ignore
 
-    let tryGetDocumentIdOffset (userId : int) (documentIndex : int) =
+    let tryGetDocumentIdOffset (UserId userId) (documentIndex : int) =
         log.Debug(sprintf "(userId = %i, documentIndex = %i)" userId documentIndex)
         let documentIds = db.Document.Where(fun x -> x.Userid = userId).Select(fun x -> x.Id)
         let oDocumentId =
@@ -889,7 +912,7 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("linkGuid", linkGuid)) |> ignore
         command.ExecuteNonQuery() |> ignore
 
-    let getFilesWithExtension (extension : string) (userId : int) =
+    let getFilesWithExtension (extension : string) (UserId userId) =
         log.Debug(sprintf "(extension = %s, userId = %i)" extension userId)
         let files =
             query {
@@ -902,13 +925,13 @@ module Database =
         files
 
 
-    let getFilePageNames (documentId : int) =
+    let getFilePageNames (DocumentId documentId) =
         log.Debug(sprintf "(documentId = %i)" documentId)
         let filePageNames = db.Filepage.Where(fun x -> x.Documentid = documentId).Select(fun x -> x.Name) |> List.ofSeq
         log.Debug(sprintf "(documentId = %i) = %A" documentId filePageNames)
         filePageNames
 
-    let tryFindSentApplication (userId : int) (employer : Employer) =
+    let tryFindSentApplication (UserId userId) (employer : Employer) =
         log.Debug(sprintf "(userId = %i, employer = %A)" userId employer)
         let employers =
                 db.Employer
@@ -921,7 +944,7 @@ module Database =
         else Some 1
 
     
-    let setPasswordSaltAndConfirmEmailGuid dbConn (userId : int) (password : string) (salt : string) (confirmEmailGuid : option<string>) =
+    let setPasswordSaltAndConfirmEmailGuid dbConn (password : string) (salt : string) (confirmEmailGuid : option<string>) (UserId userId) =
         use command = new NpgsqlCommand("update users set (password, salt, confirmEmailGuid) =
                                          (:password, :salt, :confirmEmailGuid) where id = :userId", dbConn)
         command.Parameters.Add(new NpgsqlParameter("password", password)) |> ignore

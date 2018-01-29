@@ -79,14 +79,14 @@ module Odt =
         let guid1 = Guid.NewGuid().ToString("N")
         let extractedOdtDirectory1 =
             Path.Combine(
-                ( ConfigurationManager.AppSettings.["dataDirectory"])
+                Settings.DataDirectory
                 , "tmp"
                 , guid1)
 
         let guid2 = Guid.NewGuid().ToString("N")
         let extractedOdtDirectory2 =
             Path.Combine(
-                ( ConfigurationManager.AppSettings.["dataDirectory"])
+                Settings.DataDirectory
                 , "tmp"
                 , guid2)
 
@@ -234,12 +234,12 @@ module Odt =
         let outputPath = Path.ChangeExtension(odtPath, ".pdf")
         File.Delete(outputPath)
         use process1 = new System.Diagnostics.Process()
-        process1.StartInfo.FileName <- ConfigurationManager.AppSettings.["python"]
+        process1.StartInfo.FileName <- Settings.Python
         process1.StartInfo.UseShellExecute <- false
         process1.StartInfo.Arguments <-
             sprintf
                 """ "%s" --format pdf -eUseLossLessCompression=true "%s" """
-                (ConfigurationManager.AppSettings.["unoconv"])
+                Settings.Unoconv
                 odtPath
         process1.StartInfo.CreateNoWindow <- true
         process1.Start() |> ignore
@@ -258,12 +258,12 @@ module Odt =
         let outputPath = Path.ChangeExtension(filePath, ".odt")
         if File.Exists(outputPath) then File.Delete(outputPath)
         use process1 = new System.Diagnostics.Process()
-        process1.StartInfo.FileName <- ConfigurationManager.AppSettings.["python"]
+        process1.StartInfo.FileName <- Settings.Python
         process1.StartInfo.UseShellExecute <- false
         process1.StartInfo.Arguments <-
             sprintf
                 """ "%s" --format odt --output="%s" "%s" """
-                (ConfigurationManager.AppSettings.["unoconv"])
+                Settings.Unoconv
                 outputPath
                 filePath
         printfn "%s" process1.StartInfo.Arguments

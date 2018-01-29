@@ -56,13 +56,13 @@ module Templating =
         ]
     
     let loggedInUserEmail (ctx: Context<EndPoint>) =
-        let userId = ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously |> Option.map Int32.Parse
-        userId |> Option.bind (Server.getEmailByUserId >> Async.RunSynchronously)
-        |> Option.map (fun email ->
-            match ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously with
-            | Some user -> email
-            | None -> "Gast " + email)
-        |> Option.defaultValue (sprintf "Gast %A" userId)
+        let oUserId = ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously |> Option.map (Int32.Parse >> UserId)
+        match oUserId with
+        | Some userId ->
+            match Server.getEmailByUserId userId |> Async.RunSynchronously with
+            | Some email -> email
+            | None -> sprintf "Gast %A" userId
+        | None -> "Gast"
 
 
     let atSign (ctx: Context<EndPoint>) =
@@ -167,15 +167,17 @@ module Site =
         Templating.main ctx EndPoint.Logout "Logout" [
             client <@ Client.logout() @>
             client <@ Client.doLogin() @>
-            client <@ Client.templates() @>
         ]
     
     let uploadPage (ctx : Context<EndPoint>) =
-        match ctx.Request.Post.["documentId"] |> Option.map Int32.TryParse
-            , ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously |> Option.map Int32.TryParse
+        match ctx.Request.Post.["documentId"] |> Option.map Int32.TryParse |> Option.map (fun (b, v) -> (b, DocumentId v))
+            , ctx.UserSession.GetLoggedInUser()
+                  |> Async.RunSynchronously
+                  |> Option.map Int32.Parse
+                  |> Option.map UserId
             , ctx.Request.Post.["pageIndex"] |> Option.map Int32.TryParse
             with
-        | Some (true, documentId), Some (true, userId), Some (true, pageIndex) ->
+        | Some (true, documentId), Some userId, Some (true, pageIndex) ->
             let relativeDir = Path.Combine("users", userId.ToString())
             if not <| Directory.Exists (toRootedPath relativeDir) then Directory.CreateDirectory (toRootedPath relativeDir) |> ignore
             let findFreeFileName file documentId =
@@ -205,7 +207,7 @@ module Site =
                             then
                                 let tmpFilePath =
                                     Path.Combine(
-                                          ConfigurationManager.AppSettings.["dataDirectory"]
+                                          Settings.DataDirectory
                                         , "tmp"
                                         , Guid.NewGuid().ToString()
                                         , x.FileName)
@@ -216,14 +218,14 @@ module Site =
                             then
                                 let tmpFilePath =
                                     Path.Combine
-                                        ( ConfigurationManager.AppSettings.["dataDirectory"]
+                                        ( Settings.DataDirectory
                                         , "tmp"
                                         , Guid.NewGuid().ToString()
                                         , x.FileName)
                                 Directory.CreateDirectory(Path.GetDirectoryName(tmpFilePath)) |> ignore
-                                x.SaveAs(tmpFilePath)
+                                x.SaveAs tmpFilePath
                                 tmpFilePath, false
-                            else Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], "users", userId |> string, x.FileName), false
+                            else Path.Combine(Settings.DataDirectory, "users", userId |> string, x.FileName), false
 
                         let (filePath, name) =
                             let filesWithSameExtension =
@@ -315,7 +317,7 @@ module Site =
             match oFilePathAndName with
             | None -> return Content.NotFound
             | Some (filePath, name) ->
-                let file = FileInfo(Path.Combine(ConfigurationManager.AppSettings.["dataDirectory"], filePath))
+                let file = FileInfo(Path.Combine(Settings.DataDirectory, filePath))
                 return
                     if file.Exists then
                         Content.File(file.FullName, true, "application/pdf")
@@ -356,7 +358,6 @@ module Site =
             Content.RedirectPermanentToUrl "https://www.bewerbungsspam.de"
         )
 
-
 module SelfHostedServer =
     open global.Owin
     open Microsoft.Owin.Hosting
@@ -364,11 +365,14 @@ module SelfHostedServer =
     open Microsoft.Owin.FileSystems
     open WebSharper.Owin
     open LetsEncrypt.Owin
+    open log4net
     open JobApplicationSpam
+    open System.IO
 
     [<EntryPoint>]
     let main args =
         log4net.Config.XmlConfigurator.Configure(new FileInfo("log4net.config")) |> ignore
+
         let rootDirectory, url, port =
             match args with
             | [| rootDirectory; url; port |] ->
@@ -408,3 +412,5 @@ module SelfHostedServer =
         while true do
             System.Threading.Thread.Sleep(60000)
         0
+
+

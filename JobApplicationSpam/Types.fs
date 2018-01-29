@@ -3,9 +3,17 @@ module Types =
     open WebSharper.UI.Next
     open WebSharper
     open System
+    open FSharp.Configuration
+    open System.Configuration
+
+    type UserId = UserId of int
+    type DocumentId = DocumentId of int
+
+
+    type Settings = AppSettings<"app.config">
 
     type LoggedInData =
-        { userId : int
+        { userId : UserId
           email : string
           confirmEmailGuid : option<string>
           sessiongGuid : option<string>
@@ -17,7 +25,7 @@ module Types =
         }
     
     type ValidateLoginData =
-        { userId : int
+        { userId : UserId
           userEmail : string
           hashedPassword : string
           salt : string
@@ -134,13 +142,18 @@ module Types =
 
     [<JavaScript>]
     type Document =
-        { oId : option<int>
+        { oId : option<DocumentId>
           name : string
           pages : list<DocumentPage>
           email : DocumentEmail
           jobName : string
           customVariables : string
         }
+        with
+            member this.GetId() =  
+                match this.oId with 
+                | None -> failwith "Document id was None"
+                | Some (DocumentId documentId) -> documentId
 
     [<JavaScript>]
     type HtmlPageTemplate =
@@ -230,7 +243,7 @@ module Types =
     let toRootedPath path =
         if System.IO.Path.IsPathRooted path
         then path
-        else System.IO.Path.Combine(System.Configuration.ConfigurationManager.AppSettings.["dataDirectory"], path)
+        else System.IO.Path.Combine(Settings.DataDirectory, path)
 
 
 

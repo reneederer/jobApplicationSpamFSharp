@@ -30,14 +30,13 @@ module Client =
 
     [<JavaScript>]
     let loginOrOutButton () =
-        let varIsGuest = Var.Create(Bad [""])
+        let varIsGuest = Var.Create false
         async {
             let! isGuest = Server.isLoggedInAsGuest()
             varIsGuest.Value <- isGuest
         } |> Async.Start
         match varIsGuest.Value with
-        | Bad _
-        | Ok (true, _) ->
+        | true ->
             formAttr
               [ attr.action "/ghi" ]
               [ buttonAttr
@@ -46,7 +45,7 @@ module Client =
                   [text "Login"]
               ]
             :> Doc
-        | Ok (false, _) ->
+        | false ->
             formAttr
               [ attr.action "/logout" ]
               [ buttonAttr
@@ -166,7 +165,6 @@ module Client =
                 let! loginResult = Server.loginUserBySessionGuid (Cookies.Get("user").Value)
                 match loginResult with
                 | Ok _ ->
-                    let! email = Server.getCurrentUserEmail()
                     ()
                 | Bad _ ->
                     do! loginAsGuest' ()
@@ -229,6 +227,80 @@ module Client =
 
         
         let getSentApplications () =
+            let varColumns =
+                ListModel.FromSeq
+                  [ "Firma", employerCompany, true
+                    "Vorname", employerFirstName, true
+                    "Nachname", employerLastName, false
+                    "Straße", employerStreet, true
+                    "PLZ", employerPostcode, true
+                    "Stadt", employerCity, false
+                  ]
+            let chooseColumns (employer : Employer) (url : string) =
+                divAttr
+                  [ attr.``class`` "modal fade in";
+                    attr.id "employerModal"
+                    attr.tabindex "-1"
+                    Attr.Create "role" "dialog"
+                    Attr.Create "aria-labelledby" "exampleModalLabel"
+                    Attr.Create "aria-hidden" "true"
+                  ]
+                  [ divAttr
+                      [ attr.``class`` "modal-dialog"
+                        Attr.Create "role" "document"
+                      ]
+                      [ divAttr
+                          [ attr.``class`` "modal-content"
+                          ]
+                          [ divAttr
+                              [ attr.``class`` "modal-header"
+                              ]
+                              [ h5Attr
+                                  [ attr.``class`` "modal-title"
+                                    attr.id "exampleModalLabel"
+                                  ]
+                                  [ text employer.company ]
+                                buttonAttr
+                                  [ attr.``type`` "button"
+                                    attr.``class`` "close"
+                                    Attr.Create "aria-label" "Close"
+                                    attr.``data-`` "dismiss" "modal"
+                                  ]
+                                  [ spanAttr
+                                      [ Attr.Create "aria-hidden" "true"
+                                      ]
+                                      [ text "x" ]
+                                  ]
+                              ]
+                            divAttr
+                              [ attr.``class`` "modal-body"
+                              ]
+                              [ (Doc.BindSeqCached
+                                    (fun (name, ref, selected) ->
+                                        let guid = Guid.NewGuid().ToString("N")
+                                        div
+                                          [ inputAttr
+                                              [ attr.``type`` "checkbox"
+                                                attr.id guid
+                                                on.change (fun el _ ->
+                                                    varColumns.Value <-
+                                                        varColumns.Value
+                                                        |> Seq.map (fun (name1, ref1, selected1) -> (name1, ref1, el?``checked``))
+                                                )
+                                              ]
+                                              []
+                                            labelAttr
+                                              [ attr.``for`` guid
+                                              ]
+                                              [ text name ]
+                                          ]
+                                    )
+                                    varColumns.View
+                                )
+                              ]
+                          ]
+                      ]
+                  ]
             let createEmployerModal (employer : Employer) (url : string) =
                 divAttr
                   [ attr.``class`` "modal fade in";
@@ -275,7 +347,7 @@ module Client =
                                 text (employer.postcode + " " + employer.city)
                                 br []
                                 text ( (if employer.degree <>  "" then employer.degree + " " else "")
-                                           + employer.degree + " " + employer.firstName + " " + employer.lastName)
+                                        + employer.firstName + " " + employer.lastName)
                                 br []
                                 text employer.email
                                 br []
@@ -295,50 +367,102 @@ module Client =
                             divAttr
                               [ attr.``class`` "modal-footer"
                               ]
-                              [ buttonAttr
-                                  [ attr.``type`` "button"
-                                    attr.``class`` "btn btn-primary"
-                                    attr.``class`` "close"
-                                    Attr.Create "aria-label" "Close"
-                                    attr.``data-`` "dismiss" "modal"
-                                  ]
-                                  [ text "Close" ]
-                              ]
+                              []
                           ]
                       ]
                   ]
             let varEmployerModal = Var.Create(createEmployerModal emptyEmployer "")
 
             async {
-                let! sentApplications = Server.getSentApplications (DateTime.Parse("1970-01-01")) DateTime.Now
+                let! sentApplications = Server.getSentApplications ()
+                let varSentApplications = ListModel.FromSeq sentApplications
+                let emailSentApplicationToUserFun =
+                    fun (el : Dom.Element) (ev : Dom.MouseEvent) ->
+                        async {
+                            let! result = Server.emailSentApplicationToUser (el.ParentElement.ParentElement?rowIndex - 1) ""
+                            match result with
+                            | Ok _ -> ()
+                            | Bad _ -> JS.Alert("Entschuldigung, es trat ein Fehler auf")
+                        } |> Async.Start
+                
+                let setSentApplicationsFromTo () =
+                    let dateFromParsed = DateTime.Parse(JS.Document.GetElementById("dateFrom")?value)
+                    let dateFrom = DateTime(dateFromParsed.Year, dateFromParsed.Month, dateFromParsed.Day)
+                    let dateToParsed = DateTime.Parse(JS.Document.GetElementById("dateTo")?value)
+                    let dateTo = DateTime(dateToParsed.Year, dateToParsed.Month, dateToParsed.Day)
+                    let dateFrom, dateTo = 
+                        if dateFrom <= dateTo
+                        then dateFrom, dateTo
+                        else dateTo, dateFrom
+                    varSentApplications.Value <-
+                        sentApplications
+                        |> List.filter (fun (_, _, d : DateTime, _) ->
+                            d >= dateFrom && d <= dateTo
+                        )
+                
                 varDivSentApplications.Value <-
                     divAttr
                       [ attr.style "width: 100%; height: 100%; overflow: auto"
                       ]
-                      [ Doc.EmbedView varEmployerModal.View
+                      [ text "Von"
+                        inputAttr
+                          [ attr.``type`` "date"
+                            attr.id "dateFrom"
+                            attr.value
+                                ( let dateFrom = DateTime.Now.AddMonths(-1).AddDays(float (-(DateTime.Now.Day) + 1))
+                                  sprintf "%04i-%02i-%02i" dateFrom.Year dateFrom.Month dateFrom.Day)
+                            attr.style "margin-left: 15px; margin-right: 15px;"
+                            on.change (fun _ _ ->
+                                setSentApplicationsFromTo ()
+                            )
+                          ]
+                          []
+                        text "bis"
+                        inputAttr
+                          [ attr.``type`` "date"
+                            attr.id "dateTo"
+                            attr.value
+                                ( let dateTo = DateTime.Now.AddMonths(1).AddDays(float -DateTime.Now.Day)
+                                  sprintf "%04i-%02i-%02i" dateTo.Year dateTo.Month dateTo.Day)
+                            attr.style "margin-left: 15px;"
+                            on.change (fun _ _ ->
+                                setSentApplicationsFromTo ()
+                            )
+                          ]
+                          []
+                        buttonAttr
+                          [ attr.style "float : right;"
+                          ]
+                          [ text "Liste downloaden" ]
+                        Doc.EmbedView varEmployerModal.View
                         tableAttr
                           [ attr.style "border-spacing: 10px; border-collapse: separate" ]
                           [ thead
                               [ tr
-                                  [ th [ text (t German CompanyName) ]
-                                    th [ text (t German AppliedOnDate) ]
-                                    th [ text (t German AppliedAs) ]
-                                    th [ text "an dich mailen" ]
-                                  ]
+                                  [ Doc.BindSeqCached
+                                        (fun (name, ref, selected) ->
+                                            if selected
+                                            then th [ text name ]
+                                            else text "" :?> Elt
+                                        ) varColumns.View ]
+                                  //@ [ th [ text "an dich mailen" ] ])
                               ]
                             tbody
-                              [ let emailSentApplicationToUserFun =
-                                    fun (el : Dom.Element) (ev : Dom.MouseEvent) ->
-                                        async { 
-                                            let! result = Server.emailSentApplicationToUser (el.ParentElement.ParentElement?rowIndex - 1) ""
-                                            match result with
-                                            | Ok _ -> ()
-                                            | Bad _ -> JS.Alert("Entschuldigung, es trat ein Fehler auf")
-                                        } |> Async.Start
+                              [
+                                (*
+                                Doc.BindSeqCached
+                                    (fun (name, ref : IRef<string>, selected) ->
+                                        if selected && varSentApplications.Value |> Seq.contains 
+                                        then td [ text ref.Value ]
+                                        else text "" :?> Elt
+                                    )
+                                    varColumns.View
+                                    *)
 
-                                for (employer, jobName, (appliedOn : DateTime), url) in sentApplications do
-                                    yield!
-                                      [ tr
+                                (*
+                                (Doc.BindSeqCached
+                                    (fun (employer : Employer, jobName : string, appliedOn : DateTime, url : string) ->
+                                        tr
                                           [ td
                                               [ buttonAttr
                                                   [ on.click (fun el _ ->
@@ -378,7 +502,13 @@ module Client =
                                               ]
                                           ]
                                         :> Doc
-                                      ]
+                                       
+                                    )
+                                varSentApplications.View
+                                )
+                                *)
+
+
                               ]
                           ]
                       ]
@@ -621,7 +751,7 @@ module Client =
                     let! documentId = Server.saveNewDocument emptyDocument
                     varDocument.Value <- { emptyDocument with oId = Some documentId }
                     addSelectOption slctDocumentNameEl varDocument.Value.name
-                JS.Document.GetElementById("hiddenDocumentId")?value <- varDocument.Value.oId |> Option.get |> string
+                JS.Document.GetElementById("hiddenDocumentId")?value <- varDocument.Value.GetId()
                 show ["divAttachments"]
             }
         
@@ -756,10 +886,7 @@ module Client =
                 let userEmailValid() =
                     let varRet = Var.Create(true)
                     match isGuestResult with
-                    | Bad _ ->
-                        JS.Alert("Sorry, an error occurred")
-                        false
-                    | Ok (isGuest, _) when isGuest = true ->
+                    | true ->
                         if not <| regex?test(varUserEmail.Value)
                           then
                              JS.Alert("Deine Email scheint ungültig zu sein.")
@@ -774,7 +901,7 @@ module Client =
                                      varRet.Value <- false
                              } |> Async.Start
                              varRet.Value
-                    | Ok (isGuest, _) when isGuest = false ->
+                    | false ->
                         true
 
                 let employerValid() =
@@ -854,21 +981,13 @@ module Client =
                 do! Server.setUserValues varUserValues.Value
             }
         
-            
-
-
-
         async {
             while Cookies.Get("user") = Undefined do
                 do! Async.Sleep 20
             let! isGuest = Server.isLoggedInAsGuest()
-            match isGuest with
-            | Ok (true, _) ->
-                varUserEmailInput.Value <- createInput "Deine Email" varUserEmail (fun x -> "")
-            | Ok (false, _) ->
-                varUserEmailInput.Value <- text ""
-            | Bad _ ->
-                ()
+            if isGuest
+            then varUserEmailInput.Value <- createInput "Deine Email" varUserEmail (fun x -> "")
+            else varUserEmailInput.Value <- text ""
 
             let divMenu = JS.Document.GetElementById("divSidebarMenu")
             while divMenu = null do
@@ -891,17 +1010,14 @@ module Client =
             addMenuEntry (t German EditAttachments) (fun _ _ -> show ["divAttachments"]) |> ignore
             addMenuEntry (t German AddEmployerAndApply) (fun _ _ -> show ["divAddEmployer"]) |> ignore
 
-            let! oUserEmail = Server.getCurrentUserEmail()
+            let! oUserEmail = Server.getUserEmail()
             varUserEmail.Value <- oUserEmail |> Option.defaultValue ""
         
-            let! oUserValues = Server.getCurrentUserValues()
-            varUserValues.Value <- (oUserValues |> Option.defaultValue emptyUserValues)
+            let! userValues = Server.getUserValues()
+            varUserValues.Value <- emptyUserValues
 
 
-            let! documentNames =
-                async {
-                    return! Server.getDocumentNames()
-                }
+            let! documentNames = Server.getDocumentNames()
             let slctDocumentNameEl = JS.Document.GetElementById("slctDocumentName")
             while JS.Document.GetElementById("slctDocumentName") = null do
                 do! Async.Sleep 10

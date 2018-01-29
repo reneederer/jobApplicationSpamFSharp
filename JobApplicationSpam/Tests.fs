@@ -3,51 +3,57 @@
 open NUnit.Framework
 open FsUnit
 open JobApplicationSpam
-open Database
-open Npgsql
-open System
 open System.IO
 open Types
 open Variables
+open Chessie.ErrorHandling
 
 module MyTests =
+    open System.Transactions
+
     [<Test>]
     let parseVariable00 () =
-        parse """ $hallo = "we" + "lt" + $a"""
-        |> should equal <| Some ["$hallo", VariableExpression "welt$a"]
+        let expected = parse """ $hallo = "we" + "lt" + $a"""
+        let actual = ok ["$hallo", VariableExpression "welt$a"] : Result<list<string * Expression>, string>
+        expected |> should equal actual
 
     [<Test>]
     let parseVariable01 () =
-        parse """$hallo = "welt" """
-        |> should equal <| Some ["$hallo", VariableExpression "welt"]
+        let expected = parse """$hallo = "welt" """
+        let actual = ok ["$hallo", VariableExpression "welt"] : Result<list<string * Expression>, string>
+        expected |> should equal actual
 
     [<Test>]
     let parseVariable02 () =
-        parse """ $hallo = "welt" + "da" + $bist + "du" """
-        |> should equal <| Some [("$hallo", VariableExpression "weltda$bistdu")]
+        let expected = parse """ $hallo = "welt" + "da" + $bist + "du" """
+        let actual = ok [("$hallo", VariableExpression "weltda$bistdu")] : Result<list<string * Expression>, string>
+        expected |> should equal actual
 
     [<Test>]
     let parseVariable03 () =
-        parse """  $hallo = "welt" +$da +"bist du"
+        let expected = parse """  $hallo = "welt" +$da +"bist du"
         """
-        |> should equal <| Some ["$hallo", VariableExpression "welt$dabist du"]
+        let actual = ok ["$hallo", VariableExpression "welt$dabist du"] : Result<list<string * Expression>, string>
+        expected |> should equal actual
 
     [<Test>]
     let parseVariable04 () =
-        parse """  $hallo = $welt   """
-        |> should equal <| Some ["$hallo", VariableExpression "$welt"]
+        let expected = parse """  $hallo = $welt   """
+        let actual = ok ["$hallo", VariableExpression "$welt"] : Result<list<string * Expression>, string>
+        expected |> should equal actual
 
     [<Test>]
     let parseVariable05 () =
-        parse """    $hallo = match $welt with
+        let expected = parse """    $hallo = match $welt with
                               | "a" -> "b"
                               | "c" -> "d"
             """
-        |> should equal <| Some ["$hallo", (MatchExpression ("$welt", ["a", "b"; "c", "d"]))]
+        let actual = ok ["$hallo", (MatchExpression ("$welt", ["a", "b"; "c", "d"]))] : Result<list<string * Expression>, string>
+        expected |> should equal actual
 
     [<Test>]
     let parseVariable06 () =
-        parse """    $hallo =match $welt with
+        let expected = parse """$hallo =match $welt with
                                | "a" -> "b"
                                | "c" -> "d"
                     $a = $b
@@ -56,16 +62,18 @@ module MyTests =
                                 | "i" -> "j"
                                 | "k" -> "l" """
 
-        |> should equal <| Some [ "$hallo", (MatchExpression ("$welt", ["a", "b"; "c", "d"]))
-                                  "$a", VariableExpression "$b"
-                                  "$c", VariableExpression "de$f"
-                                  "$g", (MatchExpression ("$h", ["i", "j"; "k", "l"])) ]
+        let actual = ok [ "$hallo", (MatchExpression ("$welt", ["a", "b"; "c", "d"]))
+                          "$a", VariableExpression "$b"
+                          "$c", VariableExpression "de$f"
+                          "$g", (MatchExpression ("$h", ["i", "j"; "k", "l"])) ] : Result<list<string * Expression>, string>
+        expected |> should equal actual
 
 
     [<Test>]
     let parseVariable07 () =
-         parse "$datumHeute = $tag + \".\" + $monat + \".\" + $jahr\n\n$anredeZeile =\n\tmatch $chefGeschlecht with\n\t| \"m\" -> \"Sehr geehrter Herr $chefTitel $chefNachname,\"\n\t| \"f\" -> \"Sehr geehrte Frau $chefTitel $chefNachname,\"\n\t| \"u\" -> \"Sehr geehrte Damen und Herren,\"\n\n$chefAnrede =\n\tmatch $chefGeschlecht with\n\t| \"m\" -> \"Herr\"\n\t| \"f\" -> \"Frau\"\n\n$chefAnredeBriefkopf =\n\tmatch $chefGeschlecht with\n\t| \"m\" -> \"Herrn\"\n\t| \"f\" -> \"Frau\"\n\n"
-         |> should equal <| Some 
+         let expected = parse "$datumHeute = $tag + \".\" + $monat + \".\" + $jahr\n\n$anredeZeile =\n\tmatch $chefGeschlecht with\n\t| \"m\" -> \"Sehr geehrter Herr $chefTitel $chefNachname,\"\n\t| \"f\" -> \"Sehr geehrte Frau $chefTitel $chefNachname,\"\n\t| \"u\" -> \"Sehr geehrte Damen und Herren,\"\n\n$chefAnrede =\n\tmatch $chefGeschlecht with\n\t| \"m\" -> \"Herr\"\n\t| \"f\" -> \"Frau\"\n\n$chefAnredeBriefkopf =\n\tmatch $chefGeschlecht with\n\t| \"m\" -> \"Herrn\"\n\t| \"f\" -> \"Frau\"\n\n"
+         let actual =
+             ok
                 [ "$datumHeute", VariableExpression "$tag.$monat.$jahr"
                   "$anredeZeile", (MatchExpression
                                     ( "$chefGeschlecht"
@@ -74,7 +82,8 @@ module MyTests =
                                         "u", "Sehr geehrte Damen und Herren,"]))
                   "$chefAnrede", (MatchExpression ("$chefGeschlecht", ["m", "Herr"; "f", "Frau"]))
                   "$chefAnredeBriefkopf", (MatchExpression ("$chefGeschlecht", ["m", "Herrn"; "f", "Frau"]))
-                ]
+                ] : Result<list<string * Expression>, string>
+         expected |> should equal actual
 
     [<Test>]
     let deleteLine00 () =
@@ -214,68 +223,48 @@ module MyTests =
               "$meineMobilnr", ""]
             Ignore
         ) |> should equal "<?xml ?><text:p>Dr. René Ederer</text:p><text:p>Raabstr. 24A</text:p><text:p>Telefon: 0911 12345</text:p>"
-    (*
+
+
+
     log4net.Config.XmlConfigurator.Configure(new FileInfo(@"log4net.config")) |> ignore
     
-    let mutable dbConn = new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
-    dbConn.Open()
-    let mutable transaction = dbConn.BeginTransaction()
-
     [<SetUp>]
     let setup () =
-        dbConn <- new NpgsqlConnection("Server=localhost; Port=5432; User Id=postgres; Password=postgres; Database=jobapplicationspam")
-        dbConn.Open()
-        transaction <- dbConn.BeginTransaction()
+        ()
     
     [<TearDown>]
     let tearDown () =
-        transaction.Rollback()
-        transaction.Dispose()
-        dbConn.Dispose()
+        ()
+    
+(*
+
+    [<Test; CategoryAttribute("Database")>]
+    let ``login existing userId`` () =
+        Server.deleteUserWithIdOne() |> Async.RunSynchronously
+        Server.login "rene.ederer.nbg@gmail.com" "1234"
+        |> Async.RunSynchronously
+        |> should equal (ok () : Result<unit, string>)
 
     [<Test; CategoryAttribute("Database")>]
     let ``getEmail 404 (nonexisting) should return None`` () =
-        Database.getEmailByUserId dbConn 443 |> should equal None
+        Server.getEmailByUserId (UserId 404) |> Async.RunSynchronously |> should equal None
 
     [<Test; CategoryAttribute("Database")>]
-    let ``getEmail 1 (existing) should return Some "rene.ederer.nbg (at) gmail.com"`` () =
-        Database.getEmailByUserId dbConn 1 |> should equal <| Some "rene.ederer.nbg@gmail.com"
+    let ``getEmailByUserId 1 (existing) should return Some "rene.ederer.nbg (at) gmail.com"`` () =
+        Server.getEmailByUserId (UserId 1) |> Async.RunSynchronously |> should equal <| Some "rene.ederer.nbg@gmail.com"
 
     [<Test; CategoryAttribute("Database")>]
-    let ``getUserValues 1 (existing) should return Some {...}`` () =
+    let ``Database.getUserValues' 1 (existing) should return Some {...}`` () =
         let userValues = { gender = Gender.Male; degree = ""; firstName = "René"; lastName = "Ederer"; street = "Raabstr. 24A"; postcode = "90429"; city = "Nürnberg"; phone = "kein Telefon"; mobilePhone = "kein Handy"; }
-        Database.getUserValues dbConn 1 |> should equal (Some userValues)
+        Server.getUserValues' (UserId 1) |> should equal userValues
 
     [<Test; CategoryAttribute("Database")>]
-    let ``setUserValues should add the UserValues`` () =
+    let ``setUserValues should set the UserValues`` () =
         let userValues = { gender = Gender.Female; degree = "Prof."; firstName = "Katja"; lastName = "Großjohann"; street = "Fürther Str. 22"; postcode = "90429"; city = "Nürnberg"; phone = "0911 91821"; mobilePhone = "0151 147111" }
-        let userId = 1
-        let addedUserValuesId =
-            Database.setUserValues
-                dbConn
-                userValues
-                userId
-        Database.getUserValues dbConn userId |> should equal (Some userValues)
+        Server.setUserValues' userValues (UserId 1)
+        Server.getUserValues' (UserId 1) |> should equal userValues
 
-    [<Test; CategoryAttribute("Database")>]
-    let ``userEmailExists "rene.ederer(at)gmail.com (existing) should return true`` () =
-        Database.userEmailExists dbConn "rene.ederer.nbg@gmail.com" |> should equal true
-
-
-    [<Test; CategoryAttribute("Database")>]
-    let ``userEmailExists "some.nonexisting(at)gmail.com (nonexisting) should return false`` () =
-        Database.userEmailExists dbConn "some.nonexisting.nbg@gmail.com" |> should equal false
-
-
-    [<Test; CategoryAttribute("Database")>]
-    let ``getIdPasswordSaltAndGuid "rene.ederer.nbg(at)gmail.com" (existing) should return a tuple`` () =
-        let expected =
-            ( 1
-            , "r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA=="
-            , "JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og=="
-            , (None : option<string>)
-            )
-        Database.getIdPasswordSaltAndGuid dbConn "rene.ederer.nbg@gmail.com" |> should equal (Some expected)
+        (*
 
     [<Test; CategoryAttribute("Database")>]
     let ``getIdPasswordSaltAndGuid "some.nonexisting(at)gmail.com" (nonexisting) should return a tuple`` () =
@@ -325,8 +314,7 @@ module MyTests =
 
 
 
-
-
+*)
 
 
 *)

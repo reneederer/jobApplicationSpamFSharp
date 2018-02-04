@@ -177,7 +177,7 @@ module Site =
                   |> Option.map UserId
             , ctx.Request.Post.["pageIndex"] |> Option.map Int32.TryParse
             with
-        | Some (true, documentId), Some userId, Some (true, pageIndex) ->
+        | Some (true, documentId), Some (UserId userId), Some (true, pageIndex) ->
             let relativeDir = Path.Combine("users", userId.ToString())
             if not <| Directory.Exists (toRootedPath relativeDir) then Directory.CreateDirectory (toRootedPath relativeDir) |> ignore
             let findFreeFileName file documentId =
@@ -200,10 +200,10 @@ module Site =
                 (fun (x : HttpPostedFileBase) ->
                     if     x.FileName <> ""
                         && x.ContentLength < maxUploadSize
-                        && List.contains (Path.GetExtension(x.FileName).Substring(1)) supportedUnoconvFileTypes
+                        && List.contains (Path.GetExtension(x.FileName).Substring(1).ToLower()) supportedUnoconvFileTypes
                     then
                         let convertedFilePath, hasBeenConverted =
-                            if List.contains (Path.GetExtension(x.FileName).Substring(1)) convertibleToOdtFormats
+                            if List.contains (Path.GetExtension(x.FileName).Substring(1).ToLower()) convertibleToOdtFormats
                             then
                                 let tmpFilePath =
                                     Path.Combine(
@@ -212,7 +212,7 @@ module Site =
                                         , Guid.NewGuid().ToString()
                                         , x.FileName)
                                 Directory.CreateDirectory(Path.GetDirectoryName(tmpFilePath)) |> ignore
-                                x.SaveAs(tmpFilePath)
+                                x.SaveAs tmpFilePath
                                 Server.convertToOdt tmpFilePath |> Async.RunSynchronously, true
                             elif x.FileName.ToLower().EndsWith(".odt")
                             then
@@ -229,8 +229,7 @@ module Site =
 
                         let (filePath, name) =
                             let filesWithSameExtension =
-                                Server.getFilesWithSameExtension convertedFilePath userId
-                                |> Async.RunSynchronously
+                                Server.getFilesWithSameExtension convertedFilePath (UserId userId) |> Async.RunSynchronously
                             let oSameFile =
                                 filesWithSameExtension
                                 |> Seq.tryFind
@@ -270,7 +269,7 @@ module Site =
                                     (Path.Combine(relativeDir, fileName), fileName)
                         async {
                             do! Server.addFilePage documentId filePath pageIndex name
-                            do! Server.setLastEditedDocumentId userId documentId
+                            do! Server.setLastEditedDocumentId (UserId userId) documentId
                         } |> Async.RunSynchronously
                 )
         | _ -> ()

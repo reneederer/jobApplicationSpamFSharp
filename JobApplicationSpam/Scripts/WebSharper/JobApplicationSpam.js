@@ -228,7 +228,7 @@
  };
  German.t=function(x)
  {
-  return x.$==1?"Deine Daten":x.$==2?"Email":x.$==3?"Anhänge":x.$==4?"Deine Bewerbungsmappen":x.$==5?"Werte holen":x.$==6?"Jetzt bewerben":x.$==7?"Firmenname":x.$==8?"Straße":x.$==9?"Postleitzahl":x.$==10?"Stadt":x.$==11?"Geschlecht":x.$==12?"Titel":x.$==13?"Vorname":x.$==14?"Nachname":x.$==15?"Email":x.$==16?"Telefonnummer":x.$==17?"Mobilnummer":x.$==18?"Deine Daten":x.$==19?"Betreff":x.$==20?"Text":x.$==21?"Anhänge":x.$==22?"Online erstellen":x.$==23?"Datei hochladen":x.$==24?"Bitte eine Datei aussuchen":x.$==25?"Anhang hinzufügen":x.$==26?"Du kannst Worte oder Phrasen in deiner Datei durch Variablen ersetzen.":x.$==27?"Jedesmal, wenn du eine Bewerbung versendest, werden die Variablen automatisch durch die richtigen Werte ersetzt.":x.$==29?"männlich":x.$==30?"weiblich":x.$==31?"unbekannt":x.$==32?"Bewerbungsmappe hinzufügen":x.$==33?"Name der Bewerbungsmappe":x.$==34?"Html Anhang hinzufügen":x.$==28?"Arbeitgeber":x.$==35?"downloaden":x.$==36?"Document \"{0}\" wirklich löschen?":x.$==37?"Seite \"{0}\" wirklich löschen?":x.$==38?"Wir haben dir eine Email geschickt.":x.$==39?"Vollzugang zu www.bewerbungsspam.de":x.$==40?"Lieber Benutzer,\n\ndu hast zur Zeit nur einen einwöchigen Gast-Zugang. Bitte besuche den folgenden Link, um dauerhaft gratis Vollzugang zu erhalten.\nhttps://bewerbungsspam.de/confirmemail?email={0}&guid={1}\n\nDein Team von www.bewerbungsspam.de":x.$==41?"Einloggen":x.$==42?"Registrieren":x.$==43?"Versandte Bewerbungen":x.$==44?"Bewerben als":x.$==45?"Beworben als":x.$==46?"Beworben am":x.$==47?"Die Email-Adresse des Arbeitgeber scheint fehlerhaft zu sein.":x.$==48?"Feld \"{0}\" darf nicht leer sein.":x.$==49?"Entschuldigung, es ist ein Fehler aufgetreten.":x.$==50?"Deine Bewerbung konnte nicht versendet werden :-(":x.$==51?"Die ausgewählte Datei ist zu groß.":x.$==52?"Die maximale Dateigröße beträgt {0} MB.":x.$==53?"Variablen ersetzen":x.$==54?"Passwort ändern":x.$==55?"Neues Passwort":"Bewerben";
+  return x.$==1?"Deine Daten":x.$==2?"Email":x.$==3?"Anhänge":x.$==4?"Deine Bewerbungsmappen":x.$==5?"Werte holen":x.$==6?"Jetzt bewerben":x.$==7?"Firmenname":x.$==8?"Straße":x.$==9?"Postleitzahl":x.$==10?"Stadt":x.$==11?"Geschlecht":x.$==12?"Titel":x.$==13?"Vorname":x.$==14?"Nachname":x.$==15?"Email":x.$==16?"Telefonnummer":x.$==17?"Mobilnummer":x.$==18?"Deine Daten":x.$==19?"Betreff":x.$==20?"Text":x.$==21?"Anhänge":x.$==22?"Online erstellen":x.$==23?"Datei hochladen":x.$==24?"Bitte eine Datei aussuchen":x.$==25?"Anhang hinzufügen":x.$==26?"Du kannst Worte oder Phrasen in deiner Datei durch Variablen ersetzen.":x.$==27?"Jedesmal, wenn du eine Bewerbung versendest, werden die Variablen automatisch durch die richtigen Werte ersetzt.":x.$==29?"männlich":x.$==30?"weiblich":x.$==31?"unbekannt":x.$==32?"Bewerbungsmappe hinzufügen":x.$==33?"Name der Bewerbungsmappe":x.$==34?"Html Anhang hinzufügen":x.$==28?"Arbeitgeber":x.$==35?"downloaden":x.$==36?"Document \"{0}\" wirklich löschen?":x.$==37?"Seite \"{0}\" wirklich löschen?":x.$==38?"Wir haben dir eine Email geschickt.":x.$==39?"Bitte bestätige deine Email-Adresse":x.$==40?"Lieber Benutzer,\n\ndu hast zur Zeit nur einen einwöchigen Gast-Zugang. Bitte besuche den folgenden Link, um dauerhaft gratis Vollzugang zu erhalten.\nhttps://bewerbungsspam.de/confirmemail?email={0}&guid={1}\n\nDein Team von www.bewerbungsspam.de":x.$==41?"Einloggen":x.$==42?"Registrieren":x.$==43?"Versandte Bewerbungen":x.$==44?"Bewerben als":x.$==45?"Beworben als":x.$==46?"Beworben am":x.$==47?"Die Email-Adresse des Arbeitgeber scheint fehlerhaft zu sein.":x.$==48?"Feld \"{0}\" darf nicht leer sein.":x.$==49?"Entschuldigung, es ist ein Fehler aufgetreten.":x.$==50?"Deine Bewerbung konnte nicht versendet werden :-(":x.$==51?"Die ausgewählte Datei ist zu groß.":x.$==52?"Die maximale Dateigröße beträgt {0} MB.":x.$==53?"Variablen ersetzen":x.$==54?"Passwort ändern":x.$==55?"Neues Passwort":"Bewerben";
  };
  Language=Translation.Language=Runtime.Class({
   toString:function()
@@ -400,6 +400,11 @@
   SC$1.$cctor();
   return SC$1.maxUploadSize;
  };
+ Types.unoconvImageTypes=function()
+ {
+  SC$1.$cctor();
+  return SC$1.unoconvImageTypes;
+ };
  Types.supportedUnoconvFileTypes=function()
  {
   SC$1.$cctor();
@@ -436,7 +441,8 @@
    $:1,
    $0:FilePage.New("beispiel_anschreiben.odt","files/anschreiben.odt",1)
   })]),DocumentEmail.New("Bewerbung als $beruf",($1=[Types.newLine()],"$anredeZeile"+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0)))+(""+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0))))+("anbei sende ich Ihnen meine Bewerbungsunterlagen."+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0))))+("Über eine Einladung zu einem Bewerbungsgespräch würde ich mich sehr freuen."+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0))))+(""+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0))))+("Mit freundlichen Grüßen"+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0))))+(""+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0))))+("$meinTitel $meinVorname $meinNachname"+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0))))+("$meineStrasse"+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0))))+("$meinePlz $meineStadt"+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0))))+("Telefon: $meineTelefonnr"+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0))))+"Mobil: $meineMobilnr")),"","$datumHeute = $tagHeute + \".\" + $monatHeute + \".\" + $jahrHeute\n\n$anredeZeile =\n\u0009match $chefGeschlecht with\n\u0009| \"m\" -> \"Sehr geehrter Herr $chefTitel $chefNachname,\"\n\u0009| \"f\" -> \"Sehr geehrte Frau $chefTitel $chefNachname,\"\n\u0009| \"u\" -> \"Sehr geehrte Damen und Herren,\"\n\n$chefAnrede =\n\u0009match $chefGeschlecht with\n\u0009| \"m\" -> \"Herr\"\n\u0009| \"f\" -> \"Frau\"\n\n$chefAnredeBriefkopf =\n\u0009match $chefGeschlecht with\n\u0009| \"m\" -> \"Herrn\"\n\u0009| \"f\" -> \"Frau\"\n\n");
-  SC$1.supportedUnoconvFileTypes=List.ofArray(["bib","doc","doc6","doc95","docbook","docx","docx7","fodt","html","latex","mediawiki","odt","ooxml","ott","pdb","pdf","psw","rtf","sdw","sdw4","sdw3","stw","sxw","text","txt","uot","vor","vor4","vor3","wps","xhtml","emf","eps","fodg","gif","html","jpg","met","odd","otg","pbm","pct","pdf","pgm","png","ppm","ras","std","svg","svm","swf","sxd","sxd3","sxd5","sxw","tiff","vor","vor3","wmf","xhtml","xpm","emf","eps","fodp","gif","html","jpg","met","odg","odp","otp","pbm","pct","pdf","pgm","png","potm","pot","ppm","pptx","pps","ppt","pwp","ras","sda","sdd","sdd3","sdd4","sxd","sti","svg","svm","swf","sxi","tiff","uop","vor","vor3","vor4","vor5","wmf","xhtml","xpm","csv","dbf","dif","fods","html","ods","ooxml","ots","pdf","pxl","sdc","sdc4","sdc3","slk","stc","sxc","uos","vor3","vor4","vor","xhtml","xls","xls5","xls95","xlt","xlt5","xlt95","xlsx"]);
+  SC$1.supportedUnoconvFileTypes=List.ofArray(["doc","docx","docx7","fodt","latex","odt","ooxml","ott","pdb","pdf","psw","rtf","sdw","sdw4","sdw3","stw","sxw","text","txt","uot","vor","vor4","vor3","wps","xhtml","emf","eps","fodg","gif","html","jpg","met","odd","otg","pbm","pct","pdf","pgm","png","ppm","ras","std","svg","svm","swf","sxd","sxd3","sxd5","sxw","tiff","vor","vor3","wmf","xhtml","xpm","emf","eps","fodp","gif","html","jpg","met","odg","odp","otp","pbm","pct","pdf","pgm","png","potm","pot","ppm","pptx","pps","ppt","pwp","ras","sda","sdd","sdd3","sdd4","sxd","sti","svg","svm","swf","sxi","tiff","uop","vor","vor3","vor4","vor5","wmf","xhtml","xpm","csv","dbf","dif","fods","html","ods","ooxml","ots","pdf","pxl","sdc","sdc4","sdc3","slk","stc","sxc","uos","vor3","vor4","vor","xhtml","xls","xls5","xls95","xlt","xlt5","xlt95","xlsx"]);
+  SC$1.unoconvImageTypes=List.ofArray(["bmp","gif","jpg","pdf","png","svg","tif","tiff"]);
   SC$1.maxUploadSize=5000000;
  };
  Client.templates=function()
@@ -927,51 +933,47 @@
      regex=new Global.RegExp("^(([^<>()\\[\\]\\\\.,;:\\s@\"]+(\\.[^<>()\\[\\]\\\\.,;:\\s@\"]+)*)|(\".+\"))@((\\[[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}])|(([a-zA-Z\\-0-9]+\\.)+[a-zA-Z]{2,}))$");
      return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.tryFindSentApplication:234068265",[varEmployer.c]),function(a$1)
      {
-      var varRet,b$2;
-      return(varRet=Var.Create$1(true),a?!regex.test(varUserEmail.c)?(Global.alert("Deine Email scheint ungültig zu sein."),false):(Concurrency.Start((b$2=null,Concurrency.Delay(function()
+      return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.setUserEmail:2079759932",[varUserEmail.c]),function(a$2)
       {
-       return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.setUserEmail:2079759932",[varUserEmail.c]),function(a$2)
+       return(a?!regex.test(varUserEmail.c)?(Global.alert("Deine Email scheint ungültig zu sein."),false):a$2.$==1?(Global.alert(Strings.Join("",Arrays.ofSeq(a$2.$0))),false):true:true)&&(!regex.test(employerEmail.RVal())?(Global.alert(Translation.t(Language.German,Word.TheEmailOfYourEmployerDoesNotLookValid)+", "+employerEmail.RVal()),false):true)&&(Strings.Trim(documentJobName.RVal())===""?(Global.alert(Strings.SFormat(Translation.t(Language.German,Word.FieldIsRequired),[Translation.t(Language.German,Word.JobName)])),false):true)&&(a$1==null||a$1!=null&&Global.confirm("Du hast dich schon einmal bei dieser Firmen-Email-Adresse beworben.\nBewerbung trotzdem abschicken?"))?Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.overwriteDocument:-220687727",[varDocument.c]),function()
        {
-        return a$2.$==1?(Global.alert(Strings.Join("",Arrays.ofSeq(a$2.$0))),Var.Set(varRet,false),Concurrency.Zero()):(Var.Set(varRet,true),Concurrency.Zero());
-       });
-      })),null),varRet.c):true)&&(!regex.test(employerEmail.RVal())?(Global.alert(Translation.t(Language.German,Word.TheEmailOfYourEmployerDoesNotLookValid)+", "+employerEmail.RVal()),false):true)&&(Strings.Trim(documentJobName.RVal())===""?(Global.alert(Strings.SFormat(Translation.t(Language.German,Word.FieldIsRequired),[Translation.t(Language.German,Word.JobName)])),false):true)&&((a$1==null||a$1!=null&&Global.confirm("Du hast dich schon einmal bei dieser Firmen-Email-Adresse beworben.\nBewerbung trotzdem abschicken?"))&&true)?Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.overwriteDocument:-220687727",[varDocument.c]),function()
-      {
-       var btnLoadFromWebsite,fontAwesomeEls;
-       btnLoadFromWebsite=Global.jQuery("#btnLoadFromWebsite");
-       fontAwesomeEls=List.ofArray([Global.jQuery("#faBtnApplyNowBottom"),Global.jQuery("#faBtnApplyNowTop")]);
-       List.iter(function(faEl)
-       {
-        faEl.css("color","black");
-        faEl.addClass("fa-spinner fa-spin");
-       },fontAwesomeEls);
-       btnLoadFromWebsite.prop("disabled",true);
-       Global.jQuery("#divJobApplicationContent").find("input,textarea,button,select").prop("disabled",true);
-       return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.applyNow:-2017393559",[varEmployer.c,varDocument.c,varUserValues.c,Global.document.getElementById("txtReadEmployerFromWebsite").value]),function(a$2)
-       {
+        var btnLoadFromWebsite,fontAwesomeEls;
+        btnLoadFromWebsite=Global.jQuery("#btnLoadFromWebsite");
+        fontAwesomeEls=List.ofArray([Global.jQuery("#faBtnApplyNowBottom"),Global.jQuery("#faBtnApplyNowTop")]);
         List.iter(function(faEl)
         {
-         faEl.removeClass("fa-spinner fa-spin");
+         faEl.css("color","black");
+         faEl.addClass("fa-spinner fa-spin");
         },fontAwesomeEls);
-        btnLoadFromWebsite.prop("disabled",false);
-        Global.jQuery("#divJobApplicationContent").find("input,textarea,button,select").prop("disabled",false);
-        return a$2.$==0?(List.iter(function(faEl)
-        {
-         faEl.css("color","#08a81b");
-         faEl.addClass("fa-check");
-        },fontAwesomeEls),Var.Set(varEmployer,Types.emptyEmployer()),Global.document.getElementById("txtReadEmployerFromWebsite").value="",Concurrency.Bind(Concurrency.Sleep(4500),function()
+        btnLoadFromWebsite.prop("disabled",true);
+        Global.jQuery("#divJobApplicationContent").find("input,textarea,button,select").prop("disabled",true);
+        return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.applyNow:-2017393559",[varEmployer.c,varDocument.c,varUserValues.c,Global.document.getElementById("txtReadEmployerFromWebsite").value]),function(a$3)
         {
          List.iter(function(faEl)
          {
-          faEl.removeClass("fa-check");
+          faEl.removeClass("fa-spinner fa-spin");
          },fontAwesomeEls);
-         return Concurrency.Zero();
-        })):Concurrency.Bind(Concurrency.Sleep(700),function()
-        {
-         Global.alert(Translation.t(Language.German,Word.SorryAnErrorOccurred)+"\n"+Translation.t(Language.German,Word.YourApplicationHasNotBeenSent));
-         return Concurrency.Zero();
+         btnLoadFromWebsite.prop("disabled",false);
+         Global.jQuery("#divJobApplicationContent").find("input,textarea,button,select").prop("disabled",false);
+         return a$3.$==0?(List.iter(function(faEl)
+         {
+          faEl.css("color","#08a81b");
+          faEl.addClass("fa-check");
+         },fontAwesomeEls),Var.Set(varEmployer,Types.emptyEmployer()),Global.document.getElementById("txtReadEmployerFromWebsite").value="",Concurrency.Bind(Concurrency.Sleep(4500),function()
+         {
+          List.iter(function(faEl)
+          {
+           faEl.removeClass("fa-check");
+          },fontAwesomeEls);
+          return Concurrency.Zero();
+         })):Concurrency.Bind(Concurrency.Sleep(700),function()
+         {
+          Global.alert(Translation.t(Language.German,Word.SorryAnErrorOccurred)+"\n"+Translation.t(Language.German,Word.YourApplicationHasNotBeenSent));
+          return Concurrency.Zero();
+         });
         });
-       });
-      }):Concurrency.Zero();
+       }):Concurrency.Zero();
+      });
      });
     });
    });

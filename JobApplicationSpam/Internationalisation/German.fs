@@ -44,7 +44,7 @@ module German =
         | ReallyDeleteDocument -> """Document "{0}" wirklich löschen?"""
         | ReallyDeletePage -> """Seite "{0}" wirklich löschen?"""
         | WeHaveSentYouAnEmail -> "Wir haben dir eine Email geschickt."
-        | PleaseConfirmYourEmailAddressEmailSubject -> "Vollzugang zu www.bewerbungsspam.de"
+        | PleaseConfirmYourEmailAddressEmailSubject -> "Bitte bestätige deine Email-Adresse"
         | PleaseConfirmYourEmailAddressEmailBody -> "Lieber Benutzer,\n\ndu hast zur Zeit nur einen einwöchigen Gast-Zugang. Bitte besuche den folgenden Link, um dauerhaft gratis Vollzugang zu erhalten.\nhttps://bewerbungsspam.de/confirmemail?email={0}&guid={1}\n\nDein Team von www.bewerbungsspam.de"
         | Login -> "Einloggen"
         | Register -> "Registrieren"

@@ -619,48 +619,14 @@ module Database =
 
     let deleteDocument (documentId : int) =
         log.Debug(sprintf "(documentId = %i)" documentId)
-        db.Pagemap.Where(fun x -> x.Documentid = documentId).Single().Delete()
-        db.Htmlpage.Where(fun x -> x.Documentid = documentId).Single().Delete()
-        db.Filepage.Where(fun x -> x.Documentid = documentId).Single().Delete()
+        db.Pagemap.Where(fun x -> x.Documentid = documentId) |> Seq.iter (fun x -> x.Delete())
+        db.Htmlpage.Where(fun x -> x.Documentid = documentId) |> Seq.iter (fun x -> x.Delete())
+        db.Filepage.Where(fun x -> x.Documentid = documentId) |> Seq.iter (fun x -> x.Delete())
         db.Documentemail.Where(fun x -> x.Documentid = documentId).Single().Delete()
-        db.Lastediteddocumentid.Where(fun x -> x.Documentid = documentId).Single().Delete()
+        db.Lastediteddocumentid.Where(fun x -> x.Documentid = documentId) |> Seq.iter (fun x -> x.Delete())
         db.Document.Where(fun x -> x.Id = documentId).Single().Delete()
         dbContext.SubmitUpdates()
         log.Debug(sprintf "(documentId = %i) = ()" documentId)
-    
-    let deleteDocument1 (dbConn : NpgsqlConnection) (documentId : int) =
-        log.Debug(sprintf "(documentId = %i)" documentId)
-        use command = new NpgsqlCommand("delete from pageMap where documentId = :documentId", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
-        command.ExecuteNonQuery() |> ignore
-        command.Dispose()
-
-        use command = new NpgsqlCommand("delete from htmlPage where documentId = :documentId", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
-        command.ExecuteNonQuery() |> ignore
-        command.Dispose()
-
-        use command = new NpgsqlCommand("delete from filePage where documentId = :documentId", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
-        command.ExecuteNonQuery() |> ignore
-        command.Dispose()
-
-        use command = new NpgsqlCommand("delete from documentEmail where documentId = :documentId", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
-        command.ExecuteNonQuery() |> ignore
-        command.Dispose()
-
-        use command = new NpgsqlCommand("delete from lastEditedDocumentId where documentId = :documentId", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
-        command.ExecuteNonQuery() |> ignore
-        command.Dispose()
-
-        use command = new NpgsqlCommand("delete from document where id = :documentId", dbConn)
-        command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
-        command.ExecuteNonQuery() |> ignore
-        command.Dispose()
-        log.Debug(sprintf "(documentId = %i) = ()" documentId)
-
        
     let getDocument (documentId : int) =
         log.Debug(sprintf "(documentId = %i)" documentId)
@@ -764,15 +730,15 @@ module Database =
     
     let getLastEditedDocumentOffset (UserId userId) =
         log.Debug(sprintf "(userId = %i)" userId)
-        let documents =
+        let documentOffset =
             query {
                 for document in db.Document do
-                    join lastEditedDocumentId in db.Lastediteddocumentid on (document.Userid = lastEditedDocumentId.Userid)
-                    where (document.Userid = userId)
-                    //where (document.Id < lastEditedDocumentId.Documentid)
-                    select document.Id
+                join lastEditedDocumentId in db.Lastediteddocumentid on (document.Userid = lastEditedDocumentId.Userid)
+                where (lastEditedDocumentId.Userid = userId)
+                select (document.Id, lastEditedDocumentId.Documentid)
             }
-        let documentOffset = documents |> Seq.length
+            |> Seq.filter(fun (x1, x2) -> x1 < x2)
+            |> Seq.length
         log.Debug(sprintf "(userId = %i)" userId)
         documentOffset
 
@@ -918,7 +884,7 @@ module Database =
             query {
                 for filePage in db.Filepage do
                 join document in db.Document on (filePage.Documentid = document.Id)
-                where (filePage.Path.EndsWith(extension) && document.Userid = userId)
+                where (filePage.Path.EndsWith("." + extension) && document.Userid = userId)
                 select filePage.Path
             } |> List.ofSeq
         log.Debug(sprintf "(extension = %s, userId = %i) = %A" extension userId files)

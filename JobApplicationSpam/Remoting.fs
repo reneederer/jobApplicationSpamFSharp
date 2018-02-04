@@ -241,16 +241,14 @@ module Server =
             with
             | e ->
                 log.Error("", e)
-                return fail "An error occurred"
+                return fail "An error occurred."
         }
     
     let setUserEmail' (email : string) userId (dbConn : NpgsqlConnection) =
         try
             ok <| Database.setUserEmail dbConn userId email
         with
-        | e ->
-            log.Error ("", e)
-            fail "Diese Email existiert bereits"
+        | e -> fail "Diese Email-Adresse ist bereits vergeben."
     [<Remote>]
     let setUserEmail (email : string) =
         withDBAndCurrentUser (setUserEmail' email)
@@ -422,34 +420,33 @@ module Server =
             (userValues : UserValues)
             (employer : Employer)
             (document : Document) =
-        match getCurrentUserId() |> Async.RunSynchronously with
-        | Some userId ->
-            async {
-                try
-                    let! oUserEmail = getUserEmail ()
-                    let tmpDirectory = Path.Combine(Settings.DataDirectory, "tmp", Guid.NewGuid().ToString("N"))
-                    let! map = toCV employer userValues (oUserEmail |> Option.defaultValue "") document.jobName document.customVariables
-                    Directory.CreateDirectory(tmpDirectory) |> ignore
-                    if filePath.EndsWith(".odt") || filePath.EndsWith(".docx")
-                    then
-                        return
-                            Odt.replaceInOdt
-                                (toRootedPath filePath)
-                                (Path.Combine(tmpDirectory, "extracted"))
-                                (Path.Combine(tmpDirectory, "replaced"))
-                                map
-                    else
-                        let newFilePath = Path.Combine(tmpDirectory, (Path.GetFileName(filePath)))
-                        File.Copy(toRootedPath filePath, newFilePath, true)
-                        Odt.replaceInFile newFilePath map Ignore
-                        return newFilePath
-                with
-                | e ->
-                    log.Error ("", e)
-                    return failwith "An error occurred"
-            }
-
-        | None -> async { return "" }
+        let oUserEmail = getUserEmail () |> Async.RunSynchronously
+        async {
+            try
+                let tmpDirectory = Path.Combine(Settings.DataDirectory, "tmp", Guid.NewGuid().ToString("N"))
+                let! map = toCV employer userValues (oUserEmail |> Option.defaultValue "") document.jobName document.customVariables
+                Directory.CreateDirectory(tmpDirectory) |> ignore
+                if filePath.ToLower().EndsWith(".odt")
+                then
+                    return
+                        Odt.replaceInOdt
+                            (toRootedPath filePath)
+                            (Path.Combine(tmpDirectory, "extracted"))
+                            (Path.Combine(tmpDirectory, "replaced"))
+                            map
+                elif unoconvImageTypes |> List.contains (Path.GetExtension(filePath).ToLower().Substring(1))
+                then
+                    return filePath
+                else
+                    let newFilePath = Path.Combine(tmpDirectory, (Path.GetFileName(filePath)))
+                    File.Copy(toRootedPath filePath, newFilePath, true)
+                    Odt.replaceInFile newFilePath map Ignore
+                    return newFilePath
+            with
+            | e ->
+                log.Error ("", e)
+                return failwith "An error occurred"
+        }
          
     let emailSentApplicationToUser' (sentApplicationOffset : int) (customVariablesString : string) userId dbConn =
         try
@@ -469,9 +466,9 @@ module Server =
                 let odtPaths =
                     [ for (path, pageIndex) in sentApplication.filePages do
                             yield
-                                if path.EndsWith(".pdf")
+                                if unoconvImageTypes |> List.contains(Path.GetExtension(path).Substring(1).ToLower())
                                 then toRootedPath path
-                                elif path.EndsWith(".odt") || path.EndsWith(".docx")
+                                elif path.ToLower().EndsWith(".odt")
                                 then
                                     let directoryGuid = Guid.NewGuid().ToString("N")
                                     Odt.replaceInOdt
@@ -594,10 +591,10 @@ module Server =
                             yield Odt.replaceInOdt pageTemplatePath "c:/users/rene/myodt/" tmpDirectory (myList @ lines)
                         | FilePage filePage ->
                             yield
-                                if filePage.path.EndsWith(".pdf")
+                                if unoconvImageTypes |> List.contains(Path.GetExtension(filePage.path).ToLower().Substring(1))
                                 then
                                     toRootedPath filePage.path
-                                elif filePage.path.EndsWith(".odt") || filePage.path.EndsWith(".docx")
+                                elif filePage.path.ToLower().EndsWith(".odt")
                                 then
                                     let directoryGuid = Guid.NewGuid().ToString("N")
                                     Odt.replaceInOdt
@@ -624,7 +621,7 @@ module Server =
                 if pdfPaths <> []
                 then Odt.mergePdfs pdfPaths mergedPdfPath
 
-                let oConfirmEmailGuid = Database.getConfirmEmailGuid userEmail
+                let oConfirmEmailGuid = Database.getConfirmEmailGuidByUserId userId
 
                 sendEmail
                     userEmail
@@ -642,7 +639,7 @@ module Server =
                     (userValues.firstName + " " + userValues.lastName)
                     userEmail
                     ("Deine Bewerbung wurde versandt - " + Odt.replaceInString document.email.subject myList Ignore)
-                    ((sprintf "Deine Bewerbung wurde am %A an %s versandt.\n\n" DateTime.Today employer.email) + Odt.replaceInString (document.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Ignore)
+                    ((sprintf "Deine Bewerbung wurde am %s an %s versandt.\n\n" (DateTime.Now.ToShortDateString()) employer.email) + Odt.replaceInString (document.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Ignore)
 
                     (if pdfPaths = []
                      then []
@@ -651,17 +648,13 @@ module Server =
                 transaction.Commit()
                 if isGuest && oConfirmEmailGuid.IsSome
                 then
-                    async {
-                        do! Async.Sleep 180000
-                        sendEmail
-                            "registration@bewerbungsspam.de"
-                            "Bewerbungsspam"
-                            userEmail
-                            (t German PleaseConfirmYourEmailAddressEmailSubject)
-                            (String.Format((t German PleaseConfirmYourEmailAddressEmailBody), userEmail, oConfirmEmailGuid.Value))
-                            []
-                    } |> Async.Start
-
+                    sendEmail
+                        Settings.EmailUsername
+                        "Bewerbungsspam"
+                        userEmail
+                        (t German PleaseConfirmYourEmailAddressEmailSubject)
+                        (String.Format((t German PleaseConfirmYourEmailAddressEmailBody), userEmail, oConfirmEmailGuid.Value))
+                        []
                 ok ()
         with
         | e ->
@@ -720,7 +713,9 @@ module Server =
         Database.setLastEditedDocumentId dbConn userId documentId
     [<Remote>]
     let setLastEditedDocumentId (userId : UserId) (documentId : DocumentId) =
-            withDBAndCurrentUser (setLastEditedDocumentId' documentId)
+        async {
+            return withDB (setLastEditedDocumentId' documentId userId)
+        }
 
     let addNewDocument' name userId (dbConn : NpgsqlConnection) =
         Database.addNewDocument dbConn userId name
@@ -777,7 +772,7 @@ module Server =
 
     let getFilesWithSameExtension filePath userId =
         async {
-            return Database.getFilesWithExtension (Path.GetExtension(filePath)) userId
+            return Database.getFilesWithExtension (Path.GetExtension(filePath).ToLower().Substring(1)) userId
         }
 
     let getFilePageNames documentId =

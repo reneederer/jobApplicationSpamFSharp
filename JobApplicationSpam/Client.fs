@@ -376,14 +376,6 @@ module Client =
             async {
                 let! sentApplications = Server.getSentApplications ()
                 let varSentApplications = ListModel.FromSeq sentApplications
-                let emailSentApplicationToUserFun =
-                    fun (el : Dom.Element) (ev : Dom.MouseEvent) ->
-                        async {
-                            let! result = Server.emailSentApplicationToUser (el.ParentElement.ParentElement?rowIndex - 1) ""
-                            match result with
-                            | Ok _ -> ()
-                            | Bad _ -> JS.Alert("Entschuldigung, es trat ein Fehler auf")
-                        } |> Async.Start
                 
                 let setSentApplicationsFromTo () =
                     let dateFromParsed = DateTime.Parse(JS.Document.GetElementById("dateFrom")?value)
@@ -876,32 +868,28 @@ module Client =
         
         let btnApplyNowClicked () =
             async {
-                let! isGuestResult = Server.isLoggedInAsGuest()
+                let! isGuest = Server.isLoggedInAsGuest()
 
                 let emailRegexStr = """^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$"""
                 let regex = RegExp(emailRegexStr)
                 let! sentApplication (*TODO this is an option<int> instead of option<SentApplication> as placeholder*) =
                     Server.tryFindSentApplication varEmployer.Value
+                let! setUserEmailResult = Server.setUserEmail varUserEmail.Value
 
                 let userEmailValid() =
-                    let varRet = Var.Create(true)
-                    match isGuestResult with
-                    | true ->
+                    if isGuest
+                    then
                         if not <| regex?test(varUserEmail.Value)
-                          then
-                             JS.Alert("Deine Email scheint ungültig zu sein.")
-                             false
-                          else
-                             async {
-                                 let! setUserEmailResult = Server.setUserEmail varUserEmail.Value
-                                 match setUserEmailResult with
-                                 | Ok _ -> varRet.Value <- true
-                                 | Bad xs ->
-                                     JS.Alert(String.Concat(xs))
-                                     varRet.Value <- false
-                             } |> Async.Start
-                             varRet.Value
-                    | false ->
+                        then
+                            JS.Alert("Deine Email scheint ungültig zu sein.")
+                            false
+                        else
+                            match setUserEmailResult with
+                            | Ok _ -> true
+                            | Bad xs ->
+                                JS.Alert(String.Concat(xs))
+                                false
+                    else
                         true
 
                 let employerValid() =
@@ -919,9 +907,9 @@ module Client =
                      else true
                 
                 let sentAlreadyValid() =
-                    if sentApplication.IsNone || (sentApplication.IsSome && JS.Confirm("Du hast dich schon einmal bei dieser Firmen-Email-Adresse beworben.\nBewerbung trotzdem abschicken?"))
-                    then true
-                    else false
+                    sentApplication.IsNone
+                    || (sentApplication.IsSome
+                        && JS.Confirm("Du hast dich schon einmal bei dieser Firmen-Email-Adresse beworben.\nBewerbung trotzdem abschicken?"))
                 
                 if userEmailValid() && employerValid() && jobNameValid() && sentAlreadyValid()
                 then

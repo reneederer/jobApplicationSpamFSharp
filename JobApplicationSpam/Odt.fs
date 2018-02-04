@@ -8,6 +8,7 @@ module Odt =
     open PdfSharp.Pdf.IO
     open System.Text.RegularExpressions
     open Types
+    open System.Threading
 
     let private log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().GetType())
 
@@ -230,53 +231,67 @@ module Odt =
         replacedOdtPath
     
     let odtToPdf (odtPath : string) =
-        log.Debug (sprintf "(odtPath = %s)" odtPath)
-        let outputPath = Path.ChangeExtension(odtPath, ".pdf")
-        File.Delete(outputPath)
-        use process1 = new System.Diagnostics.Process()
-        process1.StartInfo.FileName <- Settings.Python
-        process1.StartInfo.UseShellExecute <- false
-        process1.StartInfo.Arguments <-
-            sprintf
-                """ "%s" --format pdf -eUseLossLessCompression=true "%s" """
-                Settings.Unoconv
-                odtPath
-        process1.StartInfo.CreateNoWindow <- true
-        process1.Start() |> ignore
-        process1.WaitForExit()
-        let outputPath = Path.ChangeExtension(odtPath, ".pdf")
-        if File.Exists outputPath
-        then
-            log.Debug (sprintf "(odtPath = %s) = %s" odtPath outputPath)
-            outputPath
-        else
-            log.Error (sprintf "(odtPath = %s) failed to Convert" odtPath)
-            failwith "Could not convert odt file to pdf: " + odtPath
+        let rec odtToPdf' n =
+            log.Debug (sprintf "(odtPath = %s)" odtPath)
+            let outputPath = Path.ChangeExtension(odtPath, ".pdf")
+            File.Delete(outputPath)
+            use process1 = new System.Diagnostics.Process()
+            process1.StartInfo.FileName <- Settings.Python
+            process1.StartInfo.UseShellExecute <- false
+            process1.StartInfo.Arguments <-
+                sprintf
+                    """ "%s" --format pdf -eUseLossLessCompression=true "%s" """
+                    Settings.Unoconv
+                    odtPath
+            process1.StartInfo.CreateNoWindow <- true
+            process1.Start() |> ignore
+            process1.WaitForExit()
+            let outputPath = Path.ChangeExtension(odtPath, ".pdf")
+            if File.Exists outputPath
+            then
+                log.Debug (sprintf "(odtPath = %s) = %s" odtPath outputPath)
+                outputPath
+            else
+                if n < 10
+                then
+                    Thread.Sleep 5000
+                    odtToPdf' (n + 1)
+                else
+                    log.Error (sprintf "(odtPath = %s) failed to Convert" odtPath)
+                    failwith "Could not convert odt file to pdf: " + odtPath
+        odtToPdf' 0
     
     let convertToOdt filePath =
-        log.Debug (sprintf "(filePath = %s)" filePath)
-        let outputPath = Path.ChangeExtension(filePath, ".odt")
-        if File.Exists(outputPath) then File.Delete(outputPath)
-        use process1 = new System.Diagnostics.Process()
-        process1.StartInfo.FileName <- Settings.Python
-        process1.StartInfo.UseShellExecute <- false
-        process1.StartInfo.Arguments <-
-            sprintf
-                """ "%s" --format odt --output="%s" "%s" """
-                Settings.Unoconv
+        let rec convertToOdt' n =
+            log.Debug (sprintf "(filePath = %s)" filePath)
+            let outputPath = Path.ChangeExtension(filePath, ".odt")
+            if File.Exists(outputPath) then File.Delete(outputPath)
+            use process1 = new System.Diagnostics.Process()
+            process1.StartInfo.FileName <- Settings.Python
+            process1.StartInfo.UseShellExecute <- false
+            process1.StartInfo.Arguments <-
+                sprintf
+                    """ "%s" --format odt --output="%s" "%s" """
+                    Settings.Unoconv
+                    outputPath
+                    filePath
+            printfn "%s" process1.StartInfo.Arguments
+            process1.StartInfo.CreateNoWindow <- true
+            process1.Start() |> ignore
+            process1.WaitForExit()
+            if File.Exists outputPath
+            then
+                log.Debug (sprintf "(filePath = %s) = %s" filePath outputPath)
                 outputPath
-                filePath
-        printfn "%s" process1.StartInfo.Arguments
-        process1.StartInfo.CreateNoWindow <- true
-        process1.Start() |> ignore
-        process1.WaitForExit()
-        if File.Exists outputPath
-        then
-            log.Debug (sprintf "(filePath = %s) = %s" filePath outputPath)
-            outputPath
-        else
-            log.Error (sprintf "(filePath = %s) failed to Convert" filePath)
-            failwith "Could not convert file to odt: " + filePath
+            else
+                if n < 5
+                then
+                    Thread.Sleep 5000
+                    convertToOdt' (n + 1)
+                else
+                    log.Error (sprintf "(filePath = %s) failed to Convert" filePath)
+                    failwith "Could not convert file to odt: " + filePath
+        convertToOdt' 0
     
     let mergePdfs (pdfPaths : list<string>) (outputPath : string) =
         log.Debug (sprintf "(pdfPaths = %A, outputPath = %s)" pdfPaths outputPath)

@@ -32,101 +32,173 @@ module Odt =
         oM |> Option.map (fun m -> deleteLine' m) |> Option.defaultValue ""
 
 
+    let saveStreamCompare (sc : StreamCompare) (filePath : string) =
+        match sc with
+        | OdtStream odtStream ->
+            use fs = new FileStream(filePath, FileMode.OpenOrCreate)
+            odtStream.Seek(0L, SeekOrigin.Begin) |> ignore
+            odtStream.CopyTo(fs)
+        | OdtFile path ->
+            File.Copy(path, filePath)
+        | Stream stream ->
+            use fs = new FileStream(filePath, FileMode.OpenOrCreate)
+            stream.Seek(0L, SeekOrigin.Begin) |> ignore
+            stream.CopyTo(fs)
+        | File path ->
+            File.Copy(path, filePath)
 
 
 
-    let areStreamsEqual (fs1 : Stream) (fs2 : Stream) =
-        let chunkSize = 10
+    let streamCompareToFile (sc : StreamCompare) (extension : string) =
+        match sc with
+        | OdtStream odtStream ->
+            let filePath = Path.Combine(Settings.DataDirectory, "tmp", Guid.NewGuid().ToString("N"), Guid.NewGuid().ToString("N") + extension)
+            Directory.CreateDirectory(Path.GetDirectoryName(filePath)) |> ignore
+            use fs = new FileStream(filePath, FileMode.OpenOrCreate)
+            odtStream.Seek(0L, SeekOrigin.Begin) |> ignore
+            odtStream.CopyTo(fs)
+            filePath
+        | OdtFile path ->
+            path
+        | Stream stream ->
+            let filePath = Path.Combine(Settings.DataDirectory, "tmp", Guid.NewGuid().ToString("N"), Guid.NewGuid().ToString("N") + extension)
+            Directory.CreateDirectory(Path.GetDirectoryName(filePath)) |> ignore
+            use fs = new FileStream(filePath, FileMode.OpenOrCreate)
+            stream.Seek(0L, SeekOrigin.Begin) |> ignore
+            stream.CopyTo(fs)
+            filePath
+        | File path ->
+            path
+
+
+
+    let areStreamsEqual (sc1 : StreamCompare) (sc2 : StreamCompare) : bool =
+        (*
+        Deletes meta.xml in *.odt files (meta.xml contains values like creation date, which mess up the comparison)
+        Removes tags with name Rsid from  settings.xml in *.odt files
+        Converts StreamCompare sc to Stream
+        *)
+
+
+
+
+        let rec convertToStream (sc : StreamCompare) : Stream =
+            match sc with
+            | OdtStream odtStream ->
+                let tmpDir = Path.Combine(Settings.DataDirectory, "tmp", Guid.NewGuid().ToString("N"))
+                Directory.CreateDirectory tmpDir |> ignore
+                let zipPath = Path.Combine(tmpDir, "odtbeforedelete.odt")
+                use fileStream = new FileStream(zipPath, FileMode.Create, FileAccess.Write)
+                odtStream.Seek(0L, SeekOrigin.Begin) |> ignore
+                odtStream.CopyTo(fileStream);
+                fileStream.Dispose()
+                convertToStream (OdtFile zipPath)
+            | OdtFile odtFile ->
+                let tmpDir = Path.Combine(Settings.DataDirectory, "tmp", Guid.NewGuid().ToString("N"))
+                Directory.CreateDirectory tmpDir |> ignore
+                let extractedDir = Path.Combine(tmpDir, "extracted")
+                Directory.CreateDirectory extractedDir |> ignore
+                let completedDir = Path.Combine(tmpDir, "completed")
+                Directory.CreateDirectory completedDir |> ignore
+                let completedOdtPath = Path.Combine(completedDir, "odtcompleted.odt")
+                ZipFile.ExtractToDirectory(odtFile, extractedDir)
+                File.Delete(Path.Combine(extractedDir, "meta.xml"))
+                let settingsText = File.ReadAllText(Path.Combine(extractedDir, "settings.xml"))
+                let pattern = """<config:config-item config:name="Rsid.*?</config:config-item>"""
+                let newSettingsText = Regex.Replace(settingsText, pattern, "");
+                if newSettingsText = settingsText then failwith "newSettingsText = settingsText!!!"
+                File.WriteAllText(Path.Combine(extractedDir, "settings.xml"), newSettingsText)
+                File.Delete(Path.Combine(extractedDir, "settings.xml"))
+                ZipFile.CreateFromDirectory(extractedDir, completedOdtPath)
+                new FileStream(completedOdtPath, FileMode.Open) :> Stream
+            | File file ->
+                if Path.GetExtension(file).ToLower() = ".odt"
+                then convertToStream (OdtFile file)
+                else new FileStream(file, FileMode.Open) :> Stream
+
+
+        use s1 = convertToStream sc1
+        use s2 = convertToStream sc2
+        s1.Seek(0L, SeekOrigin.Begin) |> ignore
+        s2.Seek(0L, SeekOrigin.Begin) |> ignore
+
+        let chunkSize = 2048
         let mutable (b1 : array<byte>) = Array.zeroCreate (chunkSize)
         let mutable (b2 : array<byte>) = Array.zeroCreate (chunkSize)
 
         let rec areStreamsEqual' () =
+            printfn "..."
 
-            let length1 = fs1.Read(b1, 0, chunkSize)
-            let length2 = fs2.Read(b2, 0, chunkSize)
+            let length1 = s1.Read(b1, 0, chunkSize)
+            let length2 = s2.Read(b2, 0, chunkSize)
             if length1 <> length2
-            then
-                false
+            then false
             elif (Array.take length1 b1) <> (Array.take length2 b2) then
-                Console.WriteLine(fs1.Position |> string)
-                Array.zip b1 b2 |> Array.skipWhile(fun (x1, x2) -> x1 = x2)
+                Console.WriteLine(s1.Position |> string)
+                Array.zip b1 b2
                 |> Array.iter
                     (fun x -> printf "%A " x)
                 false
-            elif length1 <> chunkSize then
-                true
-            else
-                areStreamsEqual' ()
-
+            elif length1 <> chunkSize
+            then true
+            else areStreamsEqual' ()
         areStreamsEqual' ()
 
 
-    let rec applyRec path f : list<'a> =
-        let directories = Directory.EnumerateDirectories(path)
-        let xs =
-            [ for directory in directories do
-                yield! applyRec directory f
-            ]
+    let applyRec path f : list<'a> =
+        let rec applyRec' currentDir =
+            let directories = Directory.EnumerateDirectories(Path.Combine(path, currentDir))
+            let xs =
+                [ for directory in directories do
+                    yield! applyRec' (Path.Combine(currentDir, Path.GetFileName(directory)))
+                ]
 
-        let files = Directory.EnumerateFiles(path)
-        xs
-        @
-        [ for file in files do
-            yield f file ]
-
-
-    let areOdtFilesEqual odtPath1 odtPath2 =
-        printfn "o1: %s, o2: %s" odtPath1 odtPath2
-        let guid1 = Guid.NewGuid().ToString("N")
-        let extractedOdtDirectory1 =
-            Path.Combine(
-                Settings.DataDirectory
-                , "tmp"
-                , guid1)
-
-        let guid2 = Guid.NewGuid().ToString("N")
-        let extractedOdtDirectory2 =
-            Path.Combine(
-                Settings.DataDirectory
-                , "tmp"
-                , guid2)
-
-        ZipFile.ExtractToDirectory(odtPath1, extractedOdtDirectory1)
-        ZipFile.ExtractToDirectory(odtPath2, extractedOdtDirectory2)
+            let files = Directory.EnumerateFiles(Path.Combine(path, currentDir))
+            xs
+            @
+            [ for file in files do
+                yield f currentDir (Path.GetFileName(file)) ]
+        applyRec' ""
 
 
-        applyRec
-            extractedOdtDirectory1
-            (fun path1 ->
-                if path1.ToLower().EndsWith("meta.xml")
-                then true
-                else
-                    let path2 = Path.Combine(extractedOdtDirectory2, path1.Substring(extractedOdtDirectory1.Length + 1))
-
-                    if not <| File.Exists path1 || not <| File.Exists path2
-                    then false
-                    else
-                        use fs1 = 
-                            new FileStream(
-                                  path1
-                                , FileMode.Open
-                                , FileAccess.Read)
-                        use fs2 = 
-                            new FileStream(
-                                  path2
-                                , FileMode.Open
-                                , FileAccess.Read)
-
-                        areStreamsEqual fs1 fs2
-            )
-        |> List.forall id
-
-
-
-        //log.Debug (sprintf "(odtPath=%s, extractedOdtDirectory=%s, replacedOdtDirectory=%s) = %s" odtPath extractedOdtDirectory replacedOdtDirectory replacedOdtPath)
-
-
-
+    let rec areFilesAndDirectoriesEqual (f1 : string) (f2 : string) : bool =
+        let extractOdtForComparison odtFilePath =
+            let tmpDir = Path.Combine(Settings.DataDirectory, "tmp", Guid.NewGuid().ToString("N"))
+            Directory.CreateDirectory tmpDir |> ignore
+            let extractedDir = Path.Combine(tmpDir, "extracted")
+            Directory.CreateDirectory extractedDir |> ignore
+            ZipFile.ExtractToDirectory(odtFilePath, extractedDir)
+            File.Delete(Path.Combine(extractedDir, "meta.xml"))
+            let settingsText = File.ReadAllText(Path.Combine(extractedDir, "settings.xml"))
+            let pattern = """<config:config-item config:name="Rsid.*?</config:config-item>"""
+            let newSettingsText = Regex.Replace(settingsText, pattern, "");
+            File.WriteAllText(Path.Combine(extractedDir, "settings.xml"), newSettingsText)
+            extractedDir
+        
+        if Path.GetExtension(f1).ToLower() = ".odt"
+        then
+            areFilesAndDirectoriesEqual (extractOdtForComparison f1) f2
+        elif Path.GetExtension(f2).ToLower() = ".odt"
+        then areFilesAndDirectoriesEqual f1 (extractOdtForComparison f2)
+        elif Directory.Exists f1 && Directory.Exists f2
+        then
+            applyRec
+                f1
+                (fun currentDir currentFile ->
+                    areStreamsEqual
+                        (File (Path.Combine(f1, currentDir, currentFile)))
+                        (File (Path.Combine(f2, currentDir, currentFile)))
+                )
+            |> List.forall id
+        elif File.Exists f1 && File.Exists f2
+        then
+            let b =
+                areStreamsEqual
+                    (File f1)
+                    (File f2)
+            b
+        else false
+        
 
     let replaceInString (text1 : string) (map : list<string * string>) (emptyTextTagAction1 : EmptyTextTagAction) =
         let rec replaceInString' (text : string) (emptyTextTagAction : EmptyTextTagAction) depth =
@@ -208,9 +280,9 @@ module Odt =
     let rec replaceInExtractedOdtDirectory path map emptyTextTagAction =
         applyRec
             path
-            (fun fileName ->
-                if fileName.ToLower().EndsWith (".xml")
-                then replaceInFile fileName map Replace
+            (fun currentDir currentFile ->
+                if Path.GetExtension(currentFile).ToLower() = (".xml")
+                then replaceInFile (Path.Combine(path, currentDir, currentFile)) map Replace
                 else ()
             ) |> ignore
 
@@ -265,7 +337,7 @@ module Odt =
         let rec convertToOdt' n =
             log.Debug (sprintf "(filePath = %s)" filePath)
             let outputPath = Path.ChangeExtension(filePath, ".odt")
-            if File.Exists(outputPath) then File.Delete(outputPath)
+            File.Delete(outputPath)
             use process1 = new System.Diagnostics.Process()
             process1.StartInfo.FileName <- Settings.Python
             process1.StartInfo.UseShellExecute <- false

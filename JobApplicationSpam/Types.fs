@@ -5,6 +5,7 @@ module Types =
     open System
     open FSharp.Configuration
     open System.Configuration
+    open System.IO
 
     type UserId = UserId of int
     type DocumentId = DocumentId of int
@@ -214,7 +215,7 @@ module Types =
     let emptyDocument =
         { oId = None
           name="Bewerbungsmappe1"
-          pages= [FilePage { name = "beispiel_anschreiben.odt"; path="files/anschreiben.odt"; pageIndex = 1; }]
+          pages= []//[FilePage { name = "beispiel_anschreiben.odt"; path="files/anschreiben.odt"; pageIndex = 1; }]
           email=
             { subject = "Bewerbung als $beruf"
               body = String.Format("$anredeZeile{0}{0}anbei sende ich Ihnen meine Bewerbungsunterlagen.{0}Über eine Einladung zu einem Bewerbungsgespräch würde ich mich sehr freuen.{0}{0}Mit freundlichen Grüßen{0}{0}$meinTitel $meinVorname $meinNachname{0}$meineStrasse{0}$meinePlz $meineStadt{0}Telefon: $meineTelefonnr{0}Mobil: $meineMobilnr", newLine)
@@ -227,6 +228,12 @@ module Types =
     type DataBinding =
         | TextBinding of IRef<string>
         | GenderBinding of IRef<Gender>
+
+    type StreamCompare =
+    | OdtStream of Stream
+    | OdtFile of string
+    | Stream of Stream
+    | File of string
     
     [<JavaScript>]
     let supportedUnoconvFileTypes =

@@ -289,7 +289,6 @@ module Server =
         async {
             return loggedInUser.IsSome
         }
-
     
     [<Remote>]
     let isLoggedInAsGuest () =
@@ -300,8 +299,6 @@ module Server =
                 return Database.getConfirmEmailGuidByUserId userId |> Option.isSome
             | None -> return false
         }
-
-
 
     [<Remote>]
     let register (email : string) (password : string) =
@@ -622,39 +619,41 @@ module Server =
                 then Odt.mergePdfs pdfPaths mergedPdfPath
 
                 let oConfirmEmailGuid = Database.getConfirmEmailGuidByUserId userId
-
-                sendEmail
-                    userEmail
-                    (userValues.firstName + " " + userValues.lastName)
-                    employer.email
-                    (Odt.replaceInString document.email.subject myList Ignore)
-                    (Odt.replaceInString (document.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Ignore)
-
-                    (if pdfPaths = []
-                     then []
-                     else [mergedPdfPath, (sprintf "Bewerbung_%s_%s.pdf" userValues.firstName userValues.lastName)]
-                     )
-                sendEmail
-                    userEmail
-                    (userValues.firstName + " " + userValues.lastName)
-                    userEmail
-                    ("Deine Bewerbung wurde versandt - " + Odt.replaceInString document.email.subject myList Ignore)
-                    ((sprintf "Deine Bewerbung wurde am %s an %s versandt.\n\n" (DateTime.Now.ToShortDateString()) employer.email) + Odt.replaceInString (document.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Ignore)
-
-                    (if pdfPaths = []
-                     then []
-                     else [mergedPdfPath, (sprintf "Bewerbung_%s_%s.pdf" userValues.firstName userValues.lastName)]
-                     )
                 transaction.Commit()
-                if isGuest && oConfirmEmailGuid.IsSome
-                then
+
+                async {
                     sendEmail
-                        Settings.EmailUsername
-                        "Bewerbungsspam"
                         userEmail
-                        (t German PleaseConfirmYourEmailAddressEmailSubject)
-                        (String.Format((t German PleaseConfirmYourEmailAddressEmailBody), userEmail, oConfirmEmailGuid.Value))
-                        []
+                        (userValues.firstName + " " + userValues.lastName)
+                        employer.email
+                        (Odt.replaceInString document.email.subject myList Ignore)
+                        (Odt.replaceInString (document.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Ignore)
+
+                        (if pdfPaths = []
+                         then []
+                         else [mergedPdfPath, (sprintf "Bewerbung_%s_%s.pdf" userValues.firstName userValues.lastName)]
+                         )
+                    sendEmail
+                        userEmail
+                        (userValues.firstName + " " + userValues.lastName)
+                        userEmail
+                        ("Deine Bewerbung wurde versandt - " + Odt.replaceInString document.email.subject myList Ignore)
+                        ((sprintf "Deine Bewerbung wurde am %s an %s versandt.\n\n" (DateTime.Now.ToShortDateString()) employer.email) + Odt.replaceInString (document.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Ignore)
+
+                        (if pdfPaths = []
+                         then []
+                         else [mergedPdfPath, (sprintf "Bewerbung_%s_%s.pdf" userValues.firstName userValues.lastName)]
+                         )
+                    if isGuest && oConfirmEmailGuid.IsSome
+                    then
+                        sendEmail
+                            Settings.EmailUsername
+                            "Bewerbungsspam"
+                            userEmail
+                            (t German PleaseConfirmYourEmailAddressEmailSubject)
+                            (String.Format((t German PleaseConfirmYourEmailAddressEmailBody), userEmail, oConfirmEmailGuid.Value))
+                            []
+                } |> Async.Start
                 ok ()
         with
         | e ->
@@ -770,9 +769,9 @@ module Server =
     let getSentApplications () =
         withCurrentUser getSentApplications'
 
-    let getFilesWithSameExtension filePath userId =
+    let getFilesWithExtension extension userId =
         async {
-            return Database.getFilesWithExtension (Path.GetExtension(filePath).ToLower().Substring(1)) userId
+            return Database.getFilesWithExtension extension userId
         }
 
     let getFilePageNames documentId =
@@ -786,9 +785,3 @@ module Server =
     let tryFindSentApplication (employer : Employer) =
         withCurrentUser (tryFindSentApplication' employer)
     
-    [<Remote>]
-    let convertToOdt filePath =
-        async {
-            return Odt.convertToOdt filePath
-        }
-

@@ -95,6 +95,7 @@ module Site =
     open System.Configuration
     open Client
     open WebSharper.Sitelets.Content
+    open WebSharper.UI.Html.Tags
 
 
     let homePage (ctx : Context<EndPoint>) =
@@ -202,73 +203,61 @@ module Site =
                         && x.ContentLength < maxUploadSize
                         && List.contains (Path.GetExtension(x.FileName).Substring(1).ToLower()) supportedUnoconvFileTypes
                     then
-                        let convertedFilePath, hasBeenConverted =
+                        let streamCompare, convertedFileName =
                             if List.contains (Path.GetExtension(x.FileName).Substring(1).ToLower()) convertibleToOdtFormats
                             then
                                 let tmpFilePath =
                                     Path.Combine(
                                           Settings.DataDirectory
                                         , "tmp"
-                                        , Guid.NewGuid().ToString()
+                                        , Guid.NewGuid().ToString("N")
                                         , x.FileName)
                                 Directory.CreateDirectory(Path.GetDirectoryName(tmpFilePath)) |> ignore
                                 x.SaveAs tmpFilePath
-                                Server.convertToOdt tmpFilePath |> Async.RunSynchronously, true
-                            elif x.FileName.ToLower().EndsWith(".odt")
-                            then
-                                let tmpFilePath =
-                                    Path.Combine
-                                        ( Settings.DataDirectory
-                                        , "tmp"
-                                        , Guid.NewGuid().ToString()
-                                        , x.FileName)
-                                Directory.CreateDirectory(Path.GetDirectoryName(tmpFilePath)) |> ignore
-                                x.SaveAs tmpFilePath
-                                tmpFilePath, false
-                            else Path.Combine(Settings.DataDirectory, "users", userId |> string, x.FileName), false
+                                ( OdtFile (Odt.convertToOdt tmpFilePath)
+                                , Path.ChangeExtension(x.FileName, "odt")
+                                )
+                            elif Path.GetExtension(x.FileName).ToLower() = ".odt"
+                            then OdtStream x.InputStream, x.FileName
+                            else Stream x.InputStream, x.FileName
 
-                        let (filePath, name) =
+                        let (filePath, fileName) =
                             let filesWithSameExtension =
-                                Server.getFilesWithSameExtension convertedFilePath (UserId userId) |> Async.RunSynchronously
+                                Server.getFilesWithExtension
+                                    (Path.GetExtension(convertedFileName).Substring(1).ToLower())
+                                    (UserId userId)
+                                |> Async.RunSynchronously
                             let oSameFile =
                                 filesWithSameExtension
                                 |> Seq.tryFind
                                     (fun file ->
-                                        if convertedFilePath.ToLower().EndsWith(".odt")
-                                        then
-                                            Odt.areOdtFilesEqual
-                                                convertedFilePath
-                                                (toRootedPath file)
-                                        else
-                                            use fileStream =
-                                                new FileStream
-                                                    ( toRootedPath file
-                                                    , FileMode.Open
-                                                    , FileAccess.Read)
-                                            Odt.areStreamsEqual x.InputStream fileStream
+                                        Odt.areFilesAndDirectoriesEqual
+                                            (Odt.streamCompareToFile
+                                                streamCompare
+                                                (Path.GetExtension(convertedFileName).ToLower()))
+                                            (toRootedPath file)
                                     )
                             match oSameFile with
                             | Some file ->
-                                (file, findFreeFileName convertedFilePath documentId)
+                                (file, findFreeFileName convertedFileName documentId)
                             | None ->
-                                let fileName =
-                                    if File.Exists(Path.Combine(toRootedPath relativeDir, convertedFilePath))
-                                    then findFreeFileName (Path.GetFileName(convertedFilePath)) documentId
-                                    else Path.GetFileName(convertedFilePath)
-                                printfn "%s, %s" fileName convertedFilePath
-                                if hasBeenConverted
-                                then
-                                    if File.Exists (Path.Combine(toRootedPath relativeDir, fileName))
-                                    then
-                                        File.Replace(convertedFilePath, Path.Combine(toRootedPath relativeDir, fileName), "")
+                                let fileName = findFreeFileName (Path.GetFileName(convertedFileName)) documentId
+                                let filePath =
+                                    if not <| File.Exists (toRootedPath (Path.Combine(relativeDir, fileName)))
+                                    then toRootedPath (Path.Combine(relativeDir, fileName))
                                     else
-                                        File.Move(convertedFilePath, Path.Combine(toRootedPath relativeDir, fileName))
-                                    (Path.Combine(relativeDir, fileName), fileName)
-                                else
-                                    x.SaveAs(Path.Combine(toRootedPath relativeDir, fileName))
-                                    (Path.Combine(relativeDir, fileName), fileName)
+                                        toRootedPath
+                                          (Path.Combine
+                                            ( relativeDir
+                                            , Path.GetFileNameWithoutExtension(fileName)
+                                              + "_"
+                                              + Guid.NewGuid().ToString("N")
+                                              + Path.GetExtension(fileName))
+                                          )
+                                Odt.saveStreamCompare streamCompare filePath
+                                filePath, fileName
                         async {
-                            do! Server.addFilePage documentId filePath pageIndex name
+                            do! Server.addFilePage documentId filePath pageIndex fileName
                             do! Server.setLastEditedDocumentId (UserId userId) documentId
                         } |> Async.RunSynchronously
                 )

@@ -9,6 +9,7 @@ module Odt =
     open System.Text.RegularExpressions
     open Types
     open System.Threading
+    open Chessie.ErrorHandling
 
     let private log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().GetType())
 
@@ -185,9 +186,14 @@ module Odt =
             applyRec
                 f1
                 (fun currentDir currentFile ->
-                    areStreamsEqual
-                        (File (Path.Combine(f1, currentDir, currentFile)))
-                        (File (Path.Combine(f2, currentDir, currentFile)))
+                    let p1 = Path.Combine(f1, currentDir, currentFile)
+                    let p2 = Path.Combine(f2, currentDir, currentFile)
+                    (   File.Exists p1
+                     && File.Exists p2
+                     && areStreamsEqual
+                          (File (Path.Combine(f1, currentDir, currentFile)))
+                          (File (Path.Combine(f2, currentDir, currentFile)))
+                    )
                 )
             |> List.forall id
         elif File.Exists f1 && File.Exists f2
@@ -303,7 +309,7 @@ module Odt =
         replacedOdtPath
     
     let odtToPdf (odtPath : string) =
-        let rec odtToPdf' n =
+        let rec odtToPdf'() =
             log.Debug (sprintf "(odtPath = %s)" odtPath)
             let outputPath = Path.ChangeExtension(odtPath, ".pdf")
             File.Delete(outputPath)
@@ -322,16 +328,11 @@ module Odt =
             if File.Exists outputPath
             then
                 log.Debug (sprintf "(odtPath = %s) = %s" odtPath outputPath)
-                outputPath
+                Some outputPath
             else
-                if n < 10
-                then
-                    Thread.Sleep 5000
-                    odtToPdf' (n + 1)
-                else
-                    log.Error (sprintf "(odtPath = %s) failed to Convert" odtPath)
-                    failwith "Could not convert odt file to pdf: " + odtPath
-        odtToPdf' 0
+                log.Error (sprintf "(odtPath = %s) failed to Convert" odtPath)
+                None
+        odtToPdf'()
     
     let convertToOdt filePath =
         let rec convertToOdt' n =

@@ -258,14 +258,12 @@ module Server =
         log.Debug(sprintf "(sessionGuid = %s)" sessionGuid)
         match Database.getUserIdBySessionGuid sessionGuid with
         | None ->
-            log.Debug(sprintf "(sessionGuid = %s) = %A" sessionGuid (fail "Session guid not found"))
-            async {return fail "Session guid not found"}
+            log.Debug(sprintf "(sessionGuid = %s) = %b" sessionGuid false)
+            async { return false }
         | Some (UserId userId) ->
             GetContext().UserSession.LoginUser (userId |> string) |> Async.RunSynchronously
-            log.Debug(sprintf "(sessionGuid = %s) = ok ()" sessionGuid)
-            async {
-                return ok ()
-            }
+            log.Debug(sprintf "(sessionGuid = %s) = true" sessionGuid)
+            async { return true }
     
     let setSessionGuid' guid userId dbConn =
         Database.setSessionGuid dbConn userId guid
@@ -279,9 +277,7 @@ module Server =
     [<Remote>]
     let loginAsGuest (sessionGuid : string) =
         withDB (loginAsGuest' sessionGuid)
-        async {
-            return ()
-        }
+        async { return () }
 
     [<Remote>]
     let isUserLoggedIn () =
@@ -487,7 +483,7 @@ module Server =
                 let pdfPaths =
                     [ for odtPath in odtPaths do
                         yield Odt.odtToPdf odtPath
-                    ]
+                    ] |> List.choose id
                 let mergedPdfPath =
                     Path.Combine(
                         tmpDirectory,
@@ -612,8 +608,9 @@ module Server =
 
                 let pdfPaths =
                     [ for odtPath in odtPaths do
-                        yield Odt.odtToPdf odtPath
-                    ]
+                        yield
+                            Odt.odtToPdf odtPath
+                    ] |> List.choose id
                 let mergedPdfPath = Path.Combine(tmpDirectory, Guid.NewGuid().ToString() + ".pdf")
                 if pdfPaths <> []
                 then Odt.mergePdfs pdfPaths mergedPdfPath
@@ -740,6 +737,11 @@ module Server =
         async {
             return Website.read identifier
         }
+    
+    [<Remote>]
+    let isLoggedIn() =
+        let loggedIn = getCurrentUserId() |> Async.RunSynchronously |> Option.isSome
+        async { return loggedIn }
     
     [<Remote>]
     let createLink filePath name =

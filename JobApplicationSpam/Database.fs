@@ -1,4 +1,6 @@
 ﻿namespace JobApplicationSpam
+
+
 module Database =
     open System
     open Npgsql
@@ -7,15 +9,24 @@ module Database =
     open System.Reflection
     open FSharp.Data.Sql
     open Types
+    open System.Linq
+
+
+    [<Literal>]
+    let connectionString = "Server=localhost; Port=5432; User Id=spam; Password=Steinmetzstr9!@#$; Database=jobapplicationspam"
+
+    [<Literal>]
+    let resolutionPath = "bin"
+
 
     type DB =
         SqlDataProvider<
-            FSharp.Data.Sql.Common.DatabaseProviderTypes.POSTGRESQL,
-            "Server=localhost; Port=5432; User Id=spam; Password=Steinmetzstr9!@#$; Database=jobapplicationspam",
-            "",
-            "bin",
-            1000,
-            true>
+            DatabaseVendor = FSharp.Data.Sql.Common.DatabaseProviderTypes.POSTGRESQL,
+            ConnectionString = connectionString,
+            Owner = "",
+            ResolutionPath = resolutionPath,
+            IndividualsAmount = 1000,
+            UseOptionTypes = true>
 
      
     let getValueOrDBNull oV =
@@ -57,7 +68,7 @@ module Database =
         
     let getUserIdByEmail (email : string) : option<int> =
         log.Debug(sprintf "(email = %s)" email)
-        let oUserId = db.Users.Where(fun x -> x.Email = Some email).Select(fun x -> Some x.Id).SingleOrDefault()
+        let oUserId = db.Users.Where(fun x -> x.Email.IsSome && x.Email.Value = email).Select(fun x -> Some x.Id).SingleOrDefault()
         log.Debug(sprintf "(email = %s) = %A" email oUserId)
         oUserId
 
@@ -140,13 +151,19 @@ module Database =
     
     let userEmailExists (email : string) =
         log.Debug(sprintf "(email = %s)" email)
-        let emailExists = db.Users.Any(fun x -> x.Email = Some email)
+        let emailExists = db.Users.Any(fun x -> x.Email.IsSome && x.Email.Value = email)
         log.Debug(sprintf "(email = %s) = %b" email emailExists)
         emailExists
 
     let getUserIdBySessionGuid (sessionGuid : string) : option<UserId> =
         log.Debug(sprintf "(sessionGuid = %s)" sessionGuid)
-        let oUserId = db.Users.Where(fun x -> x.Sessionguid = Some sessionGuid).Select(fun x -> Some x.Id).SingleOrDefault()
+        db.Users.Where(fun x -> x.Sessionguid.IsSome && x.Sessionguid.Value = sessionGuid) |> Seq.iter (fun x -> x.Sessionguid |> (printfn "%A"))
+        let oUserId =
+            query {
+                for user in db.Users do
+                where (user.Sessionguid.IsSome && user.Sessionguid.Value = sessionGuid)
+                select (Some user.Id)
+            } |> fun x -> x.FirstOrDefault()
         log.Debug(sprintf "(sessionGuid = %s) = %A" sessionGuid oUserId)
         oUserId |> Option.map UserId
     
@@ -162,7 +179,7 @@ module Database =
         log.Debug(sprintf "(email = %s)" email)
         let ret =
             db.Users
-              .Where(fun x -> x.Email = Some email)
+              .Where(fun x -> x.Email.IsSome && x.Email.Value = email)
               .Select(fun x ->
                     Some { userId = UserId x.Id
                            userEmail = email
@@ -211,7 +228,7 @@ module Database =
 
     let getConfirmEmailGuid (email : string) : option<string> =
         log.Debug(sprintf "(email = %s)" email)
-        let oConfirmEmailGuid = db.Users.Where(fun x -> x.Email = Some email).Select(fun x -> x.Confirmemailguid).SingleOrDefault()
+        let oConfirmEmailGuid = db.Users.Where(fun x -> x.Email.IsSome && x.Email.Value = email).Select(fun x -> x.Confirmemailguid).SingleOrDefault()
         log.Debug(sprintf "(email = %s) = %A" email oConfirmEmailGuid)
         oConfirmEmailGuid
 
@@ -223,7 +240,7 @@ module Database =
 
     let setConfirmEmailGuidToNull (email : string) =
         log.Debug(sprintf "(email = %s)" email)
-        let records = db.Users.Where(fun x -> x.Email = Some email)
+        let records = db.Users.Where(fun x -> x.Email.IsSome && x.Email.Value = email)
         records |> Seq.iter (fun x -> x.Confirmemailguid <- None)
         let recordCount = records.Count()
         log.Debug(sprintf "(email = %s) = %i" email recordCount)

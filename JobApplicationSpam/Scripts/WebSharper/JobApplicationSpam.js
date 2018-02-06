@@ -1,7 +1,7 @@
 (function()
 {
  "use strict";
- var Global,JobApplicationSpam,Phrases,Word,English,German,Translation,Language,Types,Gender,UserValues,Employer,JobApplicationPageAction,HtmlPage,FilePage,DocumentPage,DocumentEmail,Document,HtmlPageTemplate,PageDB,SC$1,Client,IntelliFactory,Runtime,WebSharper,Operators,String,List,Arrays,Math,UI,Next,ListModel,Var,Doc,AttrProxy,Concurrency,Remoting,AjaxRemotingProvider,DateUtil,Date,Utils,AttrModule,System,Guid,Collections,Map,Seq,Strings,Unchecked,Enumerator,Cookies;
+ var Global,JobApplicationSpam,Phrases,Word,English,German,Translation,Language,Types,Gender,UserValues,Employer,JobApplicationPageAction,HtmlPage,FilePage,DocumentPage,DocumentEmail,Document,HtmlPageTemplate,PageDB,SC$1,JobApplicationService,Client,IntelliFactory,Runtime,WebSharper,Operators,String,List,Arrays,Concurrency,System,Guid,Cookies,Date,Remoting,AjaxRemotingProvider,Math,UI,Next,ListModel,Var,Doc,AttrProxy,DateUtil,Utils,AttrModule,Collections,Map,Seq,Strings,Unchecked,Enumerator;
  Global=window;
  JobApplicationSpam=Global.JobApplicationSpam=Global.JobApplicationSpam||{};
  Phrases=JobApplicationSpam.Phrases=JobApplicationSpam.Phrases||{};
@@ -23,6 +23,7 @@
  HtmlPageTemplate=Types.HtmlPageTemplate=Types.HtmlPageTemplate||{};
  PageDB=Types.PageDB=Types.PageDB||{};
  SC$1=Global.StartupCode$JobApplicationSpam$Types=Global.StartupCode$JobApplicationSpam$Types||{};
+ JobApplicationService=JobApplicationSpam.JobApplicationService=JobApplicationSpam.JobApplicationService||{};
  Client=JobApplicationSpam.Client=JobApplicationSpam.Client||{};
  IntelliFactory=Global.IntelliFactory;
  Runtime=IntelliFactory&&IntelliFactory.Runtime;
@@ -31,6 +32,13 @@
  String=Global.String;
  List=WebSharper&&WebSharper.List;
  Arrays=WebSharper&&WebSharper.Arrays;
+ Concurrency=WebSharper&&WebSharper.Concurrency;
+ System=Global.System;
+ Guid=System&&System.Guid;
+ Cookies=Global.Cookies;
+ Date=Global.Date;
+ Remoting=WebSharper&&WebSharper.Remoting;
+ AjaxRemotingProvider=Remoting&&Remoting.AjaxRemotingProvider;
  Math=Global.Math;
  UI=WebSharper&&WebSharper.UI;
  Next=UI&&UI.Next;
@@ -38,22 +46,15 @@
  Var=Next&&Next.Var;
  Doc=Next&&Next.Doc;
  AttrProxy=Next&&Next.AttrProxy;
- Concurrency=WebSharper&&WebSharper.Concurrency;
- Remoting=WebSharper&&WebSharper.Remoting;
- AjaxRemotingProvider=Remoting&&Remoting.AjaxRemotingProvider;
  DateUtil=WebSharper&&WebSharper.DateUtil;
- Date=Global.Date;
  Utils=WebSharper&&WebSharper.Utils;
  AttrModule=Next&&Next.AttrModule;
- System=Global.System;
- Guid=System&&System.Guid;
  Collections=WebSharper&&WebSharper.Collections;
  Map=Collections&&Collections.Map;
  Seq=WebSharper&&WebSharper.Seq;
  Strings=WebSharper&&WebSharper.Strings;
  Unchecked=WebSharper&&WebSharper.Unchecked;
  Enumerator=WebSharper&&WebSharper.Enumerator;
- Cookies=Global.Cookies;
  Word.NewPassword={
   $:55
  };
@@ -442,6 +443,42 @@
   SC$1.unoconvImageTypes=List.ofArray(["bmp","gif","jpg","pdf","png","svg","tif","tiff"]);
   SC$1.maxUploadSize=5000000;
  };
+ JobApplicationService.loginWithCookieOrAsGuest=function()
+ {
+  var b;
+  function loginAsGuest()
+  {
+   var b$1;
+   Global.alert("loginasguest!");
+   b$1=null;
+   return Concurrency.Delay(function()
+   {
+    var sessionGuid,c,r;
+    sessionGuid=(c=Guid.NewGuid(),Guid.ToString(c,"N"));
+    Cookies.set("user",sessionGuid,(r={},r.expires=new Global.Date(Date.now()+604800),r));
+    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.loginAsGuest:-1276324058",[sessionGuid]),function()
+    {
+     return Concurrency.Return(null);
+    });
+   });
+  }
+  b=null;
+  return Concurrency.Delay(function()
+  {
+   var userCookie;
+   userCookie=Cookies.get("user");
+   return userCookie!==void 0?Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.loginUserBySessionGuid:-1221772142",[userCookie]),function(a)
+   {
+    return!a?(Global.alert("not logged in!"),Concurrency.Bind(loginAsGuest(),function()
+    {
+     return Concurrency.Return(null);
+    })):Concurrency.Zero();
+   }):Concurrency.Bind(loginAsGuest(),function()
+   {
+    return Concurrency.Return(null);
+   });
+  });
+ };
  Client.templates=function()
  {
   var varDocument,documentEmailSubject,documentEmailBody,documentJobName,customVariables,varUserValues,userGender,userDegree,userFirstName,userLastName,userStreet,userPostcode,userCity,userPhone,userMobilePhone,varUserEmail,varUserEmailInput,varEmployer,employerCompany,employerGender,employerDegree,employerFirstName,employerLastName,employerStreet,employerPostcode,employerCity,employerEmail,employerPhone,employerMobilePhone,varDisplayedDocument,varDivSentApplications,showHideMutualElements,b,guid,c;
@@ -468,9 +505,9 @@
        return d>=dateFrom$2&&d<=dateTo$2;
       }
       dateFromParsed=DateUtil.Parse(Global.document.getElementById("dateFrom").value);
-      dateFrom$1=(new Global.Date((new Global.Date(dateFromParsed)).getFullYear(),(new Global.Date(dateFromParsed)).getMonth()+1-1,(new Global.Date(dateFromParsed)).getDate())).getTime();
+      dateFrom$1=(new Date((new Date(dateFromParsed)).getFullYear(),(new Date(dateFromParsed)).getMonth()+1-1,(new Date(dateFromParsed)).getDate())).getTime();
       dateToParsed=DateUtil.Parse(Global.document.getElementById("dateTo").value);
-      dateTo$1=(new Global.Date((new Global.Date(dateToParsed)).getFullYear(),(new Global.Date(dateToParsed)).getMonth()+1-1,(new Global.Date(dateToParsed)).getDate())).getTime();
+      dateTo$1=(new Date((new Date(dateToParsed)).getFullYear(),(new Date(dateToParsed)).getMonth()+1-1,(new Date(dateToParsed)).getDate())).getTime();
       p=dateFrom$1<=dateTo$1?[dateFrom$1,dateTo$1]:[dateTo$1,dateFrom$1];
       dateTo$2=p[1];
       dateFrom$2=p[0];
@@ -944,7 +981,7 @@
         },fontAwesomeEls);
         btnLoadFromWebsite.prop("disabled",true);
         Global.jQuery("#divJobApplicationContent").find("input,textarea,button,select").prop("disabled",true);
-        return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.applyNow:-2017393559",[varEmployer.c,varDocument.c,varUserValues.c,Global.document.getElementById("txtReadEmployerFromWebsite").value]),function(a$3)
+        return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.applyNow:-2017393559",[varEmployer.c,varDocument.c,varUserValues.c,Global.document.getElementById("txtReadFromWebsite").value]),function(a$3)
         {
          List.iter(function(faEl)
          {
@@ -956,7 +993,7 @@
          {
           faEl.css("color","#08a81b");
           faEl.addClass("fa-check");
-         },fontAwesomeEls),Var.Set(varEmployer,Types.emptyEmployer()),Global.document.getElementById("txtReadEmployerFromWebsite").value="",Concurrency.Bind(Concurrency.Sleep(4500),function()
+         },fontAwesomeEls),Var.Set(varEmployer,Types.emptyEmployer()),Global.document.getElementById("txtReadFromWebsite").value="",Concurrency.Bind(Concurrency.Sleep(4500),function()
          {
           List.iter(function(faEl)
           {
@@ -985,7 +1022,7 @@
     Global.document.getElementById("faReadFromWebsite").style.visibility="visible";
     return Concurrency.Bind(Concurrency.Sleep(200),function()
     {
-     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.readWebsite:1243289988",[Global.document.getElementById("txtReadEmployerFromWebsite").value]),function(a)
+     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.readWebsite:1243289988",[Global.document.getElementById("txtReadFromWebsite").value]),function(a)
      {
       Global.document.getElementById("btnReadFromWebsite").disabled=false;
       Global.document.getElementById("faReadFromWebsite").style.visibility="hidden";
@@ -996,6 +1033,208 @@
      });
     });
    });
+  }
+  function registerEvents()
+  {
+   Global.document.getElementById("slctDocumentName").addEventListener("change",function()
+   {
+    var b$1;
+    return Concurrency.Start((b$1=null,Concurrency.Delay(function()
+    {
+     return Concurrency.Bind(setDocument(),function()
+     {
+      return Concurrency.Bind(setPageButtons(),function()
+      {
+       return Concurrency.Bind(fillDocumentValues(),function()
+       {
+        return Concurrency.Return(null);
+       });
+      });
+     });
+    })),null);
+   },false);
+   Global.document.getElementById("btnShowDivNewDocument").addEventListener("click",function()
+   {
+    return show(List.ofArray(["divAddDocument"]));
+   },false);
+   Global.document.getElementById("btnDeleteDocument").addEventListener("click",function(ev)
+   {
+    var b$1;
+    return Concurrency.Start((b$1=null,Concurrency.Delay(function()
+    {
+     var m;
+     return Concurrency.Combine(Global.document.getElementById("slctDocumentName").selectedIndex>=0&&Global.confirm(Strings.SFormat(Translation.t(Language.German,Word.ReallyDeleteDocument),[varDocument.c.name]))?Concurrency.Combine((m=varDocument.c.oId,m==null?Concurrency.Zero():Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.deleteDocument:-2045396727",[m.$0]),function()
+     {
+      return Concurrency.Return(null);
+     })),Concurrency.Delay(function()
+     {
+      var slctDocumentNameEl;
+      slctDocumentNameEl=Global.document.getElementById("slctDocumentName");
+      slctDocumentNameEl.removeChild(slctDocumentNameEl[slctDocumentNameEl.selectedIndex]);
+      return Concurrency.Combine(slctDocumentNameEl.length===0?(ev.target.style.display="none",Var.Set(varDocument,Types.emptyDocument()),Concurrency.Zero()):Concurrency.Zero(),Concurrency.Delay(function()
+      {
+       show(List.ofArray(["divAttachments"]));
+       return Concurrency.Zero();
+      }));
+     })):(Var.Set(varDocument,Types.emptyDocument()),Concurrency.Zero()),Concurrency.Delay(function()
+     {
+      return Concurrency.Bind(setDocument(),function()
+      {
+       return Concurrency.Bind(setPageButtons(),function()
+       {
+        return Concurrency.Return(null);
+       });
+      });
+     }));
+    })),null);
+   },false);
+   Global.document.getElementById("txtUserDefinedVariables").addEventListener("keydown",function(ev)
+   {
+    var v,s,e;
+    return ev.keyCode===9?(v=String(ev.target.value),(s=ev.target.selectionStart,(e=ev.target.selectionEnd,(ev.target.value=Strings.Substring(v,0,s)+"\u0009"+v.substring(e),ev.target.selectionStart=s+1,ev.target.selectionEnd=s+1,ev.stopPropagation(),ev.preventDefault())))):null;
+   },false);
+   Global.document.getElementById("btnAddPage").addEventListener("click",function()
+   {
+    return Global.document.getElementById("slctDocumentName").selectedIndex>=0?(show(List.ofArray(["divChoosePageType","divAttachments","divCreateFilePage"])),void(Global.document.getElementById("rbFilePage").checked=true)):(Global.alert("Bitte erst eine neue Bewerbungsmappe anlegen"),show(List.ofArray(["divAddDocument"])));
+   },false);
+   Global.document.getElementById("btnAddDocument").addEventListener("click",function()
+   {
+    var b$1;
+    return Concurrency.Start((b$1=null,Concurrency.Delay(function()
+    {
+     var newDocumentName,i;
+     newDocumentName=String(Global.document.getElementById("txtNewDocumentName").value);
+     return Strings.Trim(newDocumentName)===""?(Global.alert(Strings.SFormat(Translation.t(Language.German,Word.FieldIsRequired),[Translation.t(Language.German,Word.DocumentName)])),Concurrency.Zero()):(Var.Set(varDocument,(i=varDocument.c,Document.New(i.oId,newDocumentName,i.pages,i.email,i.jobName,i.customVariables))),Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.saveNewDocument:1535261021",[varDocument.c]),function(a)
+     {
+      var i$1,slctEl;
+      Var.Set(varDocument,(i$1=varDocument.c,Document.New({
+       $:1,
+       $0:a
+      },i$1.name,i$1.pages,i$1.email,i$1.jobName,i$1.customVariables)));
+      slctEl=Global.document.getElementById("slctDocumentName");
+      addSelectOption(slctEl,newDocumentName);
+      Global.document.getElementById("divAddDocument").style.display="none";
+      Global.document.getElementById("btnDeleteDocument").style.display="inline";
+      slctEl.selectedIndex=slctEl.options.length-1;
+      return Concurrency.Bind(setDocument(),function()
+      {
+       return Concurrency.Bind(setPageButtons(),function()
+       {
+        show(List.ofArray(["divAttachments"]));
+        return Concurrency.Bind(fillDocumentValues(),function()
+        {
+         return Concurrency.Return(null);
+        });
+       });
+      });
+     }));
+    })),null);
+   },false);
+   Global.document.getElementById("slctHtmlPageTemplate").addEventListener("change",function()
+   {
+    var b$1;
+    return Concurrency.Start((b$1=null,Concurrency.Delay(function()
+    {
+     return Concurrency.Bind(loadPageTemplate(),function()
+     {
+      return Concurrency.Bind(fillDocumentValues(),function()
+      {
+       return Concurrency.Return(null);
+      });
+     });
+    })),null);
+   },false);
+   Global.document.getElementById("btnDownloadFilePage").addEventListener("click",function()
+   {
+    var chkReplaceVariables,m,x,filePage,b$1;
+    chkReplaceVariables=Global.jQuery("#chkReplaceVariables");
+    m=(x=varDocument.c.pages,Seq.tryItem(getCurrentPageIndex()-1,x));
+    return m==null?null:m.$0.$==0?null:(filePage=m.$0.$0,Concurrency.Start((b$1=null,Concurrency.Delay(function()
+    {
+     var b$2;
+     return Concurrency.Bind(chkReplaceVariables.prop("checked")?(new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.replaceVariables:-699540492",[filePage.path,varUserValues.c,varEmployer.c,varDocument.c]):(b$2=null,Concurrency.Delay(function()
+     {
+      return Concurrency.Return(filePage.path);
+     })),function(a)
+     {
+      var fileName,extension;
+      fileName=(extension=filePage.path.substring(filePage.path.lastIndexOf(".")+1),Strings.EndsWith(filePage.name,"."+extension)?filePage.name:filePage.name+"."+extension);
+      return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.createLink:-1244178866",[a,fileName]),function(a$1)
+      {
+       Global.location.href=(function($1)
+       {
+        return function($2)
+        {
+         return $1("download/"+Utils.toSafe($2));
+        };
+       }(Global.id))(a$1);
+       return Concurrency.Zero();
+      });
+     });
+    })),null));
+   },false);
+   Global.document.getElementById("rbHtmlPage").addEventListener("click",function()
+   {
+    return show(List.ofArray(["divAttachments","divChoosePageType","divCreateHtmlPage"]));
+   },false);
+   Global.document.getElementById("rbFilePage").addEventListener("click",function()
+   {
+    return show(List.ofArray(["divAttachments","divChoosePageType","divCreateFilePage"]));
+   },false);
+   Global.document.getElementById("btnCreateHtmlPage").addEventListener("click",function()
+   {
+    var pageIndex,i,b$1;
+    pageIndex=Global.jQuery("#divAttachmentButtons").children("div").length;
+    Var.Set(varDocument,(i=varDocument.c,Document.New(i.oId,i.name,List.append(varDocument.c.pages,List.ofArray([new DocumentPage({
+     $:0,
+     $0:HtmlPage.New(Global.document.getElementById("txtCreateHtmlPage").value,{
+      $:1,
+      $0:1
+     },pageIndex,List.T.Empty)
+    })])),i.email,i.jobName,i.customVariables)));
+    return Concurrency.Start((b$1=null,Concurrency.Delay(function()
+    {
+     return Concurrency.Bind(setPageButtons(),function()
+     {
+      return Concurrency.Return(null);
+     });
+    })),null);
+   },false);
+   Global.document.getElementById("fileToUpload").addEventListener("change",function(ev)
+   {
+    var b$1;
+    return Concurrency.Start((b$1=null,Concurrency.Delay(function()
+    {
+     var fileName,fileExtension,$1;
+     fileName=String(ev.target.files.item(0).name);
+     fileExtension=fileName.substring(fileName.lastIndexOf(".")+1);
+     return ev.target.files.item(0).size>Types.maxUploadSize()?(Global.alert(Translation.t(Language.German,Word.FileIsTooBig)+"\n"+Strings.SFormat(Translation.t(Language.German,Word.UploadLimit),[String(Types.maxUploadSize()/1000000>>0)])),Concurrency.Zero()):!List.contains(fileExtension,Types.supportedUnoconvFileTypes())?(Global.alert(($1=[fileExtension],"Entschuldigung.\n*."+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0)))+" Dateien können zur Zeit nicht ins PDF-Format verwandelt werden.\r\n                                                    \nTypische Dateitypen zum Uploaden sind *.odt, *.doc, *.jpg oder *.pdf.")),Concurrency.Zero()):(ev.target.parentElement.submit(),Concurrency.Zero());
+    })),null);
+   },false);
+   Global.document.getElementById("btnReadFromWebsite").addEventListener("click",function()
+   {
+    return Concurrency.Start(readFromWebsite(),null);
+   },false);
+   Global.document.getElementById("txtReadFromWebsite").addEventListener("paste",function()
+   {
+    return Concurrency.Start(readFromWebsite(),null);
+   },false);
+   Global.document.getElementById("txtReadFromWebsite").addEventListener("focus",function(ev)
+   {
+    return ev.target.select();
+   },false);
+   Global.document.getElementById("btnSetEmployerEmailToUserEmail").addEventListener("click",function()
+   {
+    return employerEmail.set_RVal(varUserEmail.c);
+   },false);
+   Global.document.getElementById("btnApplyNowTop").addEventListener("click",function()
+   {
+    return Concurrency.Start(btnApplyNowClicked(),null);
+   },false);
+   Global.document.getElementById("btnApplyNowBottom").addEventListener("click",function()
+   {
+    return Concurrency.Start(btnApplyNowClicked(),null);
+   },false);
   }
   varDocument=Var.Create$1(Types.emptyDocument());
   documentEmailSubject=Var.Lens(varDocument,function(x)
@@ -1176,372 +1415,171 @@
   showHideMutualElements=List.ofArray(["divCreateFilePage","divCreateHtmlPage","divChoosePageType","divEmail","divAddDocument","divEditUserValues","divAddEmployer","divDisplayedDocument","divAttachments","divUploadedFileDownload","divSentApplications","divVariables"]);
   Concurrency.Start((b=null,Concurrency.Delay(function()
   {
-   return Concurrency.Combine(Concurrency.While(function()
+   return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.isLoggedIn:-900658348",[]),function(a)
    {
-    return Cookies.get("user").$===0;
-   },Concurrency.Delay(function()
-   {
-    return Concurrency.Bind(Concurrency.Sleep(20),function()
+    return Concurrency.Combine(!a?Concurrency.Bind(JobApplicationService.loginWithCookieOrAsGuest(),function()
     {
-     return Concurrency.Return(null);
-    });
-   })),Concurrency.Delay(function()
-   {
-    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.isLoggedInAsGuest:-900658348",[]),function(a)
+     Global.location.href="/";
+     return Concurrency.Zero();
+    }):Concurrency.Zero(),Concurrency.Delay(function()
     {
-     return Concurrency.Combine(a?(Var.Set(varUserEmailInput,createInput("Deine Email",varUserEmail,function()
+     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.isLoggedInAsGuest:-900658348",[]),function(a$1)
      {
-      return"";
-     })),Concurrency.Zero()):(Var.Set(varUserEmailInput,Doc.TextNode("")),Concurrency.Zero()),Concurrency.Delay(function()
-     {
-      var divMenu;
-      divMenu=Global.document.getElementById("divSidebarMenu");
-      return Concurrency.Combine(Concurrency.While(function()
+      return Concurrency.Combine(a$1?(Var.Set(varUserEmailInput,createInput("Deine Email",varUserEmail,function()
       {
-       return Unchecked.Equals(divMenu,null);
-      },Concurrency.Delay(function()
+       return"";
+      })),Concurrency.Zero()):(Var.Set(varUserEmailInput,Doc.TextNode("")),Concurrency.Zero()),Concurrency.Delay(function()
       {
-       return Concurrency.Bind(Concurrency.Sleep(10),function()
+       var divMenu;
+       divMenu=Global.document.getElementById("divSidebarMenu");
+       return Concurrency.Combine(Concurrency.While(function()
        {
-        return Concurrency.Return(null);
-       });
-      })),Concurrency.Delay(function()
-      {
-       function addMenuEntry(entry,f)
+        return Unchecked.Equals(divMenu,null);
+       },Concurrency.Delay(function()
        {
-        var li,_this;
-        li=Global.jQuery((function($1)
-        {
-         return function($2)
-         {
-          return $1("<li><button class=\"btnLikeLink1\">"+Utils.toSafe($2)+"</button></li>");
-         };
-        }(Global.id))(entry)).on("click",Runtime.CreateFuncWithThis(f));
-        _this=Global.jQuery(divMenu);
-        return _this.append.apply(_this,[li]);
-       }
-       addMenuEntry(Translation.t(Language.German,Word.SentApplications),function()
-       {
-        return function()
-        {
-         var b$1;
-         return Concurrency.Start((b$1=null,Concurrency.Delay(function()
-         {
-          return Concurrency.Bind(getSentApplications(),function()
-          {
-           show(List.ofArray(["divSentApplications"]));
-           return Concurrency.Zero();
-          });
-         })),null);
-        };
-       });
-       addMenuEntry("Variablen",function()
-       {
-        return function()
-        {
-         return show(List.ofArray(["divVariables"]));
-        };
-       });
-       addMenuEntry(Translation.t(Language.German,Word.EditYourValues),function()
-       {
-        return function()
-        {
-         return show(List.ofArray(["divEditUserValues"]));
-        };
-       });
-       addMenuEntry(Translation.t(Language.German,Word.EditEmail),function()
-       {
-        return function()
-        {
-         return show(List.ofArray(["divEmail"]));
-        };
-       });
-       addMenuEntry(Translation.t(Language.German,Word.EditAttachments),function()
-       {
-        return function()
-        {
-         return show(List.ofArray(["divAttachments"]));
-        };
-       });
-       addMenuEntry(Translation.t(Language.German,Word.AddEmployerAndApply),function()
-       {
-        return function()
-        {
-         return show(List.ofArray(["divAddEmployer"]));
-        };
-       });
-       return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getUserEmail:-644426752",[]),function(a$1)
-       {
-        Var.Set(varUserEmail,a$1==null?"":a$1.$0);
-        return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getUserValues:-337599557",[]),function()
-        {
-         Var.Set(varUserValues,Types.emptyUserValues());
-         return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getDocumentNames:1994133801",[]),function(a$2)
-         {
-          var slctDocumentNameEl;
-          slctDocumentNameEl=Global.document.getElementById("slctDocumentName");
-          return Concurrency.Combine(Concurrency.While(function()
-          {
-           return Unchecked.Equals(Global.document.getElementById("slctDocumentName"),null);
-          },Concurrency.Delay(function()
-          {
-           return Concurrency.Bind(Concurrency.Sleep(10),function()
-           {
-            return Concurrency.Return(null);
-           });
-          })),Concurrency.Delay(function()
-          {
-           return Concurrency.Combine(Concurrency.For(a$2,function(a$3)
-           {
-            addSelectOption(slctDocumentNameEl,a$3);
-            return Concurrency.Zero();
-           }),Concurrency.Delay(function()
-           {
-            return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getLastEditedDocumentOffset:-836782155",[]),function(a$3)
-            {
-             slctDocumentNameEl.selectedIndex=a$3;
-             return Concurrency.Bind(setDocument(),function()
-             {
-              return Concurrency.Bind(setPageButtons(),function()
-              {
-               return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getHtmlPageTemplates:1297380307",[]),function(a$4)
-               {
-                var slctHtmlPageTemplateEl;
-                slctHtmlPageTemplateEl=Global.document.getElementById("slctHtmlPageTemplate");
-                return Concurrency.Combine(Concurrency.While(function()
-                {
-                 return Unchecked.Equals(slctHtmlPageTemplateEl,null);
-                },Concurrency.Delay(function()
-                {
-                 return Concurrency.Bind(Concurrency.Sleep(10),function()
-                 {
-                  return Concurrency.Return(null);
-                 });
-                })),Concurrency.Delay(function()
-                {
-                 return Concurrency.For(a$4,function(a$5)
-                 {
-                  addSelectOption(slctHtmlPageTemplateEl,a$5.name);
-                  return Concurrency.Zero();
-                 });
-                }));
-               });
-              });
-             });
-            });
-           }));
-          }));
-         });
-        });
-       });
-      }));
-     }));
-    });
-   }));
-  })),null);
-  return Doc.Element("div",[AttrProxy.Create("id","divJobApplicationContent")],[Doc.Element("div",[AttrProxy.Create("style","width : 100%")],[Doc.Element("h3",[],[Doc.TextNode(Translation.t(Language.German,Word.YourApplicationDocuments))]),Doc.Element("select",[AttrProxy.Create("id","slctDocumentName"),AttrModule.Handler("change",function()
-  {
-   return function()
-   {
-    var b$1;
-    return Concurrency.Start((b$1=null,Concurrency.Delay(function()
-    {
-     return Concurrency.Bind(setDocument(),function()
-     {
-      return Concurrency.Bind(setPageButtons(),function()
-      {
-       return Concurrency.Bind(fillDocumentValues(),function()
-       {
-        return Concurrency.Return(null);
-       });
-      });
-     });
-    })),null);
-   };
-  })],[]),Doc.Element("button",[AttrProxy.Create("type","button"),AttrProxy.Create("style","margin-left: 20px"),AttrProxy.Create("class",".btnLikeLink"),AttrModule.Handler("click",function()
-  {
-   return function()
-   {
-    return show(List.ofArray(["divAddDocument"]));
-   };
-  })],[Doc.Element("i",[AttrProxy.Create("class","fa fa-plus-square"),AttrProxy.Create("aria-hidden","true")],[])]),Doc.Element("button",[AttrProxy.Create("type","button"),AttrProxy.Create("id","btnDeleteDocument"),AttrProxy.Create("class",".btnLikeLink"),AttrProxy.Create("style","margin-left: 20px"),AttrModule.Handler("click",function(el)
-  {
-   return function()
-   {
-    var b$1;
-    return Concurrency.Start((b$1=null,Concurrency.Delay(function()
-    {
-     var m;
-     return Concurrency.Combine(Global.document.getElementById("slctDocumentName").selectedIndex>=0&&Global.confirm(Strings.SFormat(Translation.t(Language.German,Word.ReallyDeleteDocument),[varDocument.c.name]))?Concurrency.Combine((m=varDocument.c.oId,m==null?Concurrency.Zero():Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.deleteDocument:-2045396727",[m.$0]),function()
-     {
-      return Concurrency.Return(null);
-     })),Concurrency.Delay(function()
-     {
-      var slctDocumentNameEl;
-      slctDocumentNameEl=Global.document.getElementById("slctDocumentName");
-      slctDocumentNameEl.removeChild(slctDocumentNameEl[slctDocumentNameEl.selectedIndex]);
-      return Concurrency.Combine(slctDocumentNameEl.length===0?(el.style.display="none",Var.Set(varDocument,Types.emptyDocument()),Concurrency.Zero()):Concurrency.Zero(),Concurrency.Delay(function()
-      {
-       show(List.ofArray(["divAttachments"]));
-       return Concurrency.Zero();
-      }));
-     })):(Var.Set(varDocument,Types.emptyDocument()),Concurrency.Zero()),Concurrency.Delay(function()
-     {
-      return Concurrency.Bind(setDocument(),function()
-      {
-       return Concurrency.Bind(setPageButtons(),function()
-       {
-        return Concurrency.Return(null);
-       });
-      });
-     }));
-    })),null);
-   };
-  })],[Doc.Element("i",[AttrProxy.Create("class","fa fa-trash"),AttrProxy.Create("aria-hidden","true")],[])])]),Doc.Element("hr",[],[]),Doc.Element("div",[AttrProxy.Create("id","divVariables"),AttrProxy.Create("style","display: none")],[Doc.Element("h3",[AttrProxy.Create("class","distanced-bottom")],[Doc.TextNode("Variablen")]),Doc.Element("h5",[AttrProxy.Create("class","distanced-bottom")],[Doc.TextNode("Vordefiniert")]),Doc.Element("b",[],[Doc.TextNode("Arbeitgeber")]),Doc.Element("br",[],[]),Doc.TextNode("$firmaName"),Doc.Element("br",[],[]),Doc.TextNode("$firmaStrasse"),Doc.Element("br",[],[]),Doc.TextNode("$firmaPlz"),Doc.Element("br",[],[]),Doc.TextNode("$firmaStadt"),Doc.Element("br",[],[]),Doc.TextNode("$chefTitel"),Doc.Element("br",[],[]),Doc.TextNode("$chefVorname"),Doc.Element("br",[],[]),Doc.TextNode("$chefNachname"),Doc.Element("br",[],[]),Doc.TextNode("$chefEmail"),Doc.Element("br",[],[]),Doc.TextNode("$chefTelefon"),Doc.Element("br",[],[]),Doc.TextNode("$chefMobil"),Doc.Element("br",[],[]),Doc.Element("hr",[],[]),Doc.Element("b",[],[Doc.TextNode(Translation.t(Language.German,Word.YourValues))]),Doc.Element("br",[],[]),Doc.TextNode("$meinGeschlecht"),Doc.Element("br",[],[]),Doc.TextNode("$meinTitel"),Doc.Element("br",[],[]),Doc.TextNode("$meinVorname"),Doc.Element("br",[],[]),Doc.TextNode("$meinNachname"),Doc.Element("br",[],[]),Doc.TextNode("$meineStrasse"),Doc.Element("br",[],[]),Doc.TextNode("$meinePlz"),Doc.Element("br",[],[]),Doc.TextNode("$meineStadt"),Doc.Element("br",[],[]),Doc.TextNode("$meineEmail"),Doc.Element("br",[],[]),Doc.TextNode("$meineMobilnr"),Doc.Element("br",[],[]),Doc.TextNode("$meineTelefonnr"),Doc.Element("br",[],[]),Doc.Element("hr",[],[]),Doc.Element("b",[],[Doc.TextNode("Datum")]),Doc.Element("br",[],[]),Doc.TextNode("$tagHeute"),Doc.Element("br",[],[]),Doc.TextNode("$monatHeute"),Doc.Element("br",[],[]),Doc.TextNode("$jahrHeute"),Doc.Element("br",[],[]),Doc.Element("hr",[],[]),Doc.Element("b",[],[Doc.TextNode("Sonstige")]),Doc.Element("br",[],[]),Doc.TextNode("$jobName"),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("hr",[],[]),Doc.Element("br",[],[]),Doc.Element("h5",[AttrProxy.Create("class","distanced-bottom")],[Doc.TextNode("Benutzerdefiniert")]),Doc.InputArea([AttrProxy.Create("style","width: 100%; min-height: 500px"),AttrModule.Handler("keydown",function(el)
-  {
-   return function(ev)
-   {
-    var v,s,e;
-    return ev.keyCode===9?(v=String(el.value),(s=el.selectionStart,(e=el.selectionEnd,(el.value=Strings.Substring(v,0,s)+"\u0009"+v.substring(e),el.selectionStart=s+1,el.selectionEnd=s+1,ev.stopPropagation(),ev.preventDefault())))):null;
-   };
-  })],customVariables)]),Doc.Element("div",[AttrProxy.Create("id","divAttachments"),AttrProxy.Create("style","display: none")],[Doc.Element("h3",[],[Doc.TextNode(Translation.t(Language.German,Word.YourAttachments))]),Doc.Element("div",[AttrProxy.Create("id","divAttachmentButtons")],[Doc.Element("button",[AttrProxy.Create("id","btnAddPage"),AttrProxy.Create("style","margin:0;"),AttrProxy.Create("class","btnLikeLink"),AttrModule.Handler("click",function()
-  {
-   return function()
-   {
-    return Global.document.getElementById("slctDocumentName").selectedIndex>=0?(show(List.ofArray(["divChoosePageType","divAttachments","divCreateFilePage"])),void(Global.document.getElementById("rbFilePage").checked=true)):(Global.alert("Bitte erst eine neue Bewerbungsmappe anlegen"),show(List.ofArray(["divAddDocument"])));
-   };
-  })],[Doc.Element("i",[AttrProxy.Create("class","fa fa-plus-square"),AttrProxy.Create("aria-hidden","true")],[])])]),Doc.Element("br",[],[]),Doc.Element("hr",[],[]),Doc.Element("br",[],[])]),Doc.Element("div",[AttrProxy.Create("id","divAddDocument"),AttrProxy.Create("style","display: none")],[Doc.Element("br",[],[]),Doc.Element("h3",[],[Doc.TextNode(Translation.t(Language.German,Word.AddDocument))]),Doc.Element("br",[],[]),Doc.Element("label",[AttrProxy.Create("for","txtNewDocumentName")],[Doc.TextNode(Translation.t(Language.German,Word.DocumentName))]),Doc.Element("input",[AttrProxy.Create("id","txtNewDocumentName"),AttrProxy.Create("class","form-control")],[]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("class","btnLikeLink"),AttrProxy.Create("value",Translation.t(Language.German,Word.AddDocument)),AttrModule.Handler("click",function()
-  {
-   return function()
-   {
-    var b$1;
-    return Concurrency.Start((b$1=null,Concurrency.Delay(function()
-    {
-     var newDocumentName,i;
-     newDocumentName=String(Global.document.getElementById("txtNewDocumentName").value);
-     return Strings.Trim(newDocumentName)===""?(Global.alert(Strings.SFormat(Translation.t(Language.German,Word.FieldIsRequired),[Translation.t(Language.German,Word.DocumentName)])),Concurrency.Zero()):(Var.Set(varDocument,(i=varDocument.c,Document.New(i.oId,newDocumentName,i.pages,i.email,i.jobName,i.customVariables))),Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.saveNewDocument:1535261021",[varDocument.c]),function(a)
-     {
-      var i$1,slctEl;
-      Var.Set(varDocument,(i$1=varDocument.c,Document.New({
-       $:1,
-       $0:a
-      },i$1.name,i$1.pages,i$1.email,i$1.jobName,i$1.customVariables)));
-      slctEl=Global.document.getElementById("slctDocumentName");
-      addSelectOption(slctEl,newDocumentName);
-      Global.document.getElementById("divAddDocument").style.display="none";
-      Global.document.getElementById("btnDeleteDocument").style.display="inline";
-      slctEl.selectedIndex=slctEl.options.length-1;
-      return Concurrency.Bind(setDocument(),function()
-      {
-       return Concurrency.Bind(setPageButtons(),function()
-       {
-        show(List.ofArray(["divAttachments"]));
-        return Concurrency.Bind(fillDocumentValues(),function()
+        return Concurrency.Bind(Concurrency.Sleep(10),function()
         {
          return Concurrency.Return(null);
         });
-       });
-      });
-     }));
-    })),null);
-   };
-  })],[])]),Doc.Element("div",[AttrProxy.Create("id","divDisplayedDocument"),AttrProxy.Create("style","display: none")],[Doc.Element("select",[AttrProxy.Create("id","slctHtmlPageTemplate"),AttrModule.Handler("change",function()
-  {
-   return function()
-   {
-    var b$1;
-    return Concurrency.Start((b$1=null,Concurrency.Delay(function()
-    {
-     return Concurrency.Bind(loadPageTemplate(),function()
-     {
-      return Concurrency.Bind(fillDocumentValues(),function()
-      {
-       return Concurrency.Return(null);
-      });
-     });
-    })),null);
-   };
-  })],[]),Doc.EmbedView(varDisplayedDocument.v)]),Doc.Element("div",[AttrProxy.Create("id","divUploadedFileDownload"),AttrProxy.Create("style","display: none")],[Doc.Element("input",[AttrProxy.Create("type","checkbox"),AttrProxy.Create("value","false"),AttrProxy.Create("id","chkReplaceVariables")],[]),Doc.Element("label",[AttrProxy.Create("for","chkReplaceVariables")],[Doc.TextNode(Translation.t(Language.German,Word.ReplaceVariables))]),Doc.Element("br",[],[]),Doc.Element("button",[AttrProxy.Create("type","button"),AttrModule.Handler("click",function()
-  {
-   return function()
-   {
-    var chkReplaceVariables,m,x,filePage,b$1;
-    chkReplaceVariables=Global.jQuery("#chkReplaceVariables");
-    m=(x=varDocument.c.pages,Seq.tryItem(getCurrentPageIndex()-1,x));
-    return m==null?null:m.$0.$==0?null:(filePage=m.$0.$0,Concurrency.Start((b$1=null,Concurrency.Delay(function()
-    {
-     var b$2;
-     return Concurrency.Bind(chkReplaceVariables.prop("checked")?(new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.replaceVariables:-699540492",[filePage.path,varUserValues.c,varEmployer.c,varDocument.c]):(b$2=null,Concurrency.Delay(function()
-     {
-      return Concurrency.Return(filePage.path);
-     })),function(a)
-     {
-      var fileName,extension;
-      fileName=(extension=filePage.path.substring(filePage.path.lastIndexOf(".")+1),Strings.EndsWith(filePage.name,"."+extension)?filePage.name:filePage.name+"."+extension);
-      return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.createLink:-1244178866",[a,fileName]),function(a$1)
-      {
-       Global.location.href=(function($1)
+       })),Concurrency.Delay(function()
        {
-        return function($2)
+        function addMenuEntry(entry,f)
         {
-         return $1("download/"+Utils.toSafe($2));
-        };
-       }(Global.id))(a$1);
-       return Concurrency.Zero();
-      });
+         var li,_this;
+         li=Global.jQuery((function($1)
+         {
+          return function($2)
+          {
+           return $1("<li><button class=\"btnLikeLink1\">"+Utils.toSafe($2)+"</button></li>");
+          };
+         }(Global.id))(entry)).on("click",Runtime.CreateFuncWithThis(f));
+         _this=Global.jQuery(divMenu);
+         return _this.append.apply(_this,[li]);
+        }
+        addMenuEntry(Translation.t(Language.German,Word.SentApplications),function()
+        {
+         return function()
+         {
+          var b$1;
+          return Concurrency.Start((b$1=null,Concurrency.Delay(function()
+          {
+           return Concurrency.Bind(getSentApplications(),function()
+           {
+            show(List.ofArray(["divSentApplications"]));
+            return Concurrency.Zero();
+           });
+          })),null);
+         };
+        });
+        addMenuEntry("Variablen",function()
+        {
+         return function()
+         {
+          return show(List.ofArray(["divVariables"]));
+         };
+        });
+        addMenuEntry(Translation.t(Language.German,Word.EditEmail),function()
+        {
+         return function()
+         {
+          return show(List.ofArray(["divEmail"]));
+         };
+        });
+        addMenuEntry(Translation.t(Language.German,Word.EditAttachments),function()
+        {
+         return function()
+         {
+          return show(List.ofArray(["divAttachments"]));
+         };
+        });
+        addMenuEntry(Translation.t(Language.German,Word.AddEmployerAndApply),function()
+        {
+         return function()
+         {
+          return show(List.ofArray(["divAddEmployer"]));
+         };
+        });
+        return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getUserEmail:-644426752",[]),function(a$2)
+        {
+         Var.Set(varUserEmail,a$2==null?"":a$2.$0);
+         return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getUserValues:-337599557",[]),function()
+         {
+          Var.Set(varUserValues,Types.emptyUserValues());
+          return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getDocumentNames:1994133801",[]),function(a$3)
+          {
+           var slctDocumentNameEl;
+           slctDocumentNameEl=Global.document.getElementById("slctDocumentName");
+           return Concurrency.Combine(Concurrency.While(function()
+           {
+            return Unchecked.Equals(Global.document.getElementById("slctDocumentName"),null);
+           },Concurrency.Delay(function()
+           {
+            return Concurrency.Bind(Concurrency.Sleep(10),function()
+            {
+             return Concurrency.Return(null);
+            });
+           })),Concurrency.Delay(function()
+           {
+            return Concurrency.Combine(Concurrency.For(a$3,function(a$4)
+            {
+             addSelectOption(slctDocumentNameEl,a$4);
+             return Concurrency.Zero();
+            }),Concurrency.Delay(function()
+            {
+             return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getLastEditedDocumentOffset:-836782155",[]),function(a$4)
+             {
+              slctDocumentNameEl.selectedIndex=a$4;
+              return Concurrency.Bind(setDocument(),function()
+              {
+               return Concurrency.Bind(setPageButtons(),function()
+               {
+                return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.getHtmlPageTemplates:1297380307",[]),function(a$5)
+                {
+                 var slctHtmlPageTemplateEl;
+                 slctHtmlPageTemplateEl=Global.document.getElementById("slctHtmlPageTemplate");
+                 return Concurrency.Combine(Concurrency.While(function()
+                 {
+                  return Unchecked.Equals(slctHtmlPageTemplateEl,null);
+                 },Concurrency.Delay(function()
+                 {
+                  return Concurrency.Bind(Concurrency.Sleep(10),function()
+                  {
+                   return Concurrency.Return(null);
+                  });
+                 })),Concurrency.Delay(function()
+                 {
+                  return Concurrency.Combine(Concurrency.For(a$5,function(a$6)
+                  {
+                   addSelectOption(slctHtmlPageTemplateEl,a$6.name);
+                   return Concurrency.Zero();
+                  }),Concurrency.Delay(function()
+                  {
+                   Global.jQuery(Global.document).ready(function()
+                   {
+                    return registerEvents();
+                   });
+                   return Concurrency.Zero();
+                  }));
+                 }));
+                });
+               });
+              });
+             });
+            }));
+           }));
+          });
+         });
+        });
+       }));
+      }));
      });
-    })),null));
-   };
-  })],[Doc.TextNode(Translation.t(Language.German,Word.Download))])]),Doc.Element("div",[AttrProxy.Create("id","divEmail"),AttrProxy.Create("style","display: none")],[Doc.Element("h3",[],[Doc.TextNode(Translation.t(Language.German,Word.Email))]),createInput(Translation.t(Language.German,Word.EmailSubject),documentEmailSubject,function()
+    }));
+   });
+  })),null);
+  return Doc.Element("div",[AttrProxy.Create("id","divJobApplicationContent")],[Doc.Element("div",[AttrProxy.Create("style","width : 100%")],[Doc.Element("h3",[],[Doc.TextNode(Translation.t(Language.German,Word.YourApplicationDocuments))]),Doc.Element("select",[AttrProxy.Create("id","slctDocumentName")],[]),Doc.Element("button",[AttrProxy.Create("type","button"),AttrProxy.Create("style","margin-left: 20px"),AttrProxy.Create("class",".btnLikeLink"),AttrProxy.Create("id","btnShowDivNewDocument")],[Doc.Element("i",[AttrProxy.Create("class","fa fa-plus-square"),AttrProxy.Create("aria-hidden","true")],[])]),Doc.Element("button",[AttrProxy.Create("type","button"),AttrProxy.Create("id","btnDeleteDocument"),AttrProxy.Create("class",".btnLikeLink"),AttrProxy.Create("style","margin-left: 20px")],[Doc.Element("i",[AttrProxy.Create("class","fa fa-trash"),AttrProxy.Create("aria-hidden","true")],[])])]),Doc.Element("hr",[],[]),Doc.Element("div",[AttrProxy.Create("id","divVariables"),AttrProxy.Create("style","display: none")],[Doc.Element("h3",[AttrProxy.Create("class","distanced-bottom")],[Doc.TextNode("Variablen")]),Doc.Element("h5",[AttrProxy.Create("class","distanced-bottom")],[Doc.TextNode("Vordefiniert")]),Doc.Element("b",[],[Doc.TextNode("Arbeitgeber")]),Doc.Element("br",[],[]),Doc.TextNode("$firmaName"),Doc.Element("br",[],[]),Doc.TextNode("$firmaStrasse"),Doc.Element("br",[],[]),Doc.TextNode("$firmaPlz"),Doc.Element("br",[],[]),Doc.TextNode("$firmaStadt"),Doc.Element("br",[],[]),Doc.TextNode("$chefTitel"),Doc.Element("br",[],[]),Doc.TextNode("$chefVorname"),Doc.Element("br",[],[]),Doc.TextNode("$chefNachname"),Doc.Element("br",[],[]),Doc.TextNode("$chefEmail"),Doc.Element("br",[],[]),Doc.TextNode("$chefTelefon"),Doc.Element("br",[],[]),Doc.TextNode("$chefMobil"),Doc.Element("br",[],[]),Doc.Element("hr",[],[]),Doc.Element("b",[],[Doc.TextNode(Translation.t(Language.German,Word.YourValues))]),Doc.Element("br",[],[]),Doc.TextNode("$meinGeschlecht"),Doc.Element("br",[],[]),Doc.TextNode("$meinTitel"),Doc.Element("br",[],[]),Doc.TextNode("$meinVorname"),Doc.Element("br",[],[]),Doc.TextNode("$meinNachname"),Doc.Element("br",[],[]),Doc.TextNode("$meineStrasse"),Doc.Element("br",[],[]),Doc.TextNode("$meinePlz"),Doc.Element("br",[],[]),Doc.TextNode("$meineStadt"),Doc.Element("br",[],[]),Doc.TextNode("$meineEmail"),Doc.Element("br",[],[]),Doc.TextNode("$meineMobilnr"),Doc.Element("br",[],[]),Doc.TextNode("$meineTelefonnr"),Doc.Element("br",[],[]),Doc.Element("hr",[],[]),Doc.Element("b",[],[Doc.TextNode("Datum")]),Doc.Element("br",[],[]),Doc.TextNode("$tagHeute"),Doc.Element("br",[],[]),Doc.TextNode("$monatHeute"),Doc.Element("br",[],[]),Doc.TextNode("$jahrHeute"),Doc.Element("br",[],[]),Doc.Element("hr",[],[]),Doc.Element("b",[],[Doc.TextNode("Sonstige")]),Doc.Element("br",[],[]),Doc.TextNode("$jobName"),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("hr",[],[]),Doc.Element("br",[],[]),Doc.Element("h5",[AttrProxy.Create("class","distanced-bottom")],[Doc.TextNode("Benutzerdefiniert")]),Doc.InputArea([AttrProxy.Create("style","width: 100%; min-height: 500px"),AttrProxy.Create("id","txtUserDefinedVariables")],customVariables)]),Doc.Element("div",[AttrProxy.Create("id","divAttachments"),AttrProxy.Create("style","display: none")],[Doc.Element("h3",[],[Doc.TextNode(Translation.t(Language.German,Word.YourAttachments))]),Doc.Element("div",[AttrProxy.Create("id","divAttachmentButtons")],[Doc.Element("button",[AttrProxy.Create("id","btnAddPage"),AttrProxy.Create("style","margin:0;"),AttrProxy.Create("class","btnLikeLink")],[Doc.Element("i",[AttrProxy.Create("class","fa fa-plus-square"),AttrProxy.Create("aria-hidden","true")],[])])]),Doc.Element("br",[],[]),Doc.Element("hr",[],[]),Doc.Element("br",[],[])]),Doc.Element("div",[AttrProxy.Create("id","divAddDocument"),AttrProxy.Create("style","display: none")],[Doc.Element("br",[],[]),Doc.Element("h3",[],[Doc.TextNode(Translation.t(Language.German,Word.AddDocument))]),Doc.Element("br",[],[]),Doc.Element("label",[AttrProxy.Create("for","txtNewDocumentName")],[Doc.TextNode(Translation.t(Language.German,Word.DocumentName))]),Doc.Element("input",[AttrProxy.Create("id","txtNewDocumentName"),AttrProxy.Create("class","form-control")],[]),Doc.Element("input",[AttrProxy.Create("type","button"),AttrProxy.Create("class","btnLikeLink"),AttrProxy.Create("id","btnAddDocument"),AttrProxy.Create("value",Translation.t(Language.German,Word.AddDocument))],[])]),Doc.Element("div",[AttrProxy.Create("id","divDisplayedDocument"),AttrProxy.Create("style","display: none")],[Doc.Element("select",[AttrProxy.Create("id","slctHtmlPageTemplate")],[]),Doc.EmbedView(varDisplayedDocument.v)]),Doc.Element("div",[AttrProxy.Create("id","divUploadedFileDownload"),AttrProxy.Create("style","display: none")],[Doc.Element("input",[AttrProxy.Create("type","checkbox"),AttrProxy.Create("value","false"),AttrProxy.Create("id","chkReplaceVariables")],[]),Doc.Element("label",[AttrProxy.Create("for","chkReplaceVariables")],[Doc.TextNode(Translation.t(Language.German,Word.ReplaceVariables))]),Doc.Element("br",[],[]),Doc.Element("button",[AttrProxy.Create("type","button"),AttrProxy.Create("id","btnDownloadFilePage")],[Doc.TextNode(Translation.t(Language.German,Word.Download))])]),Doc.Element("div",[AttrProxy.Create("id","divEmail"),AttrProxy.Create("style","display: none")],[Doc.Element("h3",[],[Doc.TextNode(Translation.t(Language.German,Word.Email))]),createInput(Translation.t(Language.German,Word.EmailSubject),documentEmailSubject,function()
   {
    return"";
-  }),(guid=(c=Guid.NewGuid(),Guid.ToString(c,"N")),Doc.Element("div",[AttrProxy.Create("class","form-group bottom-distanced")],[Doc.Element("label",[AttrProxy.Create("for",guid),AttrProxy.Create("style","font-weight: bold")],[Doc.TextNode(Translation.t(Language.German,Word.EmailBody))]),Doc.InputArea([AttrProxy.Create("id",guid),AttrProxy.Create("class","form-control"),AttrProxy.Create("style","wrap: soft; white-space: nowrap; overflow: auto; min-height: "+"400px")],documentEmailBody)]))]),Doc.Element("div",[AttrProxy.Create("id","divChoosePageType"),AttrProxy.Create("style","display: none")],[Doc.Element("input",[AttrProxy.Create("type","radio"),AttrProxy.Create("disabled","true"),AttrProxy.Create("name","rbgrpPageType"),AttrProxy.Create("id","rbHtmlPage"),AttrModule.Handler("click",function()
-  {
-   return function()
-   {
-    return show(List.ofArray(["divAttachments","divChoosePageType","divCreateHtmlPage"]));
-   };
-  })],[]),Doc.Element("label",[AttrProxy.Create("for","rbHtmlPage")],[Doc.TextNode(Translation.t(Language.German,Word.CreateOnline))]),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("type","radio"),AttrProxy.Create("id","rbFilePage"),AttrProxy.Create("name","rbgrpPageType"),AttrModule.Handler("click",function()
-  {
-   return function()
-   {
-    return show(List.ofArray(["divAttachments","divChoosePageType","divCreateFilePage"]));
-   };
-  })],[]),Doc.Element("label",[AttrProxy.Create("for","rbFilePage")],[Doc.TextNode(Translation.t(Language.German,Word.UploadFile))]),Doc.Element("br",[],[]),Doc.Element("br",[],[])]),Doc.Element("div",[AttrProxy.Create("id","divCreateHtmlPage"),AttrProxy.Create("style","display: none")],[Doc.Element("input",[AttrProxy.Create("id","txtCreateHtmlPage")],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("button",[AttrProxy.Create("type","submit"),AttrModule.Handler("click",function()
-  {
-   return function()
-   {
-    var pageIndex,i,b$1;
-    pageIndex=Global.jQuery("#divAttachmentButtons").children("div").length;
-    Var.Set(varDocument,(i=varDocument.c,Document.New(i.oId,i.name,List.append(varDocument.c.pages,List.ofArray([new DocumentPage({
-     $:0,
-     $0:HtmlPage.New(Global.document.getElementById("txtCreateHtmlPage").value,{
-      $:1,
-      $0:1
-     },pageIndex,List.T.Empty)
-    })])),i.email,i.jobName,i.customVariables)));
-    return Concurrency.Start((b$1=null,Concurrency.Delay(function()
-    {
-     return Concurrency.Bind(setPageButtons(),function()
-     {
-      return Concurrency.Return(null);
-     });
-    })),null);
-   };
-  })],[Doc.TextNode(Translation.t(Language.German,Word.AddHtmlAttachment))])]),Doc.Element("div",[AttrProxy.Create("id","divCreateFilePage"),AttrProxy.Create("style","display: none")],[Doc.Element("form",[AttrProxy.Create("method","POST"),AttrProxy.Create("action","upload"),AttrProxy.Create("enctype","multipart/form-data")],[Doc.TextNode(Translation.t(Language.German,Word.PleaseChooseAFile)),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("type","file"),AttrProxy.Create("name","myFile"),AttrProxy.Create("id","myFile"),AttrModule.Handler("change",function(el)
-  {
-   return function()
-   {
-    var b$1;
-    return Concurrency.Start((b$1=null,Concurrency.Delay(function()
-    {
-     var fileName,fileExtension,$1;
-     fileName=String(el.files.item(0).name);
-     fileExtension=fileName.substring(fileName.lastIndexOf(".")+1);
-     return el.files.item(0).size>Types.maxUploadSize()?(Global.alert(Translation.t(Language.German,Word.FileIsTooBig)+"\n"+Strings.SFormat(Translation.t(Language.German,Word.UploadLimit),[String(Types.maxUploadSize()/1000000>>0)])),Concurrency.Zero()):!List.contains(fileExtension,Types.supportedUnoconvFileTypes())?(Global.alert(($1=[fileExtension],"Entschuldigung.\n*."+(Arrays.get($1,0)==null?"":String(Arrays.get($1,0)))+" Dateien können zur Zeit nicht ins PDF-Format verwandelt werden.\r\n                                                          \nTypische Dateitypen zum Uploaden sind *.odt, *.docx und *.pdf.")),Concurrency.Zero()):(el.parentElement.submit(),Concurrency.Zero());
-    })),null);
-   };
-  })],[]),Doc.Element("input",[AttrProxy.Create("type","hidden"),AttrProxy.Create("id","hiddenDocumentId"),AttrProxy.Create("name","documentId"),AttrProxy.Create("value","1")],[]),Doc.Element("input",[AttrProxy.Create("type","hidden"),AttrProxy.Create("id","hiddenNextPageIndex"),AttrProxy.Create("name","pageIndex"),AttrProxy.Create("value","1")],[])]),Doc.Element("br",[],[]),Doc.Element("hr",[],[])]),Doc.Element("div",[AttrProxy.Create("id","divSentApplications"),AttrProxy.Create("style","display: none")],[Doc.EmbedView(varDivSentApplications.v)]),Doc.Element("div",[AttrProxy.Create("id","divEditUserValues"),AttrProxy.Create("style","display: none")],[Doc.Element("h3",[],[Doc.TextNode(Translation.t(Language.German,Word.YourValues))]),Doc.Element("b",[],[Doc.TextNode("Dies sind keine Pflichtangaben.")]),Doc.Element("br",[],[]),Doc.TextNode("Diese Angaben setzen die Werte von Variablen die mit \"$mein\" beginnen, zum Beispiel \"$meinVorname\". Statt hier deine Daten einzutragen kannst du alle Vorkommen dieser Variablen auch direkt ersetzen."),Doc.Element("br",[],[]),Doc.Element("br",[],[]),createInput(Translation.t(Language.German,Word.Degree),userDegree,function()
+  }),(guid=(c=Guid.NewGuid(),Guid.ToString(c,"N")),Doc.Element("div",[AttrProxy.Create("class","form-group bottom-distanced")],[Doc.Element("label",[AttrProxy.Create("for",guid),AttrProxy.Create("style","font-weight: bold")],[Doc.TextNode(Translation.t(Language.German,Word.EmailBody))]),Doc.InputArea([AttrProxy.Create("id",guid),AttrProxy.Create("class","form-control"),AttrProxy.Create("style","wrap: soft; white-space: nowrap; overflow: auto; min-height: "+"400px")],documentEmailBody)]))]),Doc.Element("div",[AttrProxy.Create("id","divChoosePageType"),AttrProxy.Create("style","display: none")],[Doc.Element("input",[AttrProxy.Create("type","radio"),AttrProxy.Create("disabled","true"),AttrProxy.Create("name","rbgrpPageType"),AttrProxy.Create("id","rbHtmlPage")],[]),Doc.Element("label",[AttrProxy.Create("for","rbHtmlPage")],[Doc.TextNode(Translation.t(Language.German,Word.CreateOnline))]),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("type","radio"),AttrProxy.Create("id","rbFilePage"),AttrProxy.Create("name","rbgrpPageType")],[]),Doc.Element("label",[AttrProxy.Create("for","rbFilePage")],[Doc.TextNode(Translation.t(Language.German,Word.UploadFile))]),Doc.Element("br",[],[]),Doc.Element("br",[],[])]),Doc.Element("div",[AttrProxy.Create("id","divCreateHtmlPage"),AttrProxy.Create("style","display: none")],[Doc.Element("input",[AttrProxy.Create("id","txtCreateHtmlPage")],[]),Doc.Element("br",[],[]),Doc.Element("br",[],[]),Doc.Element("button",[AttrProxy.Create("type","submit"),AttrProxy.Create("id","btnCreateHtmlPage")],[Doc.TextNode(Translation.t(Language.German,Word.AddHtmlAttachment))])]),Doc.Element("div",[AttrProxy.Create("id","divCreateFilePage"),AttrProxy.Create("style","display: none")],[Doc.Element("form",[AttrProxy.Create("method","POST"),AttrProxy.Create("action","upload"),AttrProxy.Create("enctype","multipart/form-data")],[Doc.TextNode(Translation.t(Language.German,Word.PleaseChooseAFile)),Doc.Element("br",[],[]),Doc.Element("input",[AttrProxy.Create("type","file"),AttrProxy.Create("name","fileToUpload"),AttrProxy.Create("id","fileToUpload")],[]),Doc.Element("input",[AttrProxy.Create("type","hidden"),AttrProxy.Create("id","hiddenDocumentId"),AttrProxy.Create("name","documentId"),AttrProxy.Create("value","1")],[]),Doc.Element("input",[AttrProxy.Create("type","hidden"),AttrProxy.Create("id","hiddenNextPageIndex"),AttrProxy.Create("name","pageIndex"),AttrProxy.Create("value","1")],[])]),Doc.Element("br",[],[]),Doc.Element("hr",[],[])]),Doc.Element("div",[AttrProxy.Create("id","divSentApplications"),AttrProxy.Create("style","display: none")],[Doc.EmbedView(varDivSentApplications.v)]),Doc.Element("div",[AttrProxy.Create("id","divEditUserValues"),AttrProxy.Create("style","display: none")],[Doc.Element("h3",[],[Doc.TextNode(Translation.t(Language.German,Word.YourValues))]),Doc.Element("b",[],[Doc.TextNode("Dies sind keine Pflichtangaben.")]),Doc.Element("br",[],[]),Doc.TextNode("Diese Angaben setzen die Werte von Variablen die mit \"$mein\" beginnen, zum Beispiel \"$meinVorname\". Statt hier deine Daten einzutragen kannst du alle Vorkommen dieser Variablen auch direkt ersetzen."),Doc.Element("br",[],[]),Doc.Element("br",[],[]),createInput(Translation.t(Language.German,Word.Degree),userDegree,function()
   {
    return"";
   }),createRadio(Translation.t(Language.German,Word.Gender),List.ofArray([[Translation.t(Language.German,Word.Male),Gender.Male,userGender,""],[Translation.t(Language.German,Word.Female),Gender.Female,userGender,""]])),createInput(Translation.t(Language.German,Word.FirstName),userFirstName,function()
@@ -1568,31 +1606,7 @@
   })]),Doc.Element("div",[AttrProxy.Create("id","divAddEmployer"),AttrProxy.Create("style","display: none")],[createInput(Translation.t(Language.German,Word.JobName),documentJobName,function()
   {
    return"";
-  }),Doc.EmbedView(varUserEmailInput.v),Doc.Element("h3",[],[Doc.TextNode(Translation.t(Language.German,Word.Employer))]),Doc.Element("div",[AttrProxy.Create("class","form-group row")],[Doc.Element("div",[AttrProxy.Create("class","col-lg-3")],[Doc.Element("button",[AttrProxy.Create("type","button"),AttrProxy.Create("class","btn-block"),AttrProxy.Create("id","btnReadFromWebsite"),AttrModule.Handler("click",function()
-  {
-   return function()
-   {
-    return Concurrency.Start(readFromWebsite(),null);
-   };
-  })],[Doc.Element("i",[AttrProxy.Create("class","fa fa-spinner fa-spin"),AttrProxy.Create("id","faReadFromWebsite"),AttrProxy.Create("style","color: black; margin-right: 10px; visibility: hidden")],[]),Doc.TextNode(Translation.t(Language.German,Word.LoadFromWebsite))])]),Doc.Element("div",[AttrProxy.Create("class","col-lg-9")],[Doc.Element("input",[AttrProxy.Create("id","txtReadEmployerFromWebsite"),AttrProxy.Create("type","text"),AttrModule.Handler("paste",function()
-  {
-   return function()
-   {
-    return Concurrency.Start(readFromWebsite(),null);
-   };
-  }),AttrProxy.Create("class","form-control"),AttrProxy.Create("placeholder","URL oder Referenznummer"),AttrModule.Handler("focus",function(el)
-  {
-   return function()
-   {
-    return el.select();
-   };
-  })],[])])]),Doc.Element("div",[AttrProxy.Create("class","form-group row col-12")],[Doc.Element("button",[AttrProxy.Create("type","button"),AttrProxy.Create("class","btnLikeLink btn-block"),AttrProxy.Create("style","min-height: 40px; font-size: 20px"),AttrProxy.Create("id","btnApplyNowTop"),AttrModule.Handler("click",function()
-  {
-   return function()
-   {
-    return Concurrency.Start(btnApplyNowClicked(),null);
-   };
-  })],[Doc.Element("i",[AttrProxy.Create("class","fa fa-icon"),AttrProxy.Create("id","faBtnApplyNowTop"),AttrProxy.Create("style","color: #08a81b; margin-right: 10px")],[]),Doc.TextNode(Translation.t(Language.German,Word.ApplyNow))])]),createInput(Translation.t(Language.German,Word.CompanyName),employerCompany,function()
+  }),Doc.EmbedView(varUserEmailInput.v),Doc.Element("h3",[],[Doc.TextNode(Translation.t(Language.German,Word.Employer))]),Doc.Element("div",[AttrProxy.Create("class","form-group row")],[Doc.Element("div",[AttrProxy.Create("class","col-lg-3")],[Doc.Element("button",[AttrProxy.Create("type","button"),AttrProxy.Create("class","btn-block"),AttrProxy.Create("id","btnReadFromWebsite")],[Doc.Element("i",[AttrProxy.Create("class","fa fa-spinner fa-spin"),AttrProxy.Create("id","faReadFromWebsite"),AttrProxy.Create("style","color: black; margin-right: 10px; visibility: hidden")],[]),Doc.TextNode(Translation.t(Language.German,Word.LoadFromWebsite))])]),Doc.Element("div",[AttrProxy.Create("class","col-lg-9")],[Doc.Element("input",[AttrProxy.Create("id","txtReadFromWebsite"),AttrProxy.Create("type","text"),AttrProxy.Create("class","form-control"),AttrProxy.Create("placeholder","URL oder Referenznummer")],[])])]),Doc.Element("div",[AttrProxy.Create("class","form-group row col-12")],[Doc.Element("button",[AttrProxy.Create("type","button"),AttrProxy.Create("class","btnLikeLink btn-block"),AttrProxy.Create("style","min-height: 40px; font-size: 20px"),AttrProxy.Create("id","btnApplyNowTop")],[Doc.Element("i",[AttrProxy.Create("class","fa fa-icon"),AttrProxy.Create("id","faBtnApplyNowTop"),AttrProxy.Create("style","color: #08a81b; margin-right: 10px")],[]),Doc.TextNode(Translation.t(Language.German,Word.ApplyNow))])]),createInput(Translation.t(Language.German,Word.CompanyName),employerCompany,function()
   {
    return"";
   }),createInput(Translation.t(Language.German,Word.Street),employerStreet,function()
@@ -1613,98 +1627,17 @@
   }),createInput(Translation.t(Language.German,Word.LastName),employerLastName,function()
   {
    return"";
-  }),Doc.Element("div",[AttrProxy.Create("class","form-group bottom-distanced")],[Doc.Element("div",[],[Doc.Element("label",[AttrProxy.Create("for","txtEmployerEmail"),AttrProxy.Create("style","font-weight: bold")],[Doc.TextNode("Email")]),Doc.Element("button",[AttrModule.Handler("click",function()
-  {
-   return function()
-   {
-    return employerEmail.set_RVal(varUserEmail.c);
-   };
-  }),AttrProxy.Create("class","distanced")],[Doc.TextNode("an dich")])]),Doc.Input([AttrProxy.Create("id","txtEmployerEmail"),AttrProxy.Create("class","form-control"),AttrProxy.Create("type","text")],employerEmail)]),createInput(Translation.t(Language.German,Word.Phone),employerPhone,function()
+  }),Doc.Element("div",[AttrProxy.Create("class","form-group bottom-distanced")],[Doc.Element("div",[],[Doc.Element("label",[AttrProxy.Create("for","txtEmployerEmail"),AttrProxy.Create("style","font-weight: bold")],[Doc.TextNode("Email")]),Doc.Element("button",[AttrProxy.Create("id","btnSetEmployerEmailToUserEmail"),AttrProxy.Create("class","distanced")],[Doc.TextNode("an dich")])]),Doc.Input([AttrProxy.Create("id","txtEmployerEmail"),AttrProxy.Create("class","form-control"),AttrProxy.Create("type","text")],employerEmail)]),createInput(Translation.t(Language.German,Word.Phone),employerPhone,function()
   {
    return"";
   }),createInput(Translation.t(Language.German,Word.MobilePhone),employerMobilePhone,function()
   {
    return"";
-  }),Doc.Element("button",[AttrProxy.Create("type","button"),AttrProxy.Create("class","btnLikeLink btn-block"),AttrProxy.Create("style","min-height: 40px; font-size: 20px"),AttrProxy.Create("id","btnApplyNowBottom"),AttrModule.Handler("click",function()
-  {
-   return function()
-   {
-    return Concurrency.Start(btnApplyNowClicked(),null);
-   };
-  })],[Doc.Element("i",[AttrProxy.Create("class","fa fa-icon"),AttrProxy.Create("id","faBtnApplyNowBottom"),AttrProxy.Create("style","color: #08a81b; margin-right: 10px")],[]),Doc.TextNode(Translation.t(Language.German,Word.ApplyNow))])])]);
- };
- Client.doLogin=function()
- {
-  var b;
-  function _loginAsGuest()
-  {
-   var b$1;
-   b$1=null;
-   return Concurrency.Delay(function()
-   {
-    var sessionGuid,c;
-    sessionGuid=(c=Guid.NewGuid(),Guid.ToString(c,"N"));
-    Cookies.set("user",sessionGuid);
-    return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.loginAsGuest:-1276324058",[sessionGuid]),function()
-    {
-     return Concurrency.Return(null);
-    });
-   });
-  }
-  Concurrency.Start((b=null,Concurrency.Delay(function()
-  {
-   return Concurrency.Combine(Cookies.get("user")!==void 0?Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.loginUserBySessionGuid:2079759932",[Cookies.get("user")]),function(a)
-   {
-    return a.$==1?Concurrency.Bind(_loginAsGuest(),function()
-    {
-     return Concurrency.Return(null);
-    }):Concurrency.Zero();
-   }):Concurrency.Bind(_loginAsGuest(),function()
-   {
-    return Concurrency.Return(null);
-   }),Concurrency.Delay(function()
-   {
-    var shouldWaitForLogin;
-    shouldWaitForLogin=true;
-    return Concurrency.Combine(Concurrency.While(function()
-    {
-     return shouldWaitForLogin;
-    },Concurrency.Delay(function()
-    {
-     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.isUserLoggedIn:-900658348",[]),function(a)
-     {
-      return Concurrency.Bind(Concurrency.Sleep(20),function()
-      {
-       shouldWaitForLogin=!a;
-       return Concurrency.Zero();
-      });
-     });
-    })),Concurrency.Delay(function()
-    {
-     Global.location.href="/";
-     return Concurrency.Zero();
-    }));
-   }));
-  })),null);
-  return Doc.Element("div",[],[]);
+  }),Doc.Element("button",[AttrProxy.Create("type","button"),AttrProxy.Create("class","btnLikeLink btn-block"),AttrProxy.Create("style","min-height: 40px; font-size: 20px"),AttrProxy.Create("id","btnApplyNowBottom")],[Doc.Element("i",[AttrProxy.Create("class","fa fa-icon"),AttrProxy.Create("id","faBtnApplyNowBottom"),AttrProxy.Create("style","color: #08a81b; margin-right: 10px")],[]),Doc.TextNode(Translation.t(Language.German,Word.ApplyNow))])])]);
  };
  Client.login=function()
  {
   return Doc.Element("div",[],[Doc.Element("form",[AttrProxy.Create("action","/ghi"),AttrProxy.Create("method","POST")],[Doc.Element("h3",[],[Doc.TextNode(Translation.t(Language.German,Word.Login))]),Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","txtLoginEmail")],[Doc.TextNode("Email")]),Doc.Element("input",[AttrProxy.Create("class","form-control"),AttrProxy.Create("name","txtLoginEmail"),AttrProxy.Create("id","txtLoginEmail")],[])]),Doc.Element("div",[AttrProxy.Create("class","form-group")],[Doc.Element("label",[AttrProxy.Create("for","txtLoginPassword")],[Doc.TextNode("Password")]),Doc.Element("input",[AttrProxy.Create("type","password"),AttrProxy.Create("class","form-control"),AttrProxy.Create("name","txtLoginPassword"),AttrProxy.Create("id","txtLoginPassword")],[])]),Doc.Element("input",[AttrProxy.Create("type","submit"),AttrProxy.Create("value","Login"),AttrProxy.Create("name","btnLogin")],[])])]);
- };
- Client.setSessionCookie=function()
- {
-  var guid,c,r,b;
-  guid=(c=Guid.NewGuid(),Guid.ToString(c,"N"));
-  Cookies.set("user",guid,(r={},r.expires=new Date(Date.now()+604800000),r));
-  Concurrency.Start((b=null,Concurrency.Delay(function()
-  {
-   return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.setSessionGuid:-1276324058",[guid]),function()
-   {
-    return Concurrency.Return(null);
-   });
-  })),null);
-  return Doc.Element("div",[],[]);
  };
  Client.changePassword=function()
  {
@@ -1725,7 +1658,7 @@
   {
    return function()
    {
-    return Client.togglePassword("txtNewPassword");
+    return Client.togglePassword(Global.jQuery("#txtNewPassword"));
    };
   })],[])])]),Doc.Element("input",[AttrProxy.Create("type","submit"),AttrProxy.Create("value",Translation.t(Language.German,Word.ChangePassword))],[])])]);
  };
@@ -1748,10 +1681,8 @@
   })),null);
   return varIsGuest.c?Doc.Element("form",[AttrProxy.Create("action","/ghi")],[Doc.Element("button",[AttrProxy.Create("type","submit")],[Doc.TextNode("Login")])]):Doc.Element("form",[AttrProxy.Create("action","/logout")],[Doc.Element("button",[AttrProxy.Create("type","submit")],[Doc.TextNode("Logout")])]);
  };
- Client.togglePassword=function(id)
+ Client.togglePassword=function(el)
  {
-  var el;
-  el=Global.jQuery("#"+id);
   el.attr("type")==="password"?el.attr("type","text"):el.attr("type","password");
   el.next().toggleClass("fa-eye fa-eye-slash");
   el.focus();

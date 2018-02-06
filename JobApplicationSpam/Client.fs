@@ -16,8 +16,7 @@ module Client =
 
 
     [<JavaScript>]
-    let togglePassword id =
-        let el = JQuery("#" + id)
+    let togglePassword (el : JQuery) =
         if el.Attr("type") = "password"
         then
             el.Attr("type", "text") |> ignore
@@ -91,7 +90,8 @@ module Client =
                             Attr.Create "aria-hidden" "true"
                             attr.style "float: right; position: relative; margin-top: -36px; margin-right: 15px"
                             on.click (fun _ _ ->
-                                togglePassword "txtNewPassword")
+                                togglePassword <| JQuery("#txtNewPassword")
+                            )
                           ]
                           []
                       ]
@@ -103,15 +103,6 @@ module Client =
                   []
               ]
           ]
-
-    [<JavaScript>]
-    let setSessionCookie () =
-        let guid = Guid.NewGuid().ToString("N")
-        Cookies.Set("user", guid, Cookies.Options(Expires = Date(Date.Now() + 604800000)))
-        async {
-            do! Server.setSessionGuid guid
-        } |> Async.Start
-        div []
 
     [<JavaScript>]
     let login () =
@@ -148,36 +139,6 @@ module Client =
                   []
               ]
           ]
-
-
-    [<JavaScript>]
-    let doLogin () =
-        let loginAsGuest' () =
-            async {
-                let sessionGuid = Guid.NewGuid().ToString("N")
-                Cookies.Set("user", sessionGuid)
-                do! Server.loginAsGuest sessionGuid
-            }
-
-        async {
-            if Cookies.Get("user").Value <> JS.Undefined
-            then
-                let! loginResult = Server.loginUserBySessionGuid (Cookies.Get("user").Value)
-                match loginResult with
-                | Ok _ ->
-                    ()
-                | Bad _ ->
-                    do! loginAsGuest' ()
-            else
-                do! loginAsGuest' ()
-            let mutable shouldWaitForLogin = true
-            while shouldWaitForLogin do
-                let! userLoggedIn = Server.isUserLoggedIn()
-                do! Async.Sleep 20
-                shouldWaitForLogin <- not userLoggedIn
-            JS.Window.Location.Href <- "/"
-        } |> Async.Start 
-        div []
 
 
 
@@ -924,7 +885,7 @@ module Client =
                     |> List.iter (fun faEl ->
                         faEl.Css("color", "black") |> ignore
                         faEl.AddClass("fa-spinner fa-spin") |> ignore
-                        )
+                       )
                     btnLoadFromWebsite.Prop("disabled", true) |> ignore
                     JQuery("#divJobApplicationContent").Find("input,textarea,button,select").Prop("disabled", true) |> ignore
 
@@ -933,7 +894,7 @@ module Client =
                             varEmployer.Value
                             varDocument.Value
                             varUserValues.Value
-                            (JS.Document.GetElementById("txtReadEmployerFromWebsite")?value)
+                            (JS.Document.GetElementById("txtReadFromWebsite")?value)
 
                     fontAwesomeEls
                     |> List.iter (fun faEl ->
@@ -953,7 +914,7 @@ module Client =
                         )
 
                         varEmployer.Value <- emptyEmployer
-                        JS.Document.GetElementById("txtReadEmployerFromWebsite")?value <- ""
+                        JS.Document.GetElementById("txtReadFromWebsite")?value <- ""
 
                         do! Async.Sleep 4500
 
@@ -963,6 +924,218 @@ module Client =
                         )
             }
 
+        let readFromWebsite () =
+            async {
+                JS.Document.GetElementById("btnReadFromWebsite")?disabled <- true
+                JS.Document.GetElementById("faReadFromWebsite")?style?visibility <- "visible"
+                do! Async.Sleep 200
+                let! employerResult = Server.readWebsite (JS.Document.GetElementById("txtReadFromWebsite")?value)
+                JS.Document.GetElementById("btnReadFromWebsite")?disabled <- false
+                JS.Document.GetElementById("faReadFromWebsite")?style?visibility <- "hidden"
+                match employerResult with
+                | Ok (employer, _) ->
+                    varEmployer.Value <- employer
+                | Bad (xs) ->
+                    JS.Alert(List.fold (fun state x -> state + x + "\n") "" xs)
+            }
+
+
+
+        let registerEvents () =
+            JS.Document.GetElementById("slctDocumentName").AddEventListener
+                ( "change"
+                , (fun () ->
+                      async {
+                        do! setDocument()
+                        do! setPageButtons()
+                        do! fillDocumentValues()
+                      } |> Async.Start)
+                , false)
+            JS.Document.GetElementById("btnShowDivNewDocument").AddEventListener
+                ( "click"
+                , fun () -> show ["divAddDocument"]
+                , false)
+            JS.Document.GetElementById("btnDeleteDocument").AddEventListener
+                ( "click"
+                , fun (ev : Dom.Event) ->
+                        async {
+                            let slctEl = JS.Document.GetElementById("slctDocumentName")
+                            if slctEl?selectedIndex >= 0 && JS.Confirm(String.Format(t German ReallyDeleteDocument, varDocument.Value.name))
+                            then
+                                match varDocument.Value.oId with
+                                | Some documentId -> do! Server.deleteDocument documentId
+                                | None -> ()
+                                let slctDocumentNameEl = JS.Document.GetElementById("slctDocumentName")
+                                slctDocumentNameEl.RemoveChild(slctDocumentNameEl?(slctDocumentNameEl?selectedIndex)) |> ignore
+                                if slctDocumentNameEl?length = 0
+                                then
+                                    ev.Target?style?display <- "none"
+                                    varDocument.Value <- emptyDocument
+                                show ["divAttachments"]
+                            else
+                                varDocument.Value <- emptyDocument
+                            do! setDocument()
+                            do! setPageButtons()
+                        } |> Async.Start
+                , false)
+            JS.Document.GetElementById("txtUserDefinedVariables").AddEventListener
+                ( "keydown"
+                , fun (ev : Dom.Event) ->
+                          if ev?keyCode=9
+                          then
+                            let v = ev.Target?value |> string
+                            let s = ev.Target?selectionStart |> int
+                            let e = ev.Target?selectionEnd |> int
+                            ev.Target?value <- v.Substring(0, s) + "\t" + v.Substring(e)
+                            ev.Target?selectionStart <- s + 1
+                            ev.Target?selectionEnd <- s + 1
+                            ev.StopPropagation()
+                            ev.PreventDefault()
+                , false)
+            JS.Document.GetElementById("btnAddPage").AddEventListener
+                ( "click"
+                , fun (_ : Dom.Event) ->
+                      if JS.Document.GetElementById("slctDocumentName")?selectedIndex >= 0
+                      then
+                          show ["divChoosePageType"; "divAttachments"; "divCreateFilePage"]
+                          JS.Document.GetElementById("rbFilePage")?``checked`` <- true;
+                      else
+                          JS.Alert("Bitte erst eine neue Bewerbungsmappe anlegen")
+                          show ["divAddDocument"]
+                , false)
+            JS.Document.GetElementById("btnAddDocument").AddEventListener
+                ( "click"
+                , fun (ev : Dom.Event) ->
+                      async {
+                          let newDocumentName = JS.Document.GetElementById("txtNewDocumentName")?value |> string
+                          if newDocumentName.Trim() = ""
+                          then
+                              JS.Alert(String.Format(t German FieldIsRequired, t German DocumentName))
+                          else
+                              varDocument.Value <- { varDocument.Value with name = newDocumentName }
+                              let! newDocumentId = Server.saveNewDocument varDocument.Value
+                              varDocument.Value <- { varDocument.Value with oId = Some newDocumentId }
+                              let slctEl = JS.Document.GetElementById("slctDocumentName")
+                              addSelectOption slctEl newDocumentName
+                              JS.Document.GetElementById("divAddDocument")?style?display <- "none"
+                              JS.Document.GetElementById("btnDeleteDocument")?style?display <- "inline"
+                              slctEl?selectedIndex <- slctEl?options?length - 1
+                              do! setDocument()
+                              do! setPageButtons()
+                              show ["divAttachments"]
+                              do! fillDocumentValues()
+                      } |> Async.Start
+                , false)
+            JS.Document.GetElementById("slctHtmlPageTemplate").AddEventListener
+                ( "change"
+                , fun (_ : Dom.Event) ->
+                      async {
+                        do! loadPageTemplate()
+                        do! fillDocumentValues()
+                      } |> Async.Start
+                , false)
+            JS.Document.GetElementById("btnDownloadFilePage").AddEventListener
+                ( "click"
+                , fun (_ : Dom.Event) ->
+                      let chkReplaceVariables = JQuery("#chkReplaceVariables")
+                      match varDocument.Value.pages |> List.tryItem (getCurrentPageIndex() - 1) with
+                      | Some (FilePage filePage) ->
+                          async {
+                              let! path =
+                                  if chkReplaceVariables.Prop("checked")
+                                  then
+                                      Server.replaceVariables
+                                          filePage.path
+                                          varUserValues.Value
+                                          varEmployer.Value
+                                          varDocument.Value
+                                  else async { return filePage.path }
+                              let fileName =
+                                  let extension = filePage.path.Substring(filePage.path.LastIndexOf('.') + 1)
+                                  if filePage.name.EndsWith ("." + extension)
+                                  then filePage.name
+                                  else filePage.name + "." + extension
+                              let! guid = Server.createLink path fileName
+                              JS.Window.Location.Href <- sprintf "download/%s" guid
+                          } |> Async.Start
+                      | Some (HtmlPage _) -> ()
+                      | None -> ()
+                , false)
+            JS.Document.GetElementById("rbHtmlPage").AddEventListener
+                ( "click"
+                , fun (_ : Dom.Event) -> show ["divAttachments";"divChoosePageType"; "divCreateHtmlPage"]
+                , false)
+            JS.Document.GetElementById("rbFilePage").AddEventListener
+                ( "click"
+                , fun (_ : Dom.Event) -> show ["divAttachments"; "divChoosePageType"; "divCreateFilePage"]
+                , false)
+            JS.Document.GetElementById("btnCreateHtmlPage").AddEventListener
+                ( "click"
+                , fun (_ : Dom.Event) ->
+                      let pageIndex = JQuery("#divAttachmentButtons").Children("div").Length
+                      varDocument.Value <-
+                          { varDocument.Value
+                              with pages = (
+                                            varDocument.Value.pages
+                                              @
+                                              [ HtmlPage
+                                                  { name = JS.Document.GetElementById("txtCreateHtmlPage")?value
+                                                    oTemplateId = Some 1
+                                                    pageIndex = pageIndex
+                                                    map = []
+                                                  }
+                                              ]
+                                  )
+                          }
+                      async {
+                          do! setPageButtons()
+                      } |> Async.Start
+                , false)
+
+            JS.Document.GetElementById("fileToUpload").AddEventListener
+                ( "change"
+                , fun (ev : Dom.Event) ->
+                      async {
+                          let file = (ev.Target?files)?item(0)
+                          let fileName = file?name |> string
+                          let fileExtension = fileName.Substring(fileName.LastIndexOf(".") + 1)
+                          if (ev.Target?files)?item(0)?size > maxUploadSize
+                          then
+                              JS.Alert(t German FileIsTooBig + "\n"
+                                       + String.Format(t German UploadLimit, (maxUploadSize / 1000000) |> string))
+                          elif not (supportedUnoconvFileTypes |> List.contains fileExtension)
+                          then
+                              JS.Alert(String.Format("Entschuldigung.\n*.{0} Dateien können zur Zeit nicht ins PDF-Format verwandelt werden.
+                                                    \nTypische Dateitypen zum Uploaden sind *.odt, *.doc, *.jpg oder *.pdf.", fileExtension))
+                          else
+                              ev.Target?parentElement?submit()
+                      } |> Async.Start
+                , false)
+            JS.Document.GetElementById("btnReadFromWebsite").AddEventListener
+                ( "click"
+                , fun () -> readFromWebsite () |> Async.Start
+                , false)
+            JS.Document.GetElementById("txtReadFromWebsite").AddEventListener
+                ( "paste"
+                , fun () -> readFromWebsite () |> Async.Start
+                , false)
+            JS.Document.GetElementById("txtReadFromWebsite").AddEventListener
+                ( "focus"
+                , fun (ev : Dom.Event) -> ev.Target?select()
+                , false)
+            JS.Document.GetElementById("btnSetEmployerEmailToUserEmail").AddEventListener
+                ( "click"
+                , fun () -> employerEmail.Value <- varUserEmail.Value
+                , false)
+            JS.Document.GetElementById("btnApplyNowTop").AddEventListener
+                ( "click"
+                , fun () -> btnApplyNowClicked() |> Async.Start
+                , false)
+            JS.Document.GetElementById("btnApplyNowBottom").AddEventListener
+                ( "click"
+                , fun () -> btnApplyNowClicked() |> Async.Start
+                , false)
+
         let saveChanges () =
             async {
                 do! Server.overwriteDocument varDocument.Value
@@ -970,11 +1143,16 @@ module Client =
             }
         
         async {
-            while Cookies.Get("user") = Undefined do
-                do! Async.Sleep 20
+            let! loggedIn = Server.isLoggedIn()
+            if not loggedIn
+            then
+                do! JobApplicationService.loginWithCookieOrAsGuest()
+                JS.Window.Location.Href <- "/"
             let! isGuest = Server.isLoggedInAsGuest()
             if isGuest
-            then varUserEmailInput.Value <- createInput "Deine Email" varUserEmail (fun x -> "")
+            then
+                
+                varUserEmailInput.Value <- createInput "Deine Email" varUserEmail (fun x -> "")
             else varUserEmailInput.Value <- text ""
 
             let divMenu = JS.Document.GetElementById("divSidebarMenu")
@@ -993,7 +1171,7 @@ module Client =
             ) |> ignore
 
             addMenuEntry "Variablen" (fun _ _ -> show ["divVariables"]) |> ignore
-            addMenuEntry (t German EditYourValues) (fun _ _ -> show ["divEditUserValues"]) |> ignore
+            //addMenuEntry (t German EditYourValues) (fun _ _ -> show ["divEditUserValues"]) |> ignore
             addMenuEntry (t German EditEmail) (fun _ _ -> show ["divEmail"]) |> ignore
             addMenuEntry (t German EditAttachments) (fun _ _ -> show ["divAttachments"]) |> ignore
             addMenuEntry (t German AddEmployerAndApply) (fun _ _ -> show ["divAddEmployer"]) |> ignore
@@ -1024,22 +1202,8 @@ module Client =
                 do! Async.Sleep 10
             for htmlPageTemplate in htmlPageTemplates do
                 addSelectOption slctHtmlPageTemplateEl htmlPageTemplate.name
+            JQuery(JS.Document).Ready(fun () -> registerEvents()) |> ignore
         } |> Async.Start
-
-        let readFromWebsite () =
-            async {
-                JS.Document.GetElementById("btnReadFromWebsite")?disabled <- true
-                JS.Document.GetElementById("faReadFromWebsite")?style?visibility <- "visible"
-                do! Async.Sleep 200
-                let! employerResult = Server.readWebsite (JS.Document.GetElementById("txtReadEmployerFromWebsite")?value)
-                JS.Document.GetElementById("btnReadFromWebsite")?disabled <- false
-                JS.Document.GetElementById("faReadFromWebsite")?style?visibility <- "hidden"
-                match employerResult with
-                | Ok (employer, _) ->
-                    varEmployer.Value <- employer
-                | Bad (xs) ->
-                    JS.Alert(List.fold (fun state x -> state + x + "\n") "" xs)
-            }
 
         divAttr
           [ attr.id "divJobApplicationContent"
@@ -1050,20 +1214,13 @@ module Client =
               [ h3 [text (t German YourApplicationDocuments)]
                 selectAttr
                   [ attr.id "slctDocumentName";
-                    on.change
-                      (fun el _ ->
-                          async {
-                            do! setDocument()
-                            do! setPageButtons()
-                            do! fillDocumentValues()
-                          } |> Async.Start)
                   ]
                   []
                 buttonAttr
                   [ attr.``type`` "button"
                     attr.style "margin-left: 20px"
                     attr.``class`` ".btnLikeLink"
-                    on.click(fun _ _ -> show ["divAddDocument"])
+                    attr.id "btnShowDivNewDocument"
                   ]
                   [ iAttr
                       [ attr.``class`` "fa fa-plus-square"
@@ -1076,27 +1233,6 @@ module Client =
                     attr.id "btnDeleteDocument"
                     attr.``class`` ".btnLikeLink"
                     attr.style "margin-left: 20px"
-                    on.click(fun el _ ->
-                        async {
-                            let slctEl = JS.Document.GetElementById("slctDocumentName")
-                            if slctEl?selectedIndex >= 0 && JS.Confirm(String.Format(t German ReallyDeleteDocument, varDocument.Value.name))
-                            then
-                                match varDocument.Value.oId with
-                                | Some documentId -> do! Server.deleteDocument documentId
-                                | None -> ()
-                                let slctDocumentNameEl = JS.Document.GetElementById("slctDocumentName")
-                                slctDocumentNameEl.RemoveChild(slctDocumentNameEl?(slctDocumentNameEl?selectedIndex)) |> ignore
-                                if slctDocumentNameEl?length = 0
-                                then
-                                    el?style?display <- "none"
-                                    varDocument.Value <- emptyDocument
-                                show ["divAttachments"]
-                            else
-                                varDocument.Value <- emptyDocument
-                            do! setDocument()
-                            do! setPageButtons()
-                        } |> Async.Start
-                    )
                   ]
                   [ iAttr
                       [ attr.``class`` "fa fa-trash"
@@ -1183,18 +1319,7 @@ module Client =
                   [ text "Benutzerdefiniert" ]
                 Doc.InputArea
                     [ attr.style "width: 100%; min-height: 500px"
-                      on.keyDown (fun el ev ->
-                          if ev?keyCode=9
-                          then
-                            let v = el?value |> string
-                            let s = el?selectionStart |> int
-                            let e = el?selectionEnd |> int
-                            el?value <- v.Substring(0, s) + "\t" + v.Substring(e)
-                            el?selectionStart <- s + 1
-                            el?selectionEnd <- s + 1
-                            ev.StopPropagation()
-                            ev.PreventDefault()
-                      )
+                      attr.id "txtUserDefinedVariables"
                     ]
                     customVariables
               ]
@@ -1209,16 +1334,6 @@ module Client =
                       [ attr.id "btnAddPage"
                         attr.style "margin:0;"
                         attr.``class`` "btnLikeLink"
-                        on.click
-                          (fun el _ ->
-                              if JS.Document.GetElementById("slctDocumentName")?selectedIndex >= 0
-                              then
-                                  show ["divChoosePageType"; "divAttachments"; "divCreateFilePage"]
-                                  JS.Document.GetElementById("rbFilePage")?``checked`` <- true;
-                              else
-                                  JS.Alert("Bitte erst eine neue Bewerbungsmappe anlegen")
-                                  show ["divAddDocument"]
-                          )
                       ]
                       [ iAttr
                           [ attr.``class`` "fa fa-plus-square"
@@ -1247,42 +1362,15 @@ module Client =
                 inputAttr
                   [ attr.``type`` "button"
                     attr.``class`` "btnLikeLink"
+                    attr.id "btnAddDocument"
                     attr.value (t German AddDocument)
-                    on.click (fun _ _ ->
-                        async {
-                            let newDocumentName = JS.Document.GetElementById("txtNewDocumentName")?value |> string
-                            if newDocumentName.Trim() = ""
-                            then
-                                JS.Alert(String.Format(t German FieldIsRequired, t German DocumentName))
-                            else
-                                varDocument.Value <- { varDocument.Value with name = newDocumentName }
-                                let! newDocumentId = Server.saveNewDocument varDocument.Value
-                                varDocument.Value <- { varDocument.Value with oId = Some newDocumentId }
-                                let slctEl = JS.Document.GetElementById("slctDocumentName")
-                                addSelectOption slctEl newDocumentName
-                                JS.Document.GetElementById("divAddDocument")?style?display <- "none"
-                                JS.Document.GetElementById("btnDeleteDocument")?style?display <- "inline"
-                                slctEl?selectedIndex <- slctEl?options?length - 1
-                                do! setDocument()
-                                do! setPageButtons()
-                                show ["divAttachments"]
-                                do! fillDocumentValues()
-                        } |> Async.Start
-                      )
                   ]
                   []
               ]
             divAttr
-              [attr.id "divDisplayedDocument"; attr.style "display: none"]
+              [ attr.id "divDisplayedDocument"; attr.style "display: none"]
               [ selectAttr
-                  [ attr.id "slctHtmlPageTemplate";
-                    on.change
-                      (fun _ _ ->
-                          async {
-                            do! loadPageTemplate()
-                            do! fillDocumentValues()
-                          } |> Async.Start)
-                  ]
+                  [ attr.id "slctHtmlPageTemplate" ]
                   []
                 Doc.EmbedView varDisplayedDocument.View
               ]
@@ -1301,32 +1389,7 @@ module Client =
                 br []
                 buttonAttr
                   [ attr.``type`` "button"
-                    on.click
-                        (fun _ _ ->
-                                let chkReplaceVariables = JQuery("#chkReplaceVariables")
-                                match varDocument.Value.pages |> List.tryItem (getCurrentPageIndex() - 1) with
-                                | Some (FilePage filePage) ->
-                                    async {
-                                        let! path =
-                                            if chkReplaceVariables.Prop("checked")
-                                            then
-                                                Server.replaceVariables
-                                                    filePage.path
-                                                    varUserValues.Value
-                                                    varEmployer.Value
-                                                    varDocument.Value
-                                            else async { return filePage.path }
-                                        let fileName =
-                                            let extension = filePage.path.Substring(filePage.path.LastIndexOf('.') + 1)
-                                            if filePage.name.EndsWith ("." + extension)
-                                            then filePage.name
-                                            else filePage.name + "." + extension
-                                        let! guid = Server.createLink path fileName
-                                        JS.Window.Location.Href <- sprintf "download/%s" guid
-                                    } |> Async.Start
-                                | Some (HtmlPage _) -> ()
-                                | None -> ()
-                        )
+                    attr.id "btnDownloadFilePage"
                   ]
                   [ text (t German Download)
                   ]
@@ -1344,7 +1407,7 @@ module Client =
                     attr.disabled "true"
                     attr.name "rbgrpPageType"
                     attr.id "rbHtmlPage"
-                    on.click (fun _ _ -> show ["divAttachments";"divChoosePageType"; "divCreateHtmlPage"]) ]
+                  ]
                   []
                 labelAttr
                   [ attr.``for`` "rbHtmlPage"
@@ -1353,10 +1416,6 @@ module Client =
                 br []
                 inputAttr
                   [ attr.``type`` "radio"; attr.id "rbFilePage"; attr.name "rbgrpPageType";
-                    on.click
-                      (fun _ _ ->
-                        show ["divAttachments"; "divChoosePageType"; "divCreateFilePage"]
-                         )
                   ]
                   []
                 labelAttr
@@ -1372,27 +1431,7 @@ module Client =
                 br []
                 buttonAttr
                   [ attr.``type`` "submit";
-                    on.click
-                      (fun _ _ ->
-                        let pageIndex = JQuery("#divAttachmentButtons").Children("div").Length
-                        varDocument.Value <-
-                            { varDocument.Value
-                                with pages = (
-                                              varDocument.Value.pages
-                                                @
-                                                [ HtmlPage
-                                                    { name = JS.Document.GetElementById("txtCreateHtmlPage")?value
-                                                      oTemplateId = Some 1
-                                                      pageIndex = pageIndex
-                                                      map = []
-                                                    }
-                                                ]
-                                    )
-                            }
-                        async {
-                            do! setPageButtons()
-                        } |> Async.Start
-                      )
+                    attr.id "btnCreateHtmlPage"
                   ]
                   [text (t German AddHtmlAttachment)]
               ]
@@ -1405,25 +1444,8 @@ module Client =
                     br []
                     inputAttr
                       [ attr.``type`` "file"
-                        attr.name "myFile"
-                        attr.id "myFile"
-                        on.change (fun el _ ->
-                            async {
-                                let file = (el?files)?item(0)
-                                let fileName = file?name |> string
-                                let fileExtension = fileName.Substring(fileName.LastIndexOf(".") + 1)
-                                if (el?files)?item(0)?size > maxUploadSize
-                                then
-                                    JS.Alert(t German FileIsTooBig + "\n"
-                                             + String.Format(t German UploadLimit, (maxUploadSize / 1000000) |> string))
-                                elif not (supportedUnoconvFileTypes |> List.contains fileExtension)
-                                then
-                                    JS.Alert(String.Format("Entschuldigung.\n*.{0} Dateien können zur Zeit nicht ins PDF-Format verwandelt werden.
-                                                          \nTypische Dateitypen zum Uploaden sind *.odt, *.docx und *.pdf.", fileExtension))
-                                else
-                                    el.ParentElement?submit()
-                            } |> Async.Start
-                        )
+                        attr.name "fileToUpload"
+                        attr.id "fileToUpload"
                       ]
                       []
                     inputAttr [ attr.``type`` "hidden"; attr.id "hiddenDocumentId"; attr.name "documentId"; attr.value "1" ] []
@@ -1478,9 +1500,6 @@ module Client =
                           [ attr.``type`` "button"
                             attr.``class`` "btn-block"
                             attr.id "btnReadFromWebsite"
-                            on.click (fun _ _ ->
-                                readFromWebsite () |> Async.Start
-                            )
                           ]
                           [ iAttr
                               [ attr.``class`` "fa fa-spinner fa-spin"
@@ -1494,14 +1513,10 @@ module Client =
                     divAttr
                       [attr.``class`` "col-lg-9"]
                       [ inputAttr
-                          [ attr.id "txtReadEmployerFromWebsite"
+                          [ attr.id "txtReadFromWebsite"
                             attr.``type`` "text"
-                            on.paste (fun el _ ->
-                                readFromWebsite () |> Async.Start
-                            )
                             attr.``class`` "form-control"
                             attr.placeholder "URL oder Referenznummer"
-                            on.focus (fun el _ -> el?select())
                           ]
                           []
                       ]
@@ -1513,9 +1528,6 @@ module Client =
                         attr.``class`` "btnLikeLink btn-block"
                         attr.style "min-height: 40px; font-size: 20px"
                         attr.id "btnApplyNowTop"
-                        on.click (fun _ _ ->
-                          btnApplyNowClicked () |> Async.Start
-                        )
                       ]
                       [ iAttr
                           [ attr.``class`` "fa fa-icon"
@@ -1548,7 +1560,7 @@ module Client =
                           ]
                           [ text "Email" ]
                         buttonAttr
-                          [ on.click (fun _ _ -> employerEmail.Value <- varUserEmail.Value)
+                          [ attr.id "btnSetEmployerEmailToUserEmail"
                             attr.``class`` "distanced"
                           ]
                           [text "an dich"]
@@ -1567,9 +1579,6 @@ module Client =
                     attr.``class`` "btnLikeLink btn-block"
                     attr.style "min-height: 40px; font-size: 20px"
                     attr.id "btnApplyNowBottom"
-                    on.click (fun _ _ ->
-                         btnApplyNowClicked () |> Async.Start
-                    )
                   ]
                   [ iAttr
                       [ attr.``class`` "fa fa-icon"

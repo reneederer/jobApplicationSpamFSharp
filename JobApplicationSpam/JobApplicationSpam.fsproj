@@ -92,6 +92,7 @@
     <Compile Include="Odt.fs" />
     <Compile Include="Website.fs" />
     <Compile Include="Remoting.fs" />
+    <Compile Include="JobApplicationService.fs" />
     <Compile Include="Client.fs" />
     <Compile Include="Tests.fs" />
     <Content Include="log4net.config">

@@ -17,7 +17,6 @@ type EndPoint =
     | [<EndPoint "/abc">] Logout
     | [<EndPoint "/download">] Download of guid:string
     | [<EndPoint "/changepassword">] ChangePassword
-    | [<EndPoint "/dologin">] DoLogin
     | [<EndPoint "/">] Home
 
 module Templating =
@@ -98,17 +97,6 @@ module Site =
     open WebSharper.UI.Html.Tags
 
 
-    let homePage (ctx : Context<EndPoint>) =
-        Templating.main ctx EndPoint.Home "Home" [
-            h1 [text "Say Hi to the server!"]
-            //div [client <@ Client.editUserValues () @>]
-        ]
-
-    let doLoginPage (ctx : Context<EndPoint>) =
-        Templating.main ctx EndPoint.Home "Home" [
-            client <@ Client.doLogin() @>
-        ]
-    
     let loginPage (ctx : Context<EndPoint>) =
         match ctx.Request.Post.["btnLogin"], ctx.Request.Post.["btnRegister"], ctx.Request.Post.["txtLoginEmail"], ctx.Request.Post.["txtLoginPassword"] with
         | Some _, None, Some email, Some password -> //login
@@ -119,8 +107,7 @@ module Site =
                 ctx.UserSession.LoginUser (string userId, true) |> Async.RunSynchronously
                 Templating.main ctx EndPoint.Login "Login failed" [
                     div 
-                      [ client <@ Client.setSessionCookie() @>
-                        client <@ Client.templates() @>
+                      [ client <@ Client.templates() @>
                       ]
                 ]
             | Bad xs ->
@@ -167,7 +154,6 @@ module Site =
         ctx.UserSession.Logout() |> Async.RunSynchronously
         Templating.main ctx EndPoint.Logout "Logout" [
             client <@ Client.logout() @>
-            client <@ Client.doLogin() @>
         ]
     
     let uploadPage (ctx : Context<EndPoint>) =
@@ -244,22 +230,25 @@ module Site =
                                 let fileName = findFreeFileName (Path.GetFileName(convertedFileName)) documentId
                                 let filePath =
                                     if not <| File.Exists (toRootedPath (Path.Combine(relativeDir, fileName)))
-                                    then toRootedPath (Path.Combine(relativeDir, fileName))
+                                    then Path.Combine(relativeDir, fileName)
                                     else
-                                        toRootedPath
-                                          (Path.Combine
+                                        Path.Combine
                                             ( relativeDir
                                             , Path.GetFileNameWithoutExtension(fileName)
                                               + "_"
                                               + Guid.NewGuid().ToString("N")
                                               + Path.GetExtension(fileName))
-                                          )
-                                Odt.saveStreamCompare streamCompare filePath
+                                Odt.saveStreamCompare streamCompare (toRootedPath filePath)
                                 filePath, fileName
-                        async {
-                            do! Server.addFilePage documentId filePath pageIndex fileName
-                            do! Server.setLastEditedDocumentId (UserId userId) documentId
-                        } |> Async.RunSynchronously
+
+                        match Odt.odtToPdf (toRootedPath filePath) with
+                        | Some _ ->
+                            async {
+                                do! Server.addFilePage documentId filePath pageIndex fileName
+                                do! Server.setLastEditedDocumentId (UserId userId) documentId
+                            } |> Async.RunSynchronously
+                        | None -> File.Delete (toRootedPath filePath)
+
                 )
         | _ -> ()
         Content.RedirectPermanentToUrl "/"
@@ -321,12 +310,11 @@ module Site =
     let main =
         Application.MultiPage (fun (ctx : Context<EndPoint>) endpoint ->
             match (ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously, endpoint) with
-            | (_ , EndPoint.Logout) -> logoutPage ctx
-            | None, EndPoint.DoLogin -> doLoginPage ctx
+            //| (_ , EndPoint.Logout) -> logoutPage ctx
             | None , EndPoint.Home ->
-                doLoginPage ctx
+                templatesPage ctx
             | None , EndPoint.Templates ->
-                doLoginPage ctx
+                templatesPage ctx
             | Some _, EndPoint.Home -> templatesPage ctx
             | Some _, EndPoint.Upload -> uploadPage ctx
             | Some _, EndPoint.ConfirmEmail -> confirmEmailPage ctx
@@ -334,7 +322,7 @@ module Site =
             | Some _ , EndPoint.Templates -> templatesPage ctx
             | Some _ , EndPoint.ChangePassword -> changePasswordPage ctx
             | None , EndPoint.ChangePassword -> changePasswordPage ctx
-            | _ , EndPoint.Login -> loginPage ctx
+            //| _ , EndPoint.Login -> loginPage ctx
             | Some _ , EndPoint.Download guid ->
                 downloadPage ctx guid
             | a, b ->

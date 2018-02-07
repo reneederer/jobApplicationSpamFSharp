@@ -6,7 +6,6 @@ module Website =
     open System.Text.RegularExpressions
     open System.Linq
     open System.Net.Http
-    open WebSharper.UI.Next.CSharp.Html
     open System.Collections.Generic
     open System
     open System.Net

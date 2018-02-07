@@ -12,9 +12,8 @@ module Client =
     open JobApplicationSpam
     open JavaScriptElements
     open System
-    open Phrases
     open Types
-    open Translation
+    open JobApplicationSpam.I18n
     open ClientHelpers
     open ClientTypes
 
@@ -143,6 +142,7 @@ module Client =
               ]
           ]
 
+
     [<JavaScript>]
     let templates () = 
         let varDocument = Var.Create emptyDocument
@@ -196,11 +196,9 @@ module Client =
             let varColumns =
                 ListModel.FromSeq
                   [ "Firma", refEmployer.company, true
-                    "Vorname", refEmployer.firstName, true
-                    "Nachname", refEmployer.lastName, false
-                    "Straße", refEmployer.street, true
-                    "PLZ", refEmployer.postcode, true
-                    "Stadt", refEmployer.city, false
+                    "beworben am", refEmployer.firstName, true
+                    "beworben als", refEmployer.lastName, true
+                    "an dich mailen", refEmployer.street, true
                   ]
             let chooseColumns (employer : Employer) (url : string) =
                 divAttr
@@ -354,8 +352,8 @@ module Client =
                         else dateTo, dateFrom
                     varSentApplications.Value <-
                         sentApplications
-                        |> List.filter (fun (_, _, d : DateTime, _) ->
-                            d >= dateFrom && d <= dateTo
+                        |> List.filter (fun sentApplication ->
+                            sentApplication.appliedOn >= dateFrom && sentApplication.appliedOn <= dateTo
                         )
                 
                 varDivSentApplications.Value <-
@@ -417,15 +415,14 @@ module Client =
                                     varColumns.View
                                     *)
 
-                                (*
                                 (Doc.BindSeqCached
-                                    (fun (employer : Employer, jobName : string, appliedOn : DateTime, url : string) ->
+                                    (fun (app : DisplaySentApplication) ->
                                         tr
                                           [ td
                                               [ buttonAttr
                                                   [ on.click (fun el _ ->
                                                         async {
-                                                            varEmployerModal.Value <- createEmployerModal employer url
+                                                            //varEmployerModal.Value <- createEmployerModal employer url
                                                             do! Async.Sleep 100
                                                             JQuery("#btnHelperShowEmployerModal").Click() |> ignore
                                                         } |> Async.Start
@@ -433,7 +430,7 @@ module Client =
                                                     attr.``type`` "button"
                                                     attr.``class`` "btn btn-primary"
                                                   ]
-                                                  [ text employer.company ]
+                                                  [ text app.employer.company ]
                                                 buttonAttr
                                                   [
                                                     attr.id "btnHelperShowEmployerModal"
@@ -445,12 +442,12 @@ module Client =
                                                   [ text "" ]
                                               ]
                                             td
-                                              [ text (sprintf "%02i.%02i.%04i" appliedOn.Day appliedOn.Month appliedOn.Year) ]
+                                              [ text (sprintf "%02i.%02i.%04i" app.appliedOn.Day app.appliedOn.Month app.appliedOn.Year) ]
                                             td
-                                              [ text jobName ]
+                                              [ text app.jobName ]
                                             td
                                               [ buttonAttr
-                                                  [ on.click emailSentApplicationToUserFun
+                                                  [ //on.click emailSentApplicationToUserFun
                                                   ]
                                                   [ iAttr
                                                       [ attr.``class`` "fa fa-envelope"; (Attr.Create "aria-hidden" "true")
@@ -464,7 +461,6 @@ module Client =
                                     )
                                 varSentApplications.View
                                 )
-                                *)
 
 
                               ]
@@ -1111,7 +1107,6 @@ module Client =
                         do! setDocument()
                         do! setPageButtons()
 
-                        //Set slctHtmlPageTemplate
                         let! htmlPageTemplates = Server.getHtmlPageTemplates()
                         for htmlPageTemplate in htmlPageTemplates do
                             addSelectOption els.slctHtmlPageTemplate htmlPageTemplate.name
@@ -1288,7 +1283,7 @@ module Client =
               ]
               [ Doc.EmbedView varDivSentApplications.View
               ]
-            (Variables.getDivVariables refDocument.customVariables)
+            (ShowVariables.getDivVariables refDocument.customVariables)
             (UserValues.getDivUserValues refUserValues)
             (Employer.getDivAddEmployer refDocument.jobName varUserEmailInput refEmployer)
             (Email.getDivEmail refDocument.emailSubject refDocument.emailBody)

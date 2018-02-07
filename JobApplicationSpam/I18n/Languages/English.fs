@@ -1,7 +1,7 @@
-﻿namespace JobApplicationSpam
-module English =
-    open Phrases
+﻿namespace JobApplicationSpam.I18n.Languages
+open JobApplicationSpam.I18n
 
+module internal English =
     [<WebSharper.JavaScript>]
     let t x =
         match x with

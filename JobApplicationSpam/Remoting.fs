@@ -9,8 +9,7 @@ open System.Configuration
 open Website
 open System.Security.Cryptography
 open System.Text.RegularExpressions
-open Translation
-open Phrases
+open JobApplicationSpam.I18n
 open Variables
 
 module Server =

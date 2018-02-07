@@ -10,7 +10,6 @@ module Types =
     type UserId = UserId of int
     type DocumentId = DocumentId of int
 
-
     type Settings = AppSettings<"app.config">
 
     type LoggedInData =
@@ -170,6 +169,13 @@ module Types =
         }
     
 
+    type DisplaySentApplication =
+        { jobName : string
+          appliedOn : DateTime
+          employer : Employer
+          url : string
+        }
+
 
     type SentApplication =
         { jobName : string
@@ -180,6 +186,7 @@ module Types =
           employer : Employer
           filePages : list<string * int>
           customVariables : string
+          url : string
         }
 
     [<JavaScript>]

@@ -334,21 +334,23 @@ module Database =
                 where (sentApplication.Userid = userId && (sentStatus.Sentstatusvalueid = 1))
                 sortByDescending sentStatus.Statuschangedon
                 thenByDescending sentStatus.Id
-                select ( { company = employer.Company
-                           gender = Gender.fromString employer.Gender
-                           degree = employer.Degree
-                           firstName = employer.Firstname
-                           lastName = employer.Lastname
-                           street = employer.Street
-                           postcode = employer.Postcode
-                           email = employer.Email
-                           city = employer.City
-                           phone =  employer.Phone
-                           mobilePhone = employer.Mobilephone
+                select ( { employer =
+                               { company = employer.Company
+                                 gender = Gender.fromString employer.Gender
+                                 degree = employer.Degree
+                                 firstName = employer.Firstname
+                                 lastName = employer.Lastname
+                                 street = employer.Street
+                                 postcode = employer.Postcode
+                                 email = employer.Email
+                                 city = employer.City
+                                 phone =  employer.Phone
+                                 mobilePhone = employer.Mobilephone
+                               }
+                           jobName = sentDocument.Jobname
+                           appliedOn = sentStatus.Statuschangedon
+                           url = sentApplication.Url
                          }
-                       , sentDocument.Jobname
-                       , sentStatus.Statuschangedon
-                       , sentApplication.Url
                 )
             } |> List.ofSeq
         log.Debug(sprintf "(userId = %i) = %A" userId sentApplications)
@@ -386,6 +388,7 @@ module Database =
                     , sentDocument.jobName
                     , sentDocument.id
                     , sentDocument.customVariables
+                    , sentApplication.url
                 from sentApplication
                 join sentDocument on sentApplication.sentDocumentId = sentDocument.id
                 join employer on sentDocument.employerId = employer.id
@@ -430,9 +433,11 @@ module Database =
             let jobName = reader.GetString(24)
             let sentDocumentId = reader.GetInt32(25)
             let sentCustomVariables = reader.GetString(26)
+            let url = reader.GetString(27)
             let oSentApplication =
                 Some
                     { jobName = jobName
+                      url = url
                       sentDate = statusChangedOn.ToString("dd.MM.yyyy")
                       email = { subject = subject; body = body }
                       userEmail = userEmail

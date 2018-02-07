@@ -82,10 +82,10 @@
   <ItemGroup>
     <Content Include="Main.html" />
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Internationalisation\Phrases.fs" />
-    <Compile Include="Internationalisation\English.fs" />
-    <Compile Include="Internationalisation\German.fs" />
-    <Compile Include="Internationalisation\Translation.fs" />
+    <Compile Include="I18n\Phrases.fs" />
+    <Compile Include="I18n\Languages\German.fs" />
+    <Compile Include="I18n\Languages\English.fs" />
+    <Compile Include="I18n\Translation.fs" />
     <Compile Include="Types.fs" />
     <Compile Include="Database.fs" />
     <Compile Include="Variables.fs" />
@@ -99,8 +99,9 @@
     <Compile Include="Client\Employer.fs" />
     <Compile Include="Client\UserValues.fs" />
     <Compile Include="Client\Email.fs" />
-    <Compile Include="Client\Variables.fs" />
+    <Compile Include="Client\ShowVariables.fs" />
     <Compile Include="Client\Client.fs" />
+    <Compile Include="Client\SentApplications.fs" />
     <Compile Include="Tests.fs" />
     <Content Include="log4net.config">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

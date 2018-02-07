@@ -1,10 +1,11 @@
 ﻿namespace JobApplicationSpam.Client
-module Variables =
+
+module ShowVariables =
     open WebSharper.UI.Next.Html
     open WebSharper
     open WebSharper.UI.Next.Client
-    open JobApplicationSpam.Translation
-    open JobApplicationSpam.Phrases
+    open JobApplicationSpam.I18n
+    open JobApplicationSpam
 
     [<JavaScript>]
     let getDivVariables refCustomVariables =

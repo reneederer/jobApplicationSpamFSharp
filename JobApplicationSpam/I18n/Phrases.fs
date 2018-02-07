@@ -1,9 +1,8 @@
-﻿namespace JobApplicationSpam
+﻿namespace JobApplicationSpam.I18n
+[<AutoOpen>]
 module Phrases =
-    open WebSharper
-
-    [<JavaScript>]
-    type Word =
+    [<WebSharper.JavaScript>]
+    type Phrase =
         | AddEmployerAndApply
         | EditYourValues
         | EditEmail
@@ -60,4 +59,5 @@ module Phrases =
         | ReplaceVariables
         | ChangePassword
         | NewPassword
+
 

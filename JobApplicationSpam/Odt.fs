@@ -9,7 +9,6 @@ module Odt =
     open System.Text.RegularExpressions
     open Types
     open System.Threading
-    open Chessie.ErrorHandling
 
     let private log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().GetType())
 

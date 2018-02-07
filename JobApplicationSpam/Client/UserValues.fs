@@ -6,8 +6,7 @@ module UserValues =
     open JobApplicationSpam
     open Types
     open WebSharper
-    open Translation
-    open Phrases
+    open JobApplicationSpam.I18n
 
     [<JavaScript>]
     let getDivUserValues (refUserValues : RefUserValues) =

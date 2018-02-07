@@ -4,7 +4,7 @@ module Email =
     open WebSharper
     open JobApplicationSpam
     open ClientHelpers
-    open Translation
+    open JobApplicationSpam.I18n
     open Phrases
 
     [<JavaScript>]

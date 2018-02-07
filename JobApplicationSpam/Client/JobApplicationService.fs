@@ -4,9 +4,7 @@ module JobApplicationService =
     open WebSharper.JQuery
     open System
     open WebSharper.JavaScript
-    module Server = JobApplicationSpam.Server
-    open JobApplicationSpam.Types
-    open JavaScriptElements
+    open JobApplicationSpam
 
     [<JavaScript>]
     let loginWithCookieOrAsGuest() =
@@ -28,17 +26,3 @@ module JobApplicationService =
             else do! loginAsGuest()
         }
     
-
-
-
-
-
-
-
-
-
-
-
-
-
-

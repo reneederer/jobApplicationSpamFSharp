@@ -4,12 +4,10 @@ module Employer =
     open WebSharper
     open WebSharper.UI.Next.Client
     open JobApplicationSpam
-    open Phrases
-    open Translation
+    open JobApplicationSpam.I18n
     open Types
     open WebSharper.JavaScript
     open ClientHelpers
-    open Phrases
     open WebSharper.UI.Next
     open ClientTypes
 
@@ -52,22 +50,19 @@ module Employer =
                       []
                   ]
               ] 
-            divAttr
-              [ attr.``class`` "form-group row col-12" ]
-              [ buttonAttr
-                  [ attr.``type`` "button"
-                    attr.``class`` "btnLikeLink btn-block"
-                    attr.style "min-height: 40px; font-size: 20px"
-                    attr.id "btnApplyNowTop"
+            buttonAttr
+              [ attr.``type`` "button"
+                attr.``class`` "btnLikeLink btn-block"
+                attr.style "min-height: 40px; width: 100%; font-size: 20px"
+                attr.id "btnApplyNowTop"
+              ]
+              [ iAttr
+                  [ attr.``class`` "fa fa-icon"
+                    attr.id "faBtnApplyNowTop"
+                    attr.style "color: #08a81b; margin-right: 10px"
                   ]
-                  [ iAttr
-                      [ attr.``class`` "fa fa-icon"
-                        attr.id "faBtnApplyNowTop"
-                        attr.style "color: #08a81b; margin-right: 10px"
-                      ]
-                      []
-                    text <| t German ApplyNow
-                  ]
+                  []
+                text <| t German ApplyNow
               ]
             createInput (t German CompanyName) refEmployer.company (fun (s : string) -> "")
             createInput (t German Street) refEmployer.street (fun (s : string) -> "")
@@ -75,8 +70,8 @@ module Employer =
             createInput (t German City) refEmployer.city (fun (s : string) -> "")
             createRadio
                 (t German Gender)
-                [ (t German Male), Gender.Male, refEmployer.gender , ""
-                  (t German Female), Gender.Female, refEmployer.gender , ""
+                [ (t German Phrase.Male), Gender.Male, refEmployer.gender , ""
+                  (t German Phrase.Female), Gender.Female, refEmployer.gender , ""
                   (t German UnknownGender), Gender.Unknown, refEmployer.gender , "checked"
                 ]
             createInput (t German Degree) refEmployer.degree (fun s -> "")

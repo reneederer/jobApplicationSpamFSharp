@@ -1,16 +1,16 @@
-﻿namespace JobApplicationSpam
+﻿namespace JobApplicationSpam.Client
 module JobApplicationService =
     open WebSharper
     open WebSharper.JQuery
     open System
     open WebSharper.JavaScript
-    open Server
-    open Types
+    module Server = JobApplicationSpam.Server
+    open JobApplicationSpam.Types
+    open JavaScriptElements
 
     [<JavaScript>]
     let loginWithCookieOrAsGuest() =
         let loginAsGuest () =
-            JS.Alert("loginasguest!")
             async {
                 let sessionGuid = Guid.NewGuid().ToString("N")
                 Cookies.Set("user", sessionGuid, Cookies.Options(Expires = Date(Date.Now() + 604800)))
@@ -24,13 +24,10 @@ module JobApplicationService =
                 let! loggedIn = Server.loginUserBySessionGuid userCookie
                 if not loggedIn
                 then
-                    JS.Alert("not logged in!")
                     do! loginAsGuest ()
             else do! loginAsGuest()
         }
     
-
-
 
 
 

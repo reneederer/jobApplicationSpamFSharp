@@ -22,12 +22,6 @@ module Server =
     let log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().GetType())
 
     [<Remote>]
-    let deleteUserWithIdOne () =
-        async {
-            Database.deleteUserWithIdOne () |> ignore
-        }
-
-    [<Remote>]
     let getCurrentUserId () =
         GetContext().UserSession.GetLoggedInUser()
         |> Async.map (

@@ -17,12 +17,13 @@ type EndPoint =
     | [<EndPoint "/abc">] Logout
     | [<EndPoint "/download">] Download of guid:string
     | [<EndPoint "/changepassword">] ChangePassword
+    | [<EndPoint "/hallo">] Hallo
     | [<EndPoint "/">] Home
 
 module Templating =
     open WebSharper.UI.Next.Html
     open System
-    open Client
+    open JobApplicationSpam.Client
 
 
     type MainTemplate = Templating.Template<"Main.html">
@@ -92,7 +93,7 @@ module Site =
     open System.Web
     open System
     open System.Configuration
-    open Client
+    open JobApplicationSpam.Client
     open WebSharper.Sitelets.Content
     open WebSharper.UI.Html.Tags
 
@@ -263,6 +264,11 @@ module Site =
             div [client <@ Client.changePassword () @>]
         ]
     
+    let halloPage (ctx : Context<EndPoint>) =
+        Templating.main ctx EndPoint.Templates "Bewerbungsspam" [
+            //div [client <@ Client.hallo () @>]
+        ]
+
     let confirmEmailPage (ctx : Context<EndPoint>) =
         async {
             try
@@ -310,6 +316,7 @@ module Site =
     let main =
         Application.MultiPage (fun (ctx : Context<EndPoint>) endpoint ->
             match (ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously, endpoint) with
+            | (_ , EndPoint.Hallo) -> halloPage ctx
             //| (_ , EndPoint.Logout) -> logoutPage ctx
             | None , EndPoint.Home ->
                 templatesPage ctx

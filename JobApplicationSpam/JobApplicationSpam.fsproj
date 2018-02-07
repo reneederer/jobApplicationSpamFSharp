@@ -92,8 +92,15 @@
     <Compile Include="Odt.fs" />
     <Compile Include="Website.fs" />
     <Compile Include="Remoting.fs" />
-    <Compile Include="JobApplicationService.fs" />
-    <Compile Include="Client.fs" />
+    <Compile Include="Client\ClientTypes.fs" />
+    <Compile Include="Client\JavaScriptElements.fs" />
+    <Compile Include="Client\ClientHelpers.fs" />
+    <Compile Include="Client\JobApplicationService.fs" />
+    <Compile Include="Client\Employer.fs" />
+    <Compile Include="Client\UserValues.fs" />
+    <Compile Include="Client\Email.fs" />
+    <Compile Include="Client\Variables.fs" />
+    <Compile Include="Client\Client.fs" />
     <Compile Include="Tests.fs" />
     <Content Include="log4net.config">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

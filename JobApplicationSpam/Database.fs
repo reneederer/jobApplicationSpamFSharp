@@ -39,27 +39,6 @@ module Database =
     let db = dbContext.Public
     let log = LogManager.GetLogger(MethodBase.GetCurrentMethod().GetType())
 
-    let deleteUserWithIdOne () =
-        (*
-        [ ("a", "a", "a", "a", "a", "a", "a", "a", "a", 1) ]
-        |> List.map (fun x ->
-            let row = db.Uservalues.Create()
-            row.SetData
-                ["gender", "a"
-                 "firstname", "a"
-                 "lastname", "a"
-                 "degree", "a"
-                 "street", "a"
-                 "postcode", "a"
-                 "city", "a"
-                 "phone", "a"
-                 "mobilephone", "a"
-                ]
-        )
-        dbContext.SubmitUpdates()
-        *)
-        ()
-
     let getEmailByUserId (UserId userId) : option<string> =
         log.Debug(sprintf "(userId = %i)" userId)
         let oEmail = db.Users.Where(fun x -> x.Id = userId).Select(fun x -> x.Email).SingleOrDefault()

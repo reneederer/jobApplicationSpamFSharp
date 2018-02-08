@@ -225,7 +225,7 @@ module Database =
         log.Debug(sprintf "(email = %s) = %i" email recordCount)
         recordCount
 
-    let insertSentApplication
+    let insertNotYetSentApplication
             dbConn
             (UserId userId)
             (employerId : int)
@@ -307,6 +307,7 @@ module Database =
         command.Parameters.Add(new NpgsqlParameter("sentApplicationId", sentApplicationId)) |> ignore
         command.ExecuteNonQuery() |> ignore
         command.Dispose()
+
         log.Debug(
             sprintf
                 "(userId = %i, employerId = %i, email = %A, userEmailAndValues = %A, sentFilePages = %A, jobName = %s, url = %s, customVariables = %s) = ()"
@@ -320,9 +321,6 @@ module Database =
                 customVariables
         )
 
-
-
-
     let getSentApplications (UserId userId) =
         log.Debug(sprintf "(userId = %i)" userId)
         let sentApplications =
@@ -331,7 +329,7 @@ module Database =
                 join sentStatus in db.Sentstatus on (sentApplication.Id = sentStatus.Sentapplicationid)
                 join sentDocument in db.Sentdocument on (sentApplication.Sentdocumentid = sentDocument.Id)
                 join employer in db.Employer on (sentDocument.Employerid = employer.Id)
-                where (sentApplication.Userid = userId && (sentStatus.Sentstatusvalueid = 1))
+                where (sentApplication.Userid = userId)
                 sortByDescending sentStatus.Statuschangedon
                 thenByDescending sentStatus.Id
                 select ( { employer =
@@ -356,8 +354,9 @@ module Database =
         log.Debug(sprintf "(userId = %i) = %A" userId sentApplications)
         sentApplications
     
-    let getSentApplication dbConn (sentApplicationOffset : int) (UserId userId) =
-        log.Debug (sprintf "(sentApplicationOffset = %i, userId = %i)" sentApplicationOffset userId)
+    
+    let getSentApplication dbConn (sentApplicationId : int) =
+        log.Debug (sprintf "(sentApplicationId = %i)" sentApplicationId)
         use command =
             new NpgsqlCommand("""
                 select
@@ -389,21 +388,20 @@ module Database =
                     , sentDocument.id
                     , sentDocument.customVariables
                     , sentApplication.url
+                    , sentApplication.userId
                 from sentApplication
                 join sentDocument on sentApplication.sentDocumentId = sentDocument.id
                 join employer on sentDocument.employerId = employer.id
                 join sentDocumentEmail on sentDocument.sentDocumentEmailId = sentDocumentEmail.id
                 join sentUserValues on sentDocument.sentUserValuesId = sentUserValues.id
                 join sentStatus on sentApplication.id = sentStatus.sentApplicationId
-                where sentApplication.userId = :userId
-                  and sentStatus.sentStatusValueId = 1
-                order by id offset :sentApplicationOffset limit 1
+                where sentApplication.id = :sentApplicationId
+                order by sentApplication.id
                 """, dbConn)
-        command.Parameters.Add(new NpgsqlParameter("userId", userId)) |> ignore
-        command.Parameters.Add(new NpgsqlParameter("sentApplicationOffset", sentApplicationOffset)) |> ignore
+        command.Parameters.Add(new NpgsqlParameter("sentApplicationId", sentApplicationId)) |> ignore
         use reader = command.ExecuteReader()
         try
-            reader.Read ()
+            reader.Read () |> ignore
             let statusChangedOn =
                 let d = reader.GetDate(0)
                 DateTime(d.Year, d.Month, d.Day)
@@ -434,24 +432,28 @@ module Database =
             let sentDocumentId = reader.GetInt32(25)
             let sentCustomVariables = reader.GetString(26)
             let url = reader.GetString(27)
+            let userId = reader.GetInt32(28)
             let oSentApplication =
                 Some
                     { jobName = jobName
                       url = url
                       sentDate = statusChangedOn.ToString("dd.MM.yyyy")
                       email = { subject = subject; body = body }
-                      userEmail = userEmail
                       customVariables = sentCustomVariables
-                      userValues =
-                        { gender = Gender.fromString userGender
-                          degree = userDegree
-                          firstName = userFirstName
-                          lastName = userLastName
-                          street = userStreet
-                          postcode = userPostcode
-                          city = userCity
-                          phone = userPhone
-                          mobilePhone = userMobilePhone
+                      user =
+                        { email = userEmail
+                          id = UserId userId
+                          values =
+                            { gender = Gender.fromString userGender
+                              degree = userDegree
+                              firstName = userFirstName
+                              lastName = userLastName
+                              street = userStreet
+                              postcode = userPostcode
+                              city = userCity
+                              phone = userPhone
+                              mobilePhone = userMobilePhone
+                            }
                         }
                       employer =
                         { company = employerCompany
@@ -478,18 +480,46 @@ module Database =
                                     , reader.GetInt32(1)
                             ]
                     }
-            log.Debug (sprintf "(sentApplicationOffset = %i, userId = %i) = %A" sentApplicationOffset userId oSentApplication)
+            log.Debug (sprintf "(sentApplicationId = %i) = %A" sentApplicationId oSentApplication)
             oSentApplication
         with
         | e ->
             log.Error("", e)
             None
 
+    let getSentApplicationOffset dbConn (sentApplicationOffset : int) (UserId userId) =
+        query {
+            for sentStatus in db.Sentstatus do
+            join sentApplication in db.Sentapplication on
+                (sentStatus.Sentapplicationid = sentApplication.Id)
+            where (sentApplication.Userid = userId)
+            skip sentApplicationOffset
+            select (getSentApplication dbConn sentApplication.Id)
+        } |> fun x -> x.SingleOrDefault()
+
+    let getNotYetSentApplicationIds dbConn =
+        use command =
+            new NpgsqlCommand(
+                """select sentApplicationId
+                   from sentStatus s1
+                   where not exists
+                        (select sentApplicationId
+                         from sentStatus s2
+                         where s2.sentApplicationId = s1.sentApplicationId
+                           and sentStatusValueId >= 2)
+                   limit 50""", dbConn)
+        use reader = command.ExecuteReader()
+        let sentApplicationIds = 
+            [ while reader.Read() do
+                yield reader.GetInt32(0)
+            ]
+        command.Dispose()
+        sentApplicationIds
 
 
     let overwriteDocument (dbConn : NpgsqlConnection) (document : Document) (UserId userId) =
         match document.oId with
-        | None -> try failwith "document.id was none" with | e -> log.Error("", e)
+        | None -> log.Error("Documentid was None")
         | Some (DocumentId documentId) ->
             log.Debug(sprintf "(document = %A, userId = %i)" document userId)
             use command = new NpgsqlCommand("""update document
@@ -499,8 +529,7 @@ module Database =
             command.Parameters.Add(new NpgsqlParameter("jobName", document.jobName)) |> ignore
             command.Parameters.Add(new NpgsqlParameter("documentId", documentId)) |> ignore
             command.Parameters.Add(new NpgsqlParameter("customVariables", document.customVariables)) |> ignore
-            if command.ExecuteNonQuery() <> 1
-            then failwith "An error occurred"
+            command.ExecuteNonQuery() |> ignore
             command.Dispose()
 
             use command =

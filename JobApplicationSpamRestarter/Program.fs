@@ -18,24 +18,6 @@ let observeUnoconv () : Async<unit> =
             restartUnoconv' ()
     }
 
-let clearTmpFolder () =
-    let rec deleteOldFiles dir = 
-        let isOld lastWriteTime = DateTime.Now - lastWriteTime > TimeSpan.FromHours 3.
-        let directories = Directory.EnumerateDirectories dir
-        for directoryIndex = (Seq.length directories - 1) downto 0 do
-            deleteOldFiles (directories |> Seq.item directoryIndex)
-        let files = Directory.EnumerateFiles dir
-        for fileIndex = (Seq.length files - 1) downto 0 do
-            if isOld (File.GetLastWriteTime (files |> Seq.item fileIndex))
-            then try File.Delete (files |> Seq.item fileIndex) with _ -> ()
-        if Directory.EnumerateFileSystemEntries dir |> Seq.isEmpty
-        then try Directory.Delete dir with _ -> ()
-    async {
-        let tmpDir = @"C:\inetpub\JobApplicationSpamFSharpData\tmp"
-        while true do
-            deleteOldFiles tmpDir
-            Thread.Sleep (TimeSpan.FromHours 2.)
-    }
 
 
 let restartJobApplicationSpam() =
@@ -69,7 +51,7 @@ let observeJobApplicationSpam () =
 
 [<EntryPoint>]
 let main argv =
-    [ observeUnoconv(); observeJobApplicationSpam(); clearTmpFolder(); ]
+    [ observeUnoconv(); observeJobApplicationSpam(); ]
     |> Async.Parallel
     |> Async.RunSynchronously
     |> ignore

@@ -141,12 +141,13 @@ insert into filePage(documentId, path, pageIndex, name) values(1, 'Users/1/bewer
 insert into filePage(documentId, path, pageIndex, name) values(1, 'Users/1/segitz_zeugnis_small.pdf', 4, 'Labenwolf Zeugnis');
 insert into pageMap(documentId, pageIndex, key, value) values (1, 2, 'mainText', 'nur ein gruß');
 
-insert into sentStatusValue(id, status) values(1, 'Waiting for reply after sending job application');
-insert into sentStatusValue(id, status) values(2, 'Appointment for job interview');
-insert into sentStatusValue(id, status) values(3, 'Job application rejected without an interview');
-insert into sentStatusValue(id, status) values(4, 'Waiting for reply after job interview');
-insert into sentStatusValue(id, status) values(5, 'Job application rejected after interview');
-insert into sentStatusValue(id, status) values(6, 'Job application accepted after interview');
+insert into sentStatusValue(id, status) values(1, 'Application queued for sending');
+insert into sentStatusValue(id, status) values(2, 'Waiting for reply after sending application');
+insert into sentStatusValue(id, status) values(3, 'Appointment for interview');
+insert into sentStatusValue(id, status) values(4, 'Application rejected without an interview');
+insert into sentStatusValue(id, status) values(5, 'Waiting for reply after interview');
+insert into sentStatusValue(id, status) values(6, 'Application rejected after interview');
+insert into sentStatusValue(id, status) values(7, 'Aapplication accepted after interview');
 
 insert into sentDocumentEmail (subject, body) values ('subject', 'body');
 insert into sentDocumentEmail (subject, body) values ('subject', 'body');
@@ -166,9 +167,9 @@ insert into sentApplication(userId, sentDocumentId, url)
 insert into sentApplication(userId, sentDocumentId, url)
                       values(1, 2, 'meineUrl');
 insert into sentStatus(sentApplicationId, statusChangedOn, dueOn, sentStatusValueId, statusMessage)
-                 values(1, current_date, null, 1, '');
+                 values(1, current_date, null, 2, '');
 insert into sentStatus(sentApplicationId, statusChangedOn, dueOn, sentStatusValueId, statusMessage)
-                 values(2, current_date, null, 1, '');
+                 values(2, current_date, null, 2, '');
 
 /*
 insert into sentApplication(userId, employerId, appliedAs) values(1, 1, 'Industriemechaniker');
@@ -176,11 +177,11 @@ insert into sentApplication(userId, employerId, appliedAs) values(1, 2, 'Informa
 insert into sentApplication(userId, employerId, appliedAs) values(1, 3, 'Bürokauffrau');
 
 insert into sentStatus(sentApplicationId, statusChangedOn, dueOn, sentStatusValueId, statusMessage)
-    values(1, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 1, '');
+    values(1, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 2, '');
 insert into sentStatus(sentApplicationId, statusChangedOn, dueOn, sentStatusValueId, statusMessage)
-    values(2, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 1, '');
+    values(2, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 2, '');
 insert into sentStatus(sentApplicationId, statusChangedOn, dueOn, sentStatusValueId, statusMessage)
-    values(3, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 1, '');
+    values(3, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 2, '');
 
 */
 

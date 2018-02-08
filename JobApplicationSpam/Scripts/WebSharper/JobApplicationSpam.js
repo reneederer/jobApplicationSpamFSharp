@@ -1,7 +1,7 @@
 (function()
 {
  "use strict";
- var Global,JobApplicationSpam,I18n,Phrases,Phrase,Languages,German,English,Translation,Language,Types,Gender,UserValues,Employer,JobApplicationPageAction,HtmlPage,FilePage,DocumentPage,DocumentEmail,Document,HtmlPageTemplate,PageDB,SC$1,Client,ClientTypes,RefEmployer,RefUserValues,RefDocument,JavaScriptElements,Els,ClientHelpers,JobApplicationService,Employer$1,UserValues$1,Email,ShowVariables,Client$1,IntelliFactory,Runtime,WebSharper,Operators,String,List,Arrays,System,Guid,UI,Next,Doc,AttrProxy,AttrModule,Concurrency,Cookies,Date,Remoting,AjaxRemotingProvider,Math,ListModel,Var,DateUtil,Utils,Collections,Map,Seq,Strings,Unchecked,Enumerator;
+ var Global,JobApplicationSpam,I18n,Phrases,Phrase,Languages,German,English,Translation,Language,Types,Gender,UserValues,Employer,JobApplicationPageAction,HtmlPage,FilePage,DocumentPage,DocumentEmail,Document,HtmlPageTemplate,PageDB,SC$1,Client,ClientTypes,RefEmployer,RefUserValues,RefDocument,JavaScriptElements,Els,ClientHelpers,JobApplicationService,Employer$1,UserValues$1,Email,ShowVariables,Client$1,IntelliFactory,Runtime,WebSharper,Operators,String,List,Arrays,System,Guid,UI,Next,Doc,AttrProxy,AttrModule,Cookies,Concurrency,Date,Remoting,AjaxRemotingProvider,Math,ListModel,Var,DateUtil,Utils,Collections,Map,Seq,Strings,Unchecked,Enumerator;
  Global=window;
  JobApplicationSpam=Global.JobApplicationSpam=Global.JobApplicationSpam||{};
  I18n=JobApplicationSpam.I18n=JobApplicationSpam.I18n||{};
@@ -53,8 +53,8 @@
  Doc=Next&&Next.Doc;
  AttrProxy=Next&&Next.AttrProxy;
  AttrModule=Next&&Next.AttrModule;
- Concurrency=WebSharper&&WebSharper.Concurrency;
  Cookies=Global.Cookies;
+ Concurrency=WebSharper&&WebSharper.Concurrency;
  Date=Global.Date;
  Remoting=WebSharper&&WebSharper.Remoting;
  AjaxRemotingProvider=Remoting&&Remoting.AjaxRemotingProvider;
@@ -578,6 +578,11 @@
     return null;
    };
   })],ref)]);
+ };
+ JobApplicationService.logout=function()
+ {
+  Cookies.expire("user");
+  return JobApplicationService.loginWithCookieOrAsGuest();
  };
  JobApplicationService.loginWithCookieOrAsGuest=function()
  {
@@ -1173,12 +1178,13 @@
     return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.isLoggedInAsGuest:-900658348",[]),function(a)
     {
      var regex;
+     Global.alert("isGuest "+String(a));
      regex=new Global.RegExp("^(([^<>()\\[\\]\\\\.,;:\\s@\"]+(\\.[^<>()\\[\\]\\\\.,;:\\s@\"]+)*)|(\".+\"))@((\\[[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}])|(([a-zA-Z\\-0-9]+\\.)+[a-zA-Z]{2,}))$");
      return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.tryFindSentApplication:234068265",[varEmployer.c]),function(a$1)
      {
       return Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.setUserEmail:2079759932",[varUserEmail.c]),function(a$2)
       {
-       return(a?!regex.test(varUserEmail.c)?(Global.alert("Deine Email scheint ungültig zu sein."),false):a$2.$==1?(Global.alert(Strings.Join("",Arrays.ofSeq(a$2.$0))),false):true:true)&&(!regex.test(refEmployer.email.RVal())?(Global.alert(Translation.t(Language.German,Phrase.TheEmailOfYourEmployerDoesNotLookValid)+", "+refEmployer.email.RVal()),false):true)&&(Strings.Trim(refDocument.jobName.RVal())===""?(Global.alert(Strings.SFormat(Translation.t(Language.German,Phrase.FieldIsRequired),[Translation.t(Language.German,Phrase.JobName)])),false):true)&&(a$1==null||a$1!=null&&Global.confirm("Du hast dich schon einmal bei dieser Firmen-Email-Adresse beworben.\nBewerbung trotzdem abschicken?"))?Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.overwriteDocument:-220687727",[varDocument.c]),function()
+       return(a?!regex.test(varUserEmail.c)?(Global.alert("Deine Email scheint ungültig zu sein."),false):a$2.$==1?(Global.alert(Strings.Join("",Arrays.ofSeq(a$2.$0))),false):(Global.alert("email ok"),true):true)&&(!regex.test(refEmployer.email.RVal())?(Global.alert(Translation.t(Language.German,Phrase.TheEmailOfYourEmployerDoesNotLookValid)+", "+refEmployer.email.RVal()),false):true)&&(Strings.Trim(refDocument.jobName.RVal())===""?(Global.alert(Strings.SFormat(Translation.t(Language.German,Phrase.FieldIsRequired),[Translation.t(Language.German,Phrase.JobName)])),false):true)&&(a$1==null||a$1!=null&&Global.confirm("Du hast dich schon einmal bei dieser Firmen-Email-Adresse beworben.\nBewerbung trotzdem abschicken?"))?Concurrency.Bind((new AjaxRemotingProvider.New()).Async("JobApplicationSpam:JobApplicationSpam.Server.overwriteDocument:-220687727",[varDocument.c]),function()
        {
         var fontAwesomeEls;
         fontAwesomeEls=List.ofArray([Global.jQuery(els.faBtnApplyNowBottom),Global.jQuery(els.faBtnApplyNowTop)]);

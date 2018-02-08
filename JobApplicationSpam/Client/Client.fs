@@ -751,6 +751,7 @@ module Client =
         let btnApplyNowClicked () =
             async {
                 let! isGuest = Server.isLoggedInAsGuest()
+                JS.Alert("isGuest " + (isGuest |> string))
 
                 let emailRegexStr = """^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$"""
                 let regex = RegExp(emailRegexStr)
@@ -767,7 +768,9 @@ module Client =
                             false
                         else
                             match setUserEmailResult with
-                            | Ok _ -> true
+                            | Ok _ ->
+                                JS.Alert("email ok")
+                                true
                             | Bad xs ->
                                 JS.Alert(String.Concat(xs))
                                 false

@@ -8,6 +8,7 @@ open System.IO
 open Chessie.ErrorHandling
 open Types
 
+
 type EndPoint =
     | [<EndPoint "/ghi">] Login
     | [<EndPoint "/about">] About
@@ -341,6 +342,7 @@ module Site =
             Content.RedirectPermanentToUrl "https://www.bewerbungsspam.de"
         )
 
+
 module SelfHostedServer =
     open global.Owin
     open Microsoft.Owin.Hosting
@@ -392,6 +394,7 @@ module SelfHostedServer =
                             FileSystem = PhysicalFileSystem(rootDirectory)))
                     .UseSitelet(rootDirectory, Site.redirectHttpToHttps)
                 |> ignore)
+
         while true do
             System.Threading.Thread.Sleep(60000)
         0

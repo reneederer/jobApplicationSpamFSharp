@@ -26,3 +26,8 @@ module JobApplicationService =
             else do! loginAsGuest()
         }
     
+    [<JavaScript>]
+    let logout() =
+        Cookies.Expire("user")
+        loginWithCookieOrAsGuest()
+    

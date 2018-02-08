@@ -176,13 +176,17 @@ module Types =
           url : string
         }
 
+    type SentUser =
+        { values : UserValues
+          email : string
+          id : UserId
+        }
 
     type SentApplication =
         { jobName : string
           sentDate : string
           email : DocumentEmail
-          userValues : UserValues
-          userEmail : string
+          user : SentUser
           employer : Employer
           filePages : list<string * int>
           customVariables : string

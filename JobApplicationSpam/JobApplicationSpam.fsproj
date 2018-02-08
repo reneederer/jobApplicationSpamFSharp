@@ -87,11 +87,11 @@
     <Compile Include="I18n\Languages\English.fs" />
     <Compile Include="I18n\Translation.fs" />
     <Compile Include="Types.fs" />
-    <Compile Include="Database.fs" />
     <Compile Include="Variables.fs" />
-    <Compile Include="Odt.fs" />
-    <Compile Include="Website.fs" />
-    <Compile Include="Remoting.fs" />
+    <Compile Include="Server\Database.fs" />
+    <Compile Include="Server\Odt.fs" />
+    <Compile Include="Server\Website.fs" />
+    <Compile Include="Server\Server.fs" />
     <Compile Include="Client\ClientTypes.fs" />
     <Compile Include="Client\JavaScriptElements.fs" />
     <Compile Include="Client\ClientHelpers.fs" />

@@ -56,4 +56,3 @@ let main argv =
     |> Async.RunSynchronously
     |> ignore
     0
-

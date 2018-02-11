@@ -11,14 +11,18 @@ open System.Security.Cryptography
 open System.Text.RegularExpressions
 open JobApplicationSpam.I18n
 open Variables
+open System.Data
+open DBTypes
+
 
 module Server =
     open System.Net.Mail
     open System.IO
     open WebSharper.Web.Remoting
-    open Database
+    open System.Transactions
 
     let log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().GetType())
+
     [<Remote>]
     let getCurrentUserId () =
         GetContext().UserSession.GetLoggedInUser()
@@ -36,23 +40,27 @@ module Server =
             | None -> return ifNoneFun()
         }
 
-    let withCurrentUser (f : UserId -> 'a)  =
+    let withCurrentUser f  =
         let oUserId = getCurrentUserId() |> Async.RunSynchronously
-        async {
-            match oUserId with
-            | Some userId ->
-                    return f (UserId userId)
-            | None -> return failwith "Nobody is logged in"
-        }
+        match oUserId with
+        | Some userId ->
+            async { return fun () -> f (UserId userId) }
+        | None -> failwith "Nobody is logged in"
 
-    let withDB f =
-        use dbConn = new NpgsqlConnection(Settings.DbConnStr)
-        dbConn.Open()
-        f dbConn
+    let doWithCurrentUser (f : UserId -> 'a)  =
+        f |> withCurrentUser |> (Async.map (fun g -> g()))
     
-    let withDBAndCurrentUser f =
-        f |> withCurrentUser |> Async.map withDB
-
+    let readDb f =
+        let r = f()
+        r
+    let writeToDb f =
+        use dbScope = new TransactionScope()
+        f()
+        dbScope.Complete()
+    let withTransaction f =
+        Async.map writeToDb f
+    
+    
     [<Remote>]
     let predefinedVariables =
         Async.singleton
@@ -144,17 +152,17 @@ module Server =
     [<Remote>]
     let getUserIdByEmail (email : string) =
         async {
-            return Database.getUserIdByEmail email
+            return Database.getUserIdByEmail db email
         }
 
     [<Remote>]
-    let getEmailByUserId userId =
+    let getEmailByUserId (userId : UserId) : Async<option<string>> =
         async {
-            return Database.getEmailByUserId userId
+            return Database.getEmailByUserId db userId
         }
     
     let getUserEmail' userId =
-        Database.getEmailByUserId userId
+        Database.getEmailByUserId db userId
     [<Remote>]
     let getUserEmail () : Async<option<string>> =
         withCurrentUserFail getUserEmail' (fun () -> None)
@@ -182,14 +190,14 @@ module Server =
 
 
     
-    let getUserValues' userId = Database.getUserValues userId
     [<Remote>]
-    let getUserValues () = withCurrentUser getUserValues'
+    let getUserValues () =
+        Database.getUserValues db |> doWithCurrentUser
     
-    let setUserValues' userValues userId = 
-        Database.setUserValues userValues userId
     [<Remote>]
-    let setUserValues (userValues : UserValues) = withCurrentUser (setUserValues' userValues)
+    let setUserValues (userValues : UserValues) =
+        withCurrentUser (Database.setUserValues db userValues)
+        |> withTransaction
 
 
     let generateSalt length =
@@ -207,12 +215,12 @@ module Server =
         let bytes = sha256Managed.ComputeHash(word |> System.Text.Encoding.UTF8.GetBytes)
         bytes |> Convert.ToBase64String
 
-    let setPassword' password (userId : UserId) dbConn =
+    [<Remote>]
+    let setPassword password =
         let salt =  generateSalt 64
         let hashedPassword = generateHashWithSalt password salt 1000 64
-        Database.setPasswordSaltAndConfirmEmailGuid dbConn hashedPassword salt None userId 
-    [<Remote>]
-    let setPassword password = withDBAndCurrentUser (setPassword' password)
+        withCurrentUser (Database.setPasswordSaltAndConfirmEmailGuid db hashedPassword salt None)
+        |> withTransaction
 
     [<Remote>]
     let login (email : string) (password : string) =
@@ -221,15 +229,17 @@ module Server =
             try
                 use dbConn = new NpgsqlConnection(Settings.DbConnStr)
                 dbConn.Open()
-                match Database.getValidateLoginData email with
-                | Some v when v.confirmEmailGuid.IsNone ->
-                    let hash = generateHashWithSalt password v.salt 1000 64
-                    if hash = v.hashedPassword
-                    then
-                        Database.insertLastLogin dbConn v.userId
-                        return ok ()
-                    else return fail "Email oder Passwort ist falsch."
-                |  Some v when v.confirmEmailGuid.IsSome -> return fail "Bitte bestätige deine Email-Adresse."
+                match Database.getValidateLoginData db email with
+                | Some v ->
+                    match v.confirmEmailGuid with
+                    | None ->
+                        let hash = generateHashWithSalt password v.salt 1000 64
+                        if hash = v.hashedPassword
+                        then
+                            Database.insertLastLogin db v.userId
+                            return ok ()
+                        else return fail "Email oder Passwort ist falsch."
+                    | Some _ -> return fail "Bitte bestätige deine Email-Adresse."
                 | None -> return fail  "Email oder Passwort ist falsch."
             with
             | e ->
@@ -237,19 +247,20 @@ module Server =
                 return fail "An error occurred."
         }
     
-    let setUserEmail' (email : string) userId (dbConn : NpgsqlConnection) =
-        try
-            ok <| Database.setUserEmail dbConn userId email
-        with
-        | e -> fail "Diese Email-Adresse ist bereits vergeben."
     [<Remote>]
     let setUserEmail (email : string) =
-        withDBAndCurrentUser (setUserEmail' email)
+        if email = "geprueftundokund nicht doppelt" || true //TODO
+        then
+            withCurrentUser (fun userId -> Database.setUserEmail db email userId)
+            |> withTransaction
+            |> Async.map (fun _ -> ok())
+        else
+            async { return fail "Email is not valid" }
     
     [<Remote>]
     let loginUserBySessionGuid sessionGuid =
         log.Debug(sprintf "(sessionGuid = %s)" sessionGuid)
-        match Database.getUserIdBySessionGuid sessionGuid with
+        match Database.getUserIdBySessionGuid db sessionGuid with
         | None ->
             log.Debug(sprintf "(sessionGuid = %s) = %b" sessionGuid false)
             async { return false }
@@ -258,19 +269,17 @@ module Server =
             log.Debug(sprintf "(sessionGuid = %s) = true" sessionGuid)
             async { return true }
     
-    let setSessionGuid' guid userId dbConn =
-        Database.setSessionGuid dbConn userId guid
     [<Remote>]
-    let setSessionGuid guid =
-        withDBAndCurrentUser (setSessionGuid' guid)
+    let setSessionGuid oSessionGuid =
+        withCurrentUser (Database.setSessionGuid db oSessionGuid)
+        |> withTransaction
     
-    let loginAsGuest' (sessionGuid : string) (dbConn : NpgsqlConnection) =
-        let (UserId userId) = Database.insertNewUser dbConn None "" "" (Some <| Guid.NewGuid().ToString("N")) (Some sessionGuid)
-        GetContext().UserSession.LoginUser (string userId) |> Async.RunSynchronously
     [<Remote>]
     let loginAsGuest (sessionGuid : string) =
-        withDB (loginAsGuest' sessionGuid)
-        async { return () }
+        let (UserId userId) = Database.insertNewUser db None "" "" (Some <| Guid.NewGuid().ToString("N")) (Some sessionGuid) DateTime.Now
+        GetContext().UserSession.LoginUser (string userId) |> Async.RunSynchronously
+        withCurrentUser (Database.insertLastLogin db)
+        |> withTransaction
 
     [<Remote>]
     let isUserLoggedIn () =
@@ -281,13 +290,9 @@ module Server =
     
     [<Remote>]
     let isLoggedInAsGuest () =
-        let oUserId = GetContext().UserSession.GetLoggedInUser() |> Async.RunSynchronously |> Option.map (Int32.Parse >> UserId)
-        async {
-            match oUserId with
-            | Some userId ->
-                return Database.getConfirmEmailGuidByUserId userId |> Option.isSome
-            | None -> return false
-        }
+        withCurrentUserFail
+            (fun userId ->  Database.getConfirmEmailGuidByUserId db userId |> Option.isSome)
+            (fun () -> false)
 
     [<Remote>]
     let register (email : string) (password : string) =
@@ -302,14 +307,14 @@ module Server =
                 else
                     use dbConn = new NpgsqlConnection(Settings.DbConnStr)
                     dbConn.Open()
-                    if Database.userEmailExists email
+                    if Database.userEmailExists db email
                     then
                         return fail "Diese Email-Adresse ist schon registriert."
                     else
                         let salt = generateSalt 64
                         let hashedPassword = generateHashWithSalt password salt 1000 64
                         let confirmEmailGuid = Guid.NewGuid().ToString("N")
-                        Database.insertNewUser dbConn (Some email) hashedPassword salt (Some confirmEmailGuid) |> ignore
+                        Database.insertNewUser db (Some email) hashedPassword salt (Some confirmEmailGuid) |> ignore
                         sendEmail
                             Settings.EmailUsername
                             Settings.DomainName
@@ -328,11 +333,11 @@ module Server =
     let confirmEmail email confirmEmailGuid =
         async {
             log.Debug (sprintf "(email = %s, guid = %s)" email confirmEmailGuid)
-            let oConfirmEmailGuid = Database.getConfirmEmailGuid email
+            let oConfirmEmailGuid = Database.getConfirmEmailGuid db email
             match oConfirmEmailGuid with
             | None -> return ok "Email already confirmed"
             | Some guid when guid = confirmEmailGuid ->
-                let recordCount = Database.setConfirmEmailGuidToNull email
+                let recordCount = Database.setConfirmEmailGuidToNull db email
                 if recordCount <> 1
                 then
                     log.Error("Email does not exist or confirmEmailGuid was already null: " + email)
@@ -342,63 +347,62 @@ module Server =
                 return fail "Unknown confirmEmailGuid"
         }
 
-    let getDocumentNames' userId = Database.getDocumentNames userId
     [<Remote>]
     let getDocumentNames () =
         log.Debug "()"
-        withCurrentUser getDocumentNames'
+        doWithCurrentUser (Database.getDocumentNames db)
 
-    let overwriteDocument' (document : Document) userId (dbConn : NpgsqlConnection) =
-        use transaction = dbConn.BeginTransaction()
-        try
-            Database.overwriteDocument dbConn document userId
-            transaction.Commit()
-        with
-        | e ->
-            transaction.Rollback()
-            log.Error("Saving Document failed", e)
-            failwith "Saving Document failed"
     [<Remote>]
     let overwriteDocument (document : Document) =
-        (overwriteDocument' document) |> withCurrentUser |> Async.map withDB
+        fun userId ->
+            try
+                Database.overwriteDocument db document userId
+            with
+            | e ->
+                dbContext.ClearUpdates() |> ignore
+                log.Error("Saving Document failed", e)
+                failwith ("Saving Document failed" + e.ToString())
+        |> withCurrentUser
+        |> withTransaction
 
-    let saveNewDocument' userId (document : Document) (dbConn : NpgsqlConnection) =
-        use transaction = dbConn.BeginTransaction()
-        try
-            let documentId = Database.saveNewDocument dbConn document userId
-            transaction.Commit()
-            documentId
-        with
-        | e ->
-            transaction.Rollback()
-            log.Error("Saving Document failed", e)
-            failwith "Saving Document failed"
     [<Remote>]
     let saveNewDocument (document : Document) =
-        let a = withCurrentUser saveNewDocument'
-        let b = Async.map (fun x -> x document) a
-        let c = Async.map withDB b
-        c
+        match getCurrentUserId() |> Async.RunSynchronously with
+        | None -> failwith "Nobody logged in"
+        | Some userId ->
+            try
+                async {
+                    use dbScope = new TransactionScope()
+                    let documentId = Database.saveNewDocument db document (UserId userId)
+                    dbScope.Complete()
+                    return documentId
+                }
+            with
+            | e ->
+                dbContext.ClearUpdates() |> ignore
+                log.Error("Saving Document failed", e)
+                failwith "Saving Document failed"
 
-    let deleteDocument' documentId dbConn =
-        Database.deleteDocument documentId
-        let filePaths = Database.getDeletableFilePaths dbConn documentId
-        for filePath in filePaths do
-            if Path.IsPathRooted filePath
-            then File.Delete filePath
-            else File.Delete <| toRootedPath filePath
-        Database.deleteDeletableDocumentFilePages dbConn documentId |> ignore
     [<Remote>]
     let deleteDocument (DocumentId documentId) =
         async {
-            return withDB (deleteDocument' documentId)
+            use dbConn = new NpgsqlConnection(Settings.DbConnStr)
+            dbConn.Open()
+            Database.deleteDocument db documentId
+            let filePaths = Database.getDeletableFilePaths db documentId
+            for filePath in filePaths do
+                if Path.IsPathRooted filePath
+                then File.Delete filePath
+                else File.Delete <| toRootedPath filePath
+            Database.deleteDeletableDocumentFilePages db documentId |> ignore
+            dbContext.SubmitUpdates()
         }
 
     let getDocumentOffset' (htmlJobApplicationOffset : int) (userId : UserId) =
-        Database.getDocumentOffset userId htmlJobApplicationOffset
+        Database.getDocumentOffset db userId htmlJobApplicationOffset
     [<Remote>]
     let getDocumentOffset (htmlJobApplicationOffset : int) =
-        withCurrentUser (getDocumentOffset' htmlJobApplicationOffset)
+        doWithCurrentUser (getDocumentOffset' htmlJobApplicationOffset)
 
     [<Remote>]
     let replaceVariables
@@ -434,10 +438,10 @@ module Server =
                 return failwith "An error occurred"
         }
          
-    let emailSentApplicationToUser' (sentApplicationOffset : int) (customVariablesString : string) userId dbConn =
+    let emailSentApplicationToUser' (sentApplicationOffset : int) (customVariablesString : string) userId =
         try
-            let userEmail = Database.getEmailByUserId userId |> Option.defaultValue ""
-            match Database.getSentApplicationOffset dbConn sentApplicationOffset userId with
+            let userEmail = Database.getEmailByUserId db userId |> Option.defaultValue ""
+            match Database.getSentApplicationOffset db sentApplicationOffset userId with
             | None -> fail "The requested application could not be not found"
             | Some sentApplication ->
                 let myList =
@@ -508,22 +512,17 @@ module Server =
             fail "Couldn't email the application to the user"
 
     [<Remote>]
-    let emailSentApplicationToUser (sentApplicationOffset : int) (customVariablesString : string)=
-        withDBAndCurrentUser (emailSentApplicationToUser' sentApplicationOffset customVariablesString)
+    let emailSentApplicationToUser (sentApplicationOffset : int) (customVariablesString : string) : Async<Result<unit, string>> =
+        doWithCurrentUser (emailSentApplicationToUser' sentApplicationOffset customVariablesString)
     
     [<Remote>]
-    let sendNotYetSentApplication' sentApplicationId (dbConn : NpgsqlConnection) =
-        use transaction = dbConn.BeginTransaction()
+    let sendNotYetSentApplication sentApplicationId =
         try
-            let oSentApp = Database.getSentApplication dbConn sentApplicationId
+            let oSentApp = Database.getSentApplication db sentApplicationId
             match oSentApp with
             | None ->
-                transaction.Rollback()
                 log.Error (sprintf "sentApplication was None. Id: %i" sentApplicationId)
             | Some sentApp ->
-                use command = new NpgsqlCommand("set constraints all deferred", dbConn)
-                command.ExecuteNonQuery() |> ignore
-                command.Dispose()
                 let myList =
                         toCV
                             sentApp.employer
@@ -569,14 +568,9 @@ module Server =
                 then Odt.mergePdfs pdfPaths mergedPdfPath
 
 
-                use command =
-                    new NpgsqlCommand(
-                        """insert into sentStatus(sentApplicationId, statusChangedOn, dueOn, sentStatusValueId, statusMessage)
-                        values(:sentApplicationId, current_date, null, 2, '') """, dbConn)
-                command.Parameters.Add(new NpgsqlParameter("sentApplicationId", sentApplicationId)) |> ignore
-                command.ExecuteNonQuery() |> ignore
-                command.Dispose()
-                transaction.Commit()
+                db.Sentstatus.Create(Sentapplicationid = sentApplicationId, Statuschangedon = DateTime.Today, Dueon = None, 
+                    Sentstatusvalueid = 2, Statusmessage = "") |> ignore
+                dbContext.SubmitUpdates()
 
                 sendEmail
                     sentApp.user.email
@@ -604,9 +598,10 @@ module Server =
                      then []
                      else [mergedPdfPath, (sprintf "Bewerbung_%s_%s.pdf" sentApp.user.values.firstName sentApp.user.values.lastName)]
                      )
-                if isLoggedInAsGuest() |> Async.RunSynchronously
+
+                let oConfirmEmailGuid = Database.getConfirmEmailGuid db (sentApp.user.email)
+                if oConfirmEmailGuid.IsSome
                 then
-                    let oConfirmEmailGuid = getConfirmEmailGuid (sentApp.user.email)
                     sendEmail
                         Settings.EmailUsername
                         "Bewerbungsspam"
@@ -617,10 +612,7 @@ module Server =
         with
         | e ->
             log.Error ("", e)
-            transaction.Rollback()
-    let sendNotYetSentApplication sentApplicationId =
-        withDB (sendNotYetSentApplication' sentApplicationId)
-    
+            dbContext.ClearUpdates() |> ignore
 
 
     let applyNow'
@@ -628,38 +620,33 @@ module Server =
             (document : Document)
             (userValues : UserValues)
             (url : string)
-            (userId : UserId)
-            (dbConn : NpgsqlConnection) =
-        use transaction = dbConn.BeginTransaction()
+            (userId : UserId) =
         try
-            use command = new NpgsqlCommand("set constraints all deferred", dbConn)
-            command.ExecuteNonQuery() |> ignore
-            command.Dispose()
-            Database.setUserValues userValues userId |> ignore
-            let oUserEmail = Database.getEmailByUserId userId
+            Database.setUserValues db userValues userId |> ignore
+            let oUserEmail = Database.getEmailByUserId db userId
             match oUserEmail with
             | None ->
                 log.Error("UserEmail was None")
-                transaction.Rollback()
                 fail "User email was None"
             | Some userEmail ->
-                let employerId = Database.addEmployer dbConn employer userId
+                let dbEmployer = Database.addEmployer db employer userId
                 Database.insertNotYetSentApplication
-                    dbConn
+                    db
                     userId
-                    employerId
+                    dbEmployer.Id
                     document.email
                     (userEmail, userValues)
                     (document.pages |> List.choose(fun x -> match x with FilePage p -> Some (p.path, p.pageIndex) | HtmlPage _ -> None))
                     document.jobName
                     url
                     document.customVariables
-                transaction.Commit()
+                    DateTime.Today
+                dbContext.SubmitUpdates()
                 ok()
         with
         | e ->
             log.Error ("", e)
-            transaction.Rollback()
+            dbContext.ClearUpdates() |> ignore
             fail "Couldn't send the application"
     [<Remote>]
     let applyNow
@@ -667,27 +654,26 @@ module Server =
             (document : Document)
             (userValues : UserValues)
             (url : string) =
-        withDBAndCurrentUser (applyNow' employer document userValues url)
+        doWithCurrentUser (applyNow' employer document userValues url)
 
-    let addFilePage' documentId path pageIndex name (dbConn : NpgsqlConnection) =
-        Database.addFilePage dbConn documentId path pageIndex name
     [<Remote>]
     let addFilePage (DocumentId documentId) path pageIndex name =
         async {
-            return withDB (addFilePage' documentId path pageIndex name)
+            Database.addFilePage db documentId path pageIndex name
+            dbContext.SubmitUpdates()
         }
 
     
     [<Remote>]
     let getHtmlPageTemplates () =
         async {
-            return Database.getHtmlPageTemplates ()
+            return Database.getHtmlPageTemplates db ()
         }
     
     [<Remote>]
     let getHtmlPageTemplate (templateId : int) =
         async {
-            return Database.getHtmlPageTemplate templateId
+            return Database.getHtmlPageTemplate db templateId
         }
     
     [<Remote>]
@@ -696,44 +682,34 @@ module Server =
             return Database.getHtmlPages documentId
         }
 
-    let getPageMapOffset' pageIndex documentIndex userId dbConn =
-        Database.getPageMapOffset dbConn userId pageIndex documentIndex
     [<Remote>]
-    let getPageMapOffset pageIndex documentIndex  =
-        withDBAndCurrentUser (getPageMapOffset' pageIndex documentIndex)
+    let getPageMapOffset (pageIndex : int) (documentIndex : int)  =
+        withCurrentUser (Database.getPageMapOffset db) |> Async.map (fun f -> f () pageIndex documentIndex)
      
-    let getLastEditedDocumentOffset' userId =
-        Database.getLastEditedDocumentOffset userId
     [<Remote>]
     let getLastEditedDocumentOffset () =
-        withCurrentUser getLastEditedDocumentOffset'
+        doWithCurrentUser (Database.getLastEditedDocumentOffset db)
 
-    let setLastEditedDocumentId' documentId userId dbConn =
-        Database.setLastEditedDocumentId dbConn userId documentId
     [<Remote>]
     let setLastEditedDocumentId (userId : UserId) (documentId : DocumentId) =
-        async {
-            return withDB (setLastEditedDocumentId' documentId userId)
-        }
+        async { return fun () -> Database.setLastEditedDocumentId db documentId userId }
+        |> withTransaction
 
-    let addNewDocument' name userId (dbConn : NpgsqlConnection) =
-        Database.addNewDocument dbConn userId name
     [<Remote>]
     let addNewDocument name =
-        withDBAndCurrentUser (addNewDocument' name)
+        withCurrentUser (Database.addNewDocument db name)
+        |> withTransaction
 
 
-    let addHtmlPage' (documentId : int) (oTemplateId : option<int>) (pageIndex : int) (name : string) userId (dbConn : NpgsqlConnection) =
-        Database.addHtmlPage dbConn documentId oTemplateId pageIndex name
     [<Remote>]
     let addHtmlPage (documentId : int) (oTemplateId : option<int>) (pageIndex : int) (name : string) =
-        withDBAndCurrentUser (addHtmlPage' documentId oTemplateId pageIndex name)
+        async {
+            return Database.addHtmlPage db documentId oTemplateId pageIndex name
+        }
 
-    let getDocumentIdOffset' documentIndex userId =
-        Database.tryGetDocumentIdOffset userId documentIndex
     [<Remote>]
     let getDocumentIdOffset documentIndex =
-        withCurrentUser (getDocumentIdOffset' documentIndex)
+        withCurrentUser (Database.tryGetDocumentIdOffset db) |> Async.map (fun f -> f documentIndex)
     
     [<Remote>]
     let readWebsite (identifier : string) : Async<Result<Employer, string>> =
@@ -751,13 +727,13 @@ module Server =
         async {
             use dbConn = new NpgsqlConnection(Settings.DbConnStr)
             dbConn.Open()
-            return Database.createLink dbConn filePath name
+            return Database.createLink db filePath name
         }
 
     [<Remote>]
     let tryGetPathAndNameByLinkGuid linkGuid =
         async {
-            return Database.tryGetPathAndNameByLinkGuid linkGuid
+            return Database.tryGetPathAndNameByLinkGuid db linkGuid
         }
 
     [<Remote>]
@@ -765,47 +741,39 @@ module Server =
         async {
             use dbConn = new NpgsqlConnection(Settings.DbConnStr)
             dbConn.Open()
-            Database.deleteLink dbConn linkGuid
+            Database.deleteLink db linkGuid
         }
 
-    let getSentApplications' userId =
-        Database.getSentApplications userId
 
     [<Remote>]
     let getSentApplications () =
-        withCurrentUser getSentApplications'
+        doWithCurrentUser (Database.getSentApplications db)
 
     let getFilesWithExtension extension userId =
         async {
-            return Database.getFilesWithExtension extension userId
+            return Database.getFilesWithExtension db extension userId
         }
 
     [<Remote>]
     let getNotYetSentApplicationIds () = 
-        Database.getNotYetSentApplicationIds
-        |> withDB
-        |> Async.singleton
-
-    let getFilePageNames documentId =
         async {
-            return Database.getFilePageNames documentId
+            return Database.getNotYetSentApplicationIds db
         }
 
+    let getFilePageNames (documentId : DocumentId) =
+        async {
+            return Database.getFilePageNames db documentId
+        }
 
-    let tryFindSentApplication' (employer : Employer) userId =
-        Database.tryFindSentApplication userId employer
     [<Remote>]
     let tryFindSentApplication (employer : Employer) =
-        withCurrentUser (tryFindSentApplication' employer)
+        doWithCurrentUser (Database.tryFindSentApplication db employer)
     
-
-
-
     let sendNotYetSentApplications () =
         let sendNotYetSentApplications () =
             async {
                 printfn "Sending unsent applications: "
-                let! notYetSentApplicationIds = getNotYetSentApplicationIds()
+                let notYetSentApplicationIds = Database.getNotYetSentApplicationIds db
                 printfn "notYetSentApplicationIds: %A" notYetSentApplicationIds
                 if notYetSentApplicationIds = []
                 then do! Async.Sleep 10000
@@ -818,7 +786,7 @@ module Server =
                     do! sendNotYetSentApplications()
                 with
                 | e -> log.Error("", e)
-                do! Async.Sleep 10000
+                do! Async.Sleep 5000
         }
 
     let clearTmpFolder () =
@@ -848,5 +816,3 @@ module Server =
     |> Async.Parallel
     |> Async.Ignore
     |> Async.Start
-
-

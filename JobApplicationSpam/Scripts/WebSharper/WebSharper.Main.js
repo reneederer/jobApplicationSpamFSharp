@@ -2878,20 +2878,19 @@
   e=new Date(d);
   return(new Date(e.getFullYear(),e.getMonth(),e.getDate())).getTime();
  };
- DateTimeOffset=WebSharper.DateTimeOffset=Runtime.Class({
-  ToUniversalTime:function()
-  {
-   return new DateTimeOffset.New(this.d,0);
-  },
-  ToLocalTime:function()
-  {
-   return new DateTimeOffset.New(this.d,(new Date()).getTimezoneOffset());
-  }
- },Obj,DateTimeOffset);
- DateTimeOffset.New=Runtime.Ctor(function(d,o)
+ DateTimeOffset.get_Now=function()
  {
-  this.d=d;
- },DateTimeOffset);
+  var d;
+  d=new Date();
+  return{
+   d:d.getTime(),
+   o:-d.getTimezoneOffset()
+  };
+ };
+ DateTimeOffset.get_DateTime=function($this)
+ {
+  return $this.d;
+ };
  Delegate.InvocationList=function(del)
  {
   return del.$Invokes||[del];
@@ -3352,7 +3351,7 @@
   {
    var i$2,$4,$5,c$2;
    for(i$2=0,$4=35;i$2<=$4;i$2++){
-    i$2===8||(i$2===13||(i$2===18||i$2===23&&true))?s$5[i$2]!=="-"?Guid.ShapeError():void 0:(c$2=s$5[i$2],!("0"<=c$2&&c$2<="9"||"a"<=c$2&&c$2<="f")?Guid.ShapeError():void 0);
+    i$2===8||(i$2===13||(i$2===18||i$2===23))?s$5[i$2]!=="-"?Guid.ShapeError():void 0:(c$2=s$5[i$2],!("0"<=c$2&&c$2<="9"||"a"<=c$2&&c$2<="f")?Guid.ShapeError():void 0);
    }
    return s$5;
   }

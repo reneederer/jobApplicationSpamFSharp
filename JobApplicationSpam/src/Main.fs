@@ -27,7 +27,7 @@ module Templating =
     open JobApplicationSpam.Client
 
 
-    type MainTemplate = Templating.Template<"Main.html">
+    type MainTemplate = Templating.Template<"src/Main.html">
 
     let MenuBar (ctx: Context<EndPoint>) endpoint : Doc list =
         let ( => ) txt act =
@@ -77,16 +77,15 @@ module Templating =
         client <@ Client.loginOrOutButton() @>
 
     let main (ctx : Context<EndPoint>) (action : EndPoint) (title: string) (body: Doc list) : Async<Content<'a>>=
-        Content.Page(
-            MainTemplate()
+        Content.Page
+            (MainTemplate()
                 .Title(title)
                 .AtSign(atSign ctx)
                 .MenuBar(MenuBar ctx action)
                 .Body(body)
                 .BtnLoginOrOut(btnLoginOrOut ctx)
                 .LoggedInUserEmail(loggedInUserEmail ctx)
-                .Doc()
-        )
+                .Doc())
 
 
 module Site =
@@ -96,11 +95,13 @@ module Site =
     open System.Configuration
     open JobApplicationSpam.Client
     open WebSharper.Sitelets.Content
-    open WebSharper.UI.Html.Tags
 
 
     let loginPage (ctx : Context<EndPoint>) =
-        match ctx.Request.Post.["btnLogin"], ctx.Request.Post.["btnRegister"], ctx.Request.Post.["txtLoginEmail"], ctx.Request.Post.["txtLoginPassword"] with
+        match ctx.Request.Post.["btnLogin"]
+            , ctx.Request.Post.["btnRegister"]
+            , ctx.Request.Post.["txtLoginEmail"]
+            , ctx.Request.Post.["txtLoginPassword"] with
         | Some _, None, Some email, Some password -> //login
             let loginResult = Server.login email password |> Async.RunSynchronously
             match loginResult with
@@ -169,7 +170,7 @@ module Site =
         | Some (true, documentId), Some (UserId userId), Some (true, pageIndex) ->
             let relativeDir = Path.Combine("users", userId.ToString())
             if not <| Directory.Exists (toRootedPath relativeDir) then Directory.CreateDirectory (toRootedPath relativeDir) |> ignore
-            let findFreeFileName file documentId =
+            let findFreeFileName (file : string) (documentId : DocumentId) =
                 let fileNameWithoutExtension = Path.GetFileNameWithoutExtension(file)
                 let extension = Path.GetExtension(file)
                 let files =
@@ -186,7 +187,7 @@ module Site =
 
             ctx.Request.Files
             |> Seq.iter
-                (fun (x : HttpPostedFileBase) ->
+                (fun (x : Http.IPostedFile) ->
                     if     x.FileName <> ""
                         && x.ContentLength < maxUploadSize
                         && List.contains (Path.GetExtension(x.FileName).Substring(1).ToLower()) supportedUnoconvFileTypes
@@ -265,11 +266,6 @@ module Site =
             div [client <@ Client.changePassword () @>]
         ]
     
-    let halloPage (ctx : Context<EndPoint>) =
-        Templating.main ctx EndPoint.Templates "Bewerbungsspam" [
-            //div [client <@ Client.hallo () @>]
-        ]
-
     let confirmEmailPage (ctx : Context<EndPoint>) =
         async {
             try
@@ -317,8 +313,7 @@ module Site =
     let main =
         Application.MultiPage (fun (ctx : Context<EndPoint>) endpoint ->
             match (ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously, endpoint) with
-            | (_ , EndPoint.Hallo) -> halloPage ctx
-            //| (_ , EndPoint.Logout) -> logoutPage ctx
+            | (_ , EndPoint.Logout) -> logoutPage ctx
             | None , EndPoint.Home ->
                 templatesPage ctx
             | None , EndPoint.Templates ->
@@ -367,8 +362,10 @@ module SelfHostedServer =
             | _ -> eprintfn "Usage: JobApplicationSpam ROOT_DIRECTORY URL"; exit 1
 
         use server = WebApp.Start(url + ":" + port, fun appB ->
+
             appB
                 .UseAcmeChallenge()
+                .UseWebSharperRemoting("http://localhost:9000")
                 .UseStaticFiles(
                     StaticFileOptions(
                         FileSystem = PhysicalFileSystem(rootDirectory)))

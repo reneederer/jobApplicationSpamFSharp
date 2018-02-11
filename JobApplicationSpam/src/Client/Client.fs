@@ -365,7 +365,7 @@ module Client =
                           [ attr.``type`` "date"
                             attr.id "dateFrom"
                             attr.value
-                                ( let dateFrom = DateTime.Now.AddMonths(-1).AddDays(float (-(DateTime.Now.Day) + 1))
+                                ( let dateFrom = DateTime.UtcNow.AddMonths(-1).AddDays(float (-(DateTime.UtcNow.Day) + 1))
                                   sprintf "%04i-%02i-%02i" dateFrom.Year dateFrom.Month dateFrom.Day)
                             attr.style "margin-left: 15px; margin-right: 15px;"
                             on.change (fun _ _ ->
@@ -378,7 +378,7 @@ module Client =
                           [ attr.``type`` "date"
                             attr.id "dateTo"
                             attr.value
-                                ( let dateTo = DateTime.Now.AddMonths(1).AddDays(float -DateTime.Now.Day)
+                                ( let dateTo = DateTime.UtcNow.AddMonths(1).AddDays(float -DateTime.UtcNow.Day)
                                   sprintf "%04i-%02i-%02i" dateTo.Year dateTo.Month dateTo.Day)
                             attr.style "margin-left: 15px;"
                             on.change (fun _ _ ->
@@ -751,7 +751,6 @@ module Client =
         let btnApplyNowClicked () =
             async {
                 let! isGuest = Server.isLoggedInAsGuest()
-                JS.Alert("isGuest " + (isGuest |> string))
 
                 let emailRegexStr = """^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$"""
                 let regex = RegExp(emailRegexStr)
@@ -769,7 +768,6 @@ module Client =
                         else
                             match setUserEmailResult with
                             | Ok _ ->
-                                JS.Alert("email ok")
                                 true
                             | Bad xs ->
                                 JS.Alert(String.Concat(xs))
@@ -1069,7 +1067,6 @@ module Client =
             let! isGuest = Server.isLoggedInAsGuest()
             if isGuest
             then
-                
                 varUserEmailInput.Value <- createInput "Deine Email" varUserEmail (fun x -> "")
             else varUserEmailInput.Value <- text ""
             JQuery(JS.Document).Ready(
@@ -1097,7 +1094,7 @@ module Client =
                         let! oUserEmail = Server.getUserEmail()
                         varUserEmail.Value <- oUserEmail |> Option.defaultValue ""
                     
-                        let! userValues = Server.getUserValues()
+                        let! oUserValues = Server.getUserValues()
                         varUserValues.Value <- emptyUserValues
 
 

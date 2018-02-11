@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27130.2027
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "JobApplicationSpam", "JobApplicationSpam\JobApplicationSpam.fsproj", "{4B1BAC45-9918-4A9B-B801-B95DD996461A}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "JobApplicationSpamRestarter", "JobApplicationSpamRestarter\JobApplicationSpamRestarter.fsproj", "{B8D79CF0-1042-47D0-8E0B-2FDBFF46E913}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4B1BAC45-9918-4A9B-B801-B95DD996461A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4B1BAC45-9918-4A9B-B801-B95DD996461A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4B1BAC45-9918-4A9B-B801-B95DD996461A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4B1BAC45-9918-4A9B-B801-B95DD996461A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8D79CF0-1042-47D0-8E0B-2FDBFF46E913}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8D79CF0-1042-47D0-8E0B-2FDBFF46E913}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8D79CF0-1042-47D0-8E0B-2FDBFF46E913}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8D79CF0-1042-47D0-8E0B-2FDBFF46E913}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {28DDE5F9-8969-41E0-A44E-11EBEBE02410}
+	EndGlobalSection
+EndGlobal

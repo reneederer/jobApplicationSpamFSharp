@@ -9,7 +9,6 @@ open Variables
 open Chessie.ErrorHandling
 
 module MyTests =
-    open System.Transactions
 
     [<Test>]
     let parseVariable00 () =

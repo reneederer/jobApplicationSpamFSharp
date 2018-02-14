@@ -103,23 +103,23 @@ module Site =
             , ctx.Request.Post.["txtLoginEmail"]
             , ctx.Request.Post.["txtLoginPassword"] with
         | Some _, None, Some email, Some password -> //login
-            let loginResult = Server.login email password |> Async.RunSynchronously
-            match loginResult with
-            | Ok (_, _) ->
-                let userId = Server.getUserIdByEmail email |> Async.RunSynchronously |> Option.get
+            let rLogin = Server.login email password |> Async.RunSynchronously
+            let oUserId = Server.tryGetUserIdByEmail email |> Async.RunSynchronously
+            match rLogin, oUserId with
+            | Ok _, Some userId ->
                 ctx.UserSession.LoginUser (string userId, true) |> Async.RunSynchronously
                 Templating.main ctx EndPoint.Login "Login failed" [
                     div 
                       [ client <@ Client.templates() @>
                       ]
                 ]
-            | Bad xs ->
+            | Bad _, _
+            | _, None ->
                 Templating.main ctx EndPoint.Login "Login failed" [
                     h1 [text "Login"]
                     client <@ Client.login () @>
                     br []
                     br []
-                    text (xs |> String.concat ", ")
                 ]
         | None, Some _, Some email, Some password -> //register
             let registerResult = Server.register email password |> Async.RunSynchronously
@@ -273,7 +273,7 @@ module Site =
                 | Some email, Some guid->
                     match Server.confirmEmail email guid |> Async.RunSynchronously with
                     | Ok _ -> 
-                        let! oUserId = Server.getUserIdByEmail email
+                        let! oUserId = Server.tryGetUserIdByEmail email
                         match oUserId with
                         | Some userId ->
                             do! ctx.UserSession.LoginUser (userId |> string)
@@ -348,10 +348,60 @@ module SelfHostedServer =
     open log4net
     open JobApplicationSpam
     open System.IO
+    open System
+    open DBTypes
 
     [<EntryPoint>]
     let main args =
         log4net.Config.XmlConfigurator.Configure(new FileInfo("log4net.config")) |> ignore
+        let log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().GetType())
+        let sendNotYetSentApplications () =
+            let sendNotYetSentApplications () =
+                async {
+                    printfn "Sending unsent applications: "
+                    let notYetSentApplicationIds = Database.getNotYetSentApplicationIds |> readDB
+                    printfn "notYetSentApplicationIds: %A" notYetSentApplicationIds
+                    if notYetSentApplicationIds = []
+                    then do! Async.Sleep 10000
+                    notYetSentApplicationIds
+                    |> List.iter (fun appId -> printfn "Sending %i" appId; Server.sendNotYetSentApplication appId)
+                }
+            async {
+                while true do
+                    try
+                        do! sendNotYetSentApplications()
+                    with
+                    | e -> log.Error("", e)
+                    do! Async.Sleep 5000
+            }
+
+        let clearTmpFolder () =
+            let rec deleteOldFiles dir = 
+                let isOld lastWriteTime = DateTime.Now - lastWriteTime > TimeSpan.FromHours 3.
+                let directories = Directory.EnumerateDirectories dir
+                for directoryIndex = (Seq.length directories - 1) downto 0 do
+                    deleteOldFiles (directories |> Seq.item directoryIndex)
+                let files = Directory.EnumerateFiles dir
+                for fileIndex = (Seq.length files - 1) downto 0 do
+                    if isOld (File.GetLastWriteTime (files |> Seq.item fileIndex))
+                    then try File.Delete (files |> Seq.item fileIndex) with _ -> ()
+                if Directory.EnumerateFileSystemEntries dir |> Seq.isEmpty
+                then try Directory.Delete dir with _ -> ()
+            async {
+                let tmpDir = @"C:\inetpub\JobApplicationSpamFSharpData\tmp"
+                while true do
+                    try
+                        Directory.EnumerateDirectories tmpDir
+                        |> Seq.iter deleteOldFiles
+                    with
+                    | e -> log.Error("", e)
+                    do! Async.Sleep (int (TimeSpan.FromMinutes 10.).TotalMilliseconds)
+            }
+        
+        [ sendNotYetSentApplications(); clearTmpFolder() ]
+        |> Async.Parallel
+        |> Async.Ignore
+        |> Async.Start
 
         let rootDirectory, url, port =
             match args with

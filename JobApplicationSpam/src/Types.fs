@@ -267,5 +267,10 @@ module Types =
         then path
         else System.IO.Path.Combine(Settings.DataDirectory, path)
 
+    type JobApplicationSpamException =
+    | DBException
+    | DBValueNotFound of string
+    | DBExpectedOneResult
+    | FileException
 
 

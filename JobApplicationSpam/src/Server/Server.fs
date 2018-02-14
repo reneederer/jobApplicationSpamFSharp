@@ -13,54 +13,41 @@ open JobApplicationSpam.I18n
 open Variables
 open System.Data
 open DBTypes
+open FSharp.Data.Sql.Transactions
+open System.Linq
 
 
 module Server =
+
     open System.Net.Mail
     open System.IO
     open WebSharper.Web.Remoting
     open System.Transactions
+    open WebSharper.Owin.EnvKey.WebSharper
 
     let log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().GetType())
 
     [<Remote>]
     let getCurrentUserId () =
-        GetContext().UserSession.GetLoggedInUser()
-        |> Async.map (
-             Option.map (Int32.TryParse)
-             >> Option.bind (fun (parsed, v) -> if parsed then Some v else None)
-        )
+        try
+            GetContext().UserSession.GetLoggedInUser()
+            |> Async.map (
+                 Option.map (Int32.TryParse)
+                 >> Option.bind (fun (parsed, v) -> if parsed then Some v else None)
+            )
+        with
+        | e ->
+            log.Error("", e)
+            Async.singleton None
 
-    let withCurrentUserFail (f : UserId -> 'a) (ifNoneFun) =
-        let oUserId = getCurrentUserId() |> Async.RunSynchronously
-        async {
-            match oUserId with
-            | Some userId ->
-                    return f (UserId userId)
-            | None -> return ifNoneFun()
-        }
 
-    let withCurrentUser f  =
-        let oUserId = getCurrentUserId() |> Async.RunSynchronously
-        match oUserId with
-        | Some userId ->
-            async { return fun () -> f (UserId userId) }
-        | None -> failwith "Nobody is logged in"
+    let withCurrentUserFail () =
+        getCurrentUserId() |> Async.RunSynchronously
 
-    let doWithCurrentUser (f : UserId -> 'a)  =
-        f |> withCurrentUser |> (Async.map (fun g -> g()))
-    
-    let readDb f =
-        let r = f()
-        r
-    let writeToDb f =
-        use dbScope = new TransactionScope()
-        f()
-        dbScope.Complete()
-    let withTransaction f =
-        Async.map writeToDb f
-    
-    
+    let withCurrentUser() =
+        getCurrentUserId() |> Async.RunSynchronously
+        |> fun x -> if x.IsNone then failwith "Nobody logged in!" else UserId x.Value
+
     [<Remote>]
     let predefinedVariables =
         Async.singleton
@@ -140,7 +127,7 @@ module Server =
                 | Bad xs -> failwith (String.Concat xs)
                 | Ok (parsedVariables, _) ->
                     parsedVariables
-                    |> List.map (fun (k : AssignedVariable, v : Expression) -> 
+                    |> List.map (fun (k : AssignedVariable, v : Variables.Expression) -> 
                               (k
                             , (tryGetValue v predefinedVariables |> Option.defaultValue ""))
                         )
@@ -150,24 +137,30 @@ module Server =
 
 
     [<Remote>]
-    let getUserIdByEmail (email : string) =
+    let tryGetUserIdByEmail (email : string) =
         async {
-            return Database.getUserIdByEmail db email
+            return Database.tryGetUserIdByEmail email |> readDB
         }
 
     [<Remote>]
-    let getEmailByUserId (userId : UserId) : Async<option<string>> =
+    let getEmailByUserId (userId : UserId) =
         async {
-            return Database.getEmailByUserId db userId
+            return Database.getEmailByUserId userId |> readDB
         }
     
-    let getUserEmail' userId =
-        Database.getEmailByUserId db userId
     [<Remote>]
-    let getUserEmail () : Async<option<string>> =
-        withCurrentUserFail getUserEmail' (fun () -> None)
-
-
+    let tryGetUserEmail () : Async<option<string>> =
+         withCurrentUserFail ()
+         |> fun oUserId ->
+            async {
+                return
+                    oUserId
+                    |> Option.bind
+                        (fun x ->
+                             Database.getEmailByUserId (UserId x)
+                             |> readDB
+                        )
+            }
     
     let sendEmail fromAddress fromName toAddress subject body (attachmentPathsAndNames : list<string * string>) =
         use smtpClient = new SmtpClient(Settings.EmailServer, Settings.EmailPort)
@@ -187,18 +180,25 @@ module Server =
         for attachment in attachments do
             attachment.Dispose()
     
-
-
-    
     [<Remote>]
     let getUserValues () =
-        Database.getUserValues db |> doWithCurrentUser
+        let userId = withCurrentUser()
+        async {
+            return
+                userId
+                |> Database.getUserValues
+                |> readDB
+        }
     
     [<Remote>]
     let setUserValues (userValues : UserValues) =
-        withCurrentUser (Database.setUserValues db userValues)
-        |> withTransaction
-
+        let userId = withCurrentUser ()
+        async {
+            return
+                userId
+                |> Database.setUserValues userValues
+                |> withTransaction
+        }
 
     let generateSalt length =
         let (bytes : array<byte>) = Array.replicate length (0uy)
@@ -219,48 +219,47 @@ module Server =
     let setPassword password =
         let salt =  generateSalt 64
         let hashedPassword = generateHashWithSalt password salt 1000 64
-        withCurrentUser (Database.setPasswordSaltAndConfirmEmailGuid db hashedPassword salt None)
-        |> withTransaction
+        let userId = withCurrentUser()
+        async {
+            return
+                userId
+                |> Database.setPasswordSaltAndConfirmEmailGuid hashedPassword salt None
+                |> withTransaction
+                }
 
     [<Remote>]
     let login (email : string) (password : string) =
         async {
             log.Debug (sprintf "email = %s, password = password")
-            try
-                use dbConn = new NpgsqlConnection(Settings.DbConnStr)
-                dbConn.Open()
-                match Database.getValidateLoginData db email with
-                | Some v ->
-                    match v.confirmEmailGuid with
-                    | None ->
-                        let hash = generateHashWithSalt password v.salt 1000 64
-                        if hash = v.hashedPassword
-                        then
-                            Database.insertLastLogin db v.userId
-                            return ok ()
-                        else return fail "Email oder Passwort ist falsch."
-                    | Some _ -> return fail "Bitte bestätige deine Email-Adresse."
-                | None -> return fail  "Email oder Passwort ist falsch."
-            with
-            | e ->
-                log.Error("", e)
-                return fail "An error occurred."
+            match Database.tryGetValidateLoginData email |> readDB with
+            | Some v ->
+                match v.confirmEmailGuid with
+                | None ->
+                    let hash = generateHashWithSalt password v.salt 1000 64
+                    if hash = v.hashedPassword
+                    then
+                        (Database.insertLastLogin DateTime.Now v.userId) |> withTransaction
+                        return ok ()
+                    else return fail "Email oder Passwort ist falsch."
+                | Some _ -> return fail "Bitte bestätige deine Email-Adresse."
+            | None -> return fail  "Email oder Passwort ist falsch."
         }
     
     [<Remote>]
-    let setUserEmail (email : string) =
-        if email = "geprueftundokund nicht doppelt" || true //TODO
+    let setUserEmail (oEmail : option<string>) =
+        if oEmail = Some "geprueftundokund nicht doppelt" || true //TODO
         then
-            withCurrentUser (fun userId -> Database.setUserEmail db email userId)
+            withCurrentUser ()
+            |> Database.setUserEmail oEmail
             |> withTransaction
-            |> Async.map (fun _ -> ok())
+            async { return ok () }
         else
             async { return fail "Email is not valid" }
     
     [<Remote>]
     let loginUserBySessionGuid sessionGuid =
         log.Debug(sprintf "(sessionGuid = %s)" sessionGuid)
-        match Database.getUserIdBySessionGuid db sessionGuid with
+        match Database.tryGetUserIdBySessionGuid sessionGuid |> readDB with
         | None ->
             log.Debug(sprintf "(sessionGuid = %s) = %b" sessionGuid false)
             async { return false }
@@ -271,15 +270,26 @@ module Server =
     
     [<Remote>]
     let setSessionGuid oSessionGuid =
-        withCurrentUser (Database.setSessionGuid db oSessionGuid)
-        |> withTransaction
+        let userId = withCurrentUser ()
+        async {
+            return
+                userId
+                |> Database.setSessionGuid oSessionGuid
+                |> withTransaction
+                }
     
     [<Remote>]
     let loginAsGuest (sessionGuid : string) =
-        let (UserId userId) = Database.insertNewUser db None "" "" (Some <| Guid.NewGuid().ToString("N")) (Some sessionGuid) DateTime.Now
-        GetContext().UserSession.LoginUser (string userId) |> Async.RunSynchronously
-        withCurrentUser (Database.insertLastLogin db)
-        |> withTransaction
+        log.Debug (sprintf "(sessionGuid = %s)" sessionGuid)
+        use dbScope = new TransactionScope(TransactionScopeOption.RequiresNew)
+        let dbContext = DB.GetDataContext()
+        let user = Database.insertUser None "" "" None None DateTime.Now dbContext
+        dbContext.SubmitUpdates()
+        Database.insertLastLogin DateTime.Now (UserId user.Id) dbContext
+        Database.insertUserValues emptyUserValues (UserId user.Id) dbContext
+        dbContext.SubmitUpdates()
+        dbScope.Complete()
+        GetContext().UserSession.LoginUser (string user.Id)
 
     [<Remote>]
     let isUserLoggedIn () =
@@ -290,9 +300,16 @@ module Server =
     
     [<Remote>]
     let isLoggedInAsGuest () =
-        withCurrentUserFail
-            (fun userId ->  Database.getConfirmEmailGuidByUserId db userId |> Option.isSome)
-            (fun () -> false)
+        let oUserId = withCurrentUserFail ()
+        async {
+            return
+                oUserId
+                |> Option.map (fun userId ->
+                        Database.tryGetConfirmEmailGuidByUserId (UserId userId)
+                        |> readDB
+                        |> Option.isNone)
+                |> Option.defaultValue false
+        }
 
     [<Remote>]
     let register (email : string) (password : string) =
@@ -305,16 +322,18 @@ module Server =
                 elif password = ""
                 then return fail "Passwort darf nicht leer sein."
                 else
-                    use dbConn = new NpgsqlConnection(Settings.DbConnStr)
-                    dbConn.Open()
-                    if Database.userEmailExists db email
-                    then
+                    match Database.userEmailExists email |> readDB with
+                    | true ->
                         return fail "Diese Email-Adresse ist schon registriert."
-                    else
+                    | false ->
                         let salt = generateSalt 64
                         let hashedPassword = generateHashWithSalt password salt 1000 64
                         let confirmEmailGuid = Guid.NewGuid().ToString("N")
-                        Database.insertNewUser db (Some email) hashedPassword salt (Some confirmEmailGuid) |> ignore
+                        Database.insertUser (Some email) hashedPassword salt (Some confirmEmailGuid) None System.DateTime.Now
+                        |> andThen (fun user dbContext ->
+                            Database.insertUserValues emptyUserValues (UserId user.Id) dbContext
+                            Database.insertLastLogin DateTime.Now (UserId user.Id) dbContext)
+                        |> withTransaction
                         sendEmail
                             Settings.EmailUsername
                             Settings.DomainName
@@ -332,77 +351,76 @@ module Server =
     [<Remote>]
     let confirmEmail email confirmEmailGuid =
         async {
-            log.Debug (sprintf "(email = %s, guid = %s)" email confirmEmailGuid)
-            let oConfirmEmailGuid = Database.getConfirmEmailGuid db email
-            match oConfirmEmailGuid with
-            | None -> return ok "Email already confirmed"
-            | Some guid when guid = confirmEmailGuid ->
-                let recordCount = Database.setConfirmEmailGuidToNull db email
-                if recordCount <> 1
-                then
-                    log.Error("Email does not exist or confirmEmailGuid was already null: " + email)
-                    return fail "An error occurred."
-                else return ok "Email has been confirmed."
-            | Some _ ->
-                return fail "Unknown confirmEmailGuid"
+            return
+                (fun dbContext ->
+                    log.Debug (sprintf "(email = %s, guid = %s)" email confirmEmailGuid)
+                    match Database.tryGetConfirmEmailGuid email |> readDB with
+                    | None -> ok "Email already confirmed"
+                    | Some guid when guid = confirmEmailGuid ->
+                        let recordCount = Database.setConfirmEmailGuidToNull dbContext email
+                        if recordCount <> 1
+                        then
+                            log.Error("Email does not exist or confirmEmailGuid was already null: " + email)
+                            fail "An error occurred."
+                        else ok "Email has been confirmed."
+                    | Some _ ->
+                        fail "Unknown confirmEmailGuid")
+                |> withTransaction
         }
 
     [<Remote>]
     let getDocumentNames () =
-        log.Debug "()"
-        doWithCurrentUser (Database.getDocumentNames db)
+        let userId = withCurrentUser ()
+        async {
+            return
+                userId
+                |> Database.getDocumentNames
+                |> readDB
+                }
 
     [<Remote>]
     let overwriteDocument (document : Document) =
-        fun userId ->
-            try
-                Database.overwriteDocument db document userId
-            with
-            | e ->
-                dbContext.ClearUpdates() |> ignore
-                log.Error("Saving Document failed", e)
-                failwith ("Saving Document failed" + e.ToString())
-        |> withCurrentUser
-        |> withTransaction
+        let userId = withCurrentUser ()
+        async {
+            return
+                userId
+                |> Database.overwriteDocument document
+                |> withTransaction
+                }
 
     [<Remote>]
     let saveNewDocument (document : Document) =
-        match getCurrentUserId() |> Async.RunSynchronously with
-        | None -> failwith "Nobody logged in"
-        | Some userId ->
-            try
-                async {
-                    use dbScope = new TransactionScope()
-                    let documentId = Database.saveNewDocument db document (UserId userId)
-                    dbScope.Complete()
-                    return documentId
+        let userId = withCurrentUser ()
+        async {
+            return
+                userId
+                |> Database.insertDocument document
+                |> withTransaction
                 }
-            with
-            | e ->
-                dbContext.ClearUpdates() |> ignore
-                log.Error("Saving Document failed", e)
-                failwith "Saving Document failed"
 
     [<Remote>]
     let deleteDocument (DocumentId documentId) =
-        async {
-            use dbConn = new NpgsqlConnection(Settings.DbConnStr)
-            dbConn.Open()
-            Database.deleteDocument db documentId
-            let filePaths = Database.getDeletableFilePaths db documentId
-            for filePath in filePaths do
-                if Path.IsPathRooted filePath
-                then File.Delete filePath
-                else File.Delete <| toRootedPath filePath
-            Database.deleteDeletableDocumentFilePages db documentId |> ignore
-            dbContext.SubmitUpdates()
-        }
+        (fun dbContext ->
+            async {
+                return Database.deleteDocument documentId dbContext
+                let filePaths = Database.getDeletableFilePaths documentId dbContext
+                for filePath in filePaths do
+                    if Path.IsPathRooted filePath
+                    then File.Delete filePath
+                    else File.Delete <| toRootedPath filePath
+                Database.deleteDeletableDocumentFilePages documentId dbContext
+            }
+        ) |> withTransaction
 
-    let getDocumentOffset' (htmlJobApplicationOffset : int) (userId : UserId) =
-        Database.getDocumentOffset db userId htmlJobApplicationOffset
     [<Remote>]
     let getDocumentOffset (htmlJobApplicationOffset : int) =
-        doWithCurrentUser (getDocumentOffset' htmlJobApplicationOffset)
+        let userId = withCurrentUser ()
+        async {
+            return
+                userId
+                |> Database.getDocumentOffset htmlJobApplicationOffset
+                |> readDB
+                }
 
     [<Remote>]
     let replaceVariables
@@ -410,40 +428,50 @@ module Server =
             (userValues : UserValues)
             (employer : Employer)
             (document : Document) =
-        let oUserEmail = getUserEmail () |> Async.RunSynchronously
-        async {
-            try
-                let tmpDirectory = Path.Combine(Settings.DataDirectory, "tmp", Guid.NewGuid().ToString("N"))
-                let! map = toCV employer userValues (oUserEmail |> Option.defaultValue "") document.jobName document.customVariables
-                Directory.CreateDirectory(tmpDirectory) |> ignore
-                if filePath.ToLower().EndsWith(".odt")
-                then
-                    return
-                        Odt.replaceInOdt
-                            (toRootedPath filePath)
-                            (Path.Combine(tmpDirectory, "extracted"))
-                            (Path.Combine(tmpDirectory, "replaced"))
-                            map
-                elif unoconvImageTypes |> List.contains (Path.GetExtension(filePath).ToLower().Substring(1))
-                then
-                    return filePath
-                else
-                    let newFilePath = Path.Combine(tmpDirectory, (Path.GetFileName(filePath)))
-                    File.Copy(toRootedPath filePath, newFilePath, true)
-                    Odt.replaceInFile newFilePath map Ignore
-                    return newFilePath
-            with
-            | e ->
-                log.Error ("", e)
-                return failwith "An error occurred"
-        }
+        let oUserEmail = tryGetUserEmail () |> Async.RunSynchronously
+        match oUserEmail with
+        | Some userEmail ->
+            async {
+                try
+                    let tmpDirectory = Path.Combine(Settings.DataDirectory, "tmp", Guid.NewGuid().ToString("N"))
+                    let! map = toCV employer userValues userEmail document.jobName document.customVariables
+                    Directory.CreateDirectory(tmpDirectory) |> ignore
+                    if filePath.ToLower().EndsWith(".odt")
+                    then
+                        return
+                            Odt.replaceInOdt
+                                (toRootedPath filePath)
+                                (Path.Combine(tmpDirectory, "extracted"))
+                                (Path.Combine(tmpDirectory, "replaced"))
+                                map
+                    elif unoconvImageTypes |> List.contains (Path.GetExtension(filePath).ToLower().Substring(1))
+                    then
+                        return filePath
+                    else
+                        let newFilePath = Path.Combine(tmpDirectory, (Path.GetFileName(filePath)))
+                        File.Copy(toRootedPath filePath, newFilePath, true)
+                        Odt.replaceInFile newFilePath map Types.Ignore
+                        return newFilePath
+                with
+                | e ->
+                    log.Error ("", e)
+                    return failwith "An error occurred"
+            }
+        | None ->
+            log.Error("User email was None")
+            failwith "User email was None"
          
     let emailSentApplicationToUser' (sentApplicationOffset : int) (customVariablesString : string) userId =
         try
-            let userEmail = Database.getEmailByUserId db userId |> Option.defaultValue ""
-            match Database.getSentApplicationOffset db sentApplicationOffset userId with
-            | None -> fail "The requested application could not be not found"
-            | Some sentApplication ->
+            let oUserEmail = Database.getEmailByUserId userId |> readDB
+            let oSentApplication =
+                withCurrentUser ()
+                |> Database.getSentApplicationOffset sentApplicationOffset
+                |> readDB
+            match oUserEmail, oSentApplication with
+            | _, None -> fail "The requested application could not be not found"
+            | None, _ -> fail "User email was None"
+            | Some userEmail, Some sentApplication ->
                 let myList =
                     toCV
                         sentApplication.employer
@@ -473,7 +501,7 @@ module Server =
                                     Odt.replaceInFile
                                         copiedPath
                                         myList
-                                        Ignore
+                                        Types.Ignore
                                     copiedPath
                     ]
 
@@ -494,8 +522,8 @@ module Server =
                     Settings.EmailUsername
                     "www.bewerbungsspam.de"
                     userEmail
-                    (Odt.replaceInString sentApplication.email.subject myList Ignore)
-                    (Odt.replaceInString (sentApplication.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Ignore)
+                    (Odt.replaceInString sentApplication.email.subject myList Types.Ignore)
+                    (Odt.replaceInString (sentApplication.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Types.Ignore)
                     (if pdfPaths = []
                      then []
                      else [mergedPdfPath,
@@ -512,13 +540,18 @@ module Server =
             fail "Couldn't email the application to the user"
 
     [<Remote>]
-    let emailSentApplicationToUser (sentApplicationOffset : int) (customVariablesString : string) : Async<Result<unit, string>> =
-        doWithCurrentUser (emailSentApplicationToUser' sentApplicationOffset customVariablesString)
-    
+    let emailSentApplicationToUser (sentApplicationOffset : int) (customVariablesString : string) =
+        let userId = withCurrentUser ()
+        async {
+            return
+                userId
+                |> fun userId () -> emailSentApplicationToUser' sentApplicationOffset customVariablesString userId
+                |> fun f -> f()
+        }
     [<Remote>]
     let sendNotYetSentApplication sentApplicationId =
         try
-            let oSentApp = Database.getSentApplication db sentApplicationId
+            let oSentApp = Database.getSentApplication sentApplicationId |> readDB
             match oSentApp with
             | None ->
                 log.Error (sprintf "sentApplication was None. Id: %i" sentApplicationId)
@@ -553,7 +586,7 @@ module Server =
                                 Odt.replaceInFile
                                     copiedPath
                                     myList
-                                    Ignore
+                                    Types.Ignore
                                 copiedPath
                     ]
                        
@@ -568,16 +601,19 @@ module Server =
                 then Odt.mergePdfs pdfPaths mergedPdfPath
 
 
-                db.Sentstatus.Create(Sentapplicationid = sentApplicationId, Statuschangedon = DateTime.Today, Dueon = None, 
-                    Sentstatusvalueid = 2, Statusmessage = "") |> ignore
-                dbContext.SubmitUpdates()
+                //TODO
+                (fun (dbContext : DB.dataContext) ->
+                    dbContext.Public.Sentstatus.Create(Sentapplicationid = sentApplicationId, Statuschangedon = DateTime.Today, Dueon = None, 
+                        Sentstatusvalueid = 2, Statusmessage = ""))
+                |> withTransaction
+                |> ignore
 
                 sendEmail
                     sentApp.user.email
                     (sentApp.user.values.firstName + " " + sentApp.user.values.lastName)
                     sentApp.employer.email
-                    (Odt.replaceInString sentApp.email.subject myList Ignore)
-                    (Odt.replaceInString (sentApp.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Ignore)
+                    (Odt.replaceInString sentApp.email.subject myList Types.Ignore)
+                    (Odt.replaceInString (sentApp.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Types.Ignore)
 
                     (if pdfPaths = []
                      then []
@@ -587,129 +623,150 @@ module Server =
                     sentApp.user.email
                     (sentApp.user.values.firstName + " " + sentApp.user.values.lastName)
                     sentApp.user.email
-                    ("Deine Bewerbung wurde versandt - " + Odt.replaceInString sentApp.email.subject myList Ignore)
+                    ("Deine Bewerbung wurde versandt - " + Odt.replaceInString sentApp.email.subject myList Types.Ignore)
                     ((sprintf
                         "Deine Bewerbung wurde am %s an %s versandt.\n\n"
                         (DateTime.Now.ToShortDateString())
                         sentApp.employer.email)
-                            + Odt.replaceInString (sentApp.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Ignore)
+                            + Odt.replaceInString (sentApp.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Types.Ignore)
 
                     (if pdfPaths = []
                      then []
                      else [mergedPdfPath, (sprintf "Bewerbung_%s_%s.pdf" sentApp.user.values.firstName sentApp.user.values.lastName)]
                      )
 
-                let oConfirmEmailGuid = Database.getConfirmEmailGuid db (sentApp.user.email)
-                if oConfirmEmailGuid.IsSome
-                then
+                let oConfirmEmailGuid = Database.tryGetConfirmEmailGuid sentApp.user.email |> readDB
+                match oConfirmEmailGuid with
+                | Some confirmEmailGuid ->
                     sendEmail
                         Settings.EmailUsername
                         "Bewerbungsspam"
                         sentApp.user.email
                         (t German PleaseConfirmYourEmailAddressEmailSubject)
-                        (String.Format((t German PleaseConfirmYourEmailAddressEmailBody), sentApp.user.email, oConfirmEmailGuid.Value))
+                        (String.Format((t German PleaseConfirmYourEmailAddressEmailBody), sentApp.user.email, confirmEmailGuid))
                         []
+                | None -> ()
         with
         | e ->
             log.Error ("", e)
-            dbContext.ClearUpdates() |> ignore
 
 
-    let applyNow'
-            (employer : Employer)
-            (document : Document)
-            (userValues : UserValues)
-            (url : string)
-            (userId : UserId) =
-        try
-            Database.setUserValues db userValues userId |> ignore
-            let oUserEmail = Database.getEmailByUserId db userId
-            match oUserEmail with
-            | None ->
-                log.Error("UserEmail was None")
-                fail "User email was None"
-            | Some userEmail ->
-                let dbEmployer = Database.addEmployer db employer userId
-                Database.insertNotYetSentApplication
-                    db
-                    userId
-                    dbEmployer.Id
-                    document.email
-                    (userEmail, userValues)
-                    (document.pages |> List.choose(fun x -> match x with FilePage p -> Some (p.path, p.pageIndex) | HtmlPage _ -> None))
-                    document.jobName
-                    url
-                    document.customVariables
-                    DateTime.Today
-                dbContext.SubmitUpdates()
-                ok()
-        with
-        | e ->
-            log.Error ("", e)
-            dbContext.ClearUpdates() |> ignore
-            fail "Couldn't send the application"
+
     [<Remote>]
     let applyNow
             (employer : Employer)
             (document : Document)
             (userValues : UserValues)
             (url : string) =
-        doWithCurrentUser (applyNow' employer document userValues url)
+        let userId = withCurrentUser()
+        async {
+            return
+                userId
+                |>
+                fun userId dbContext ->
+                    Database.setUserValues userValues userId dbContext |> ignore
+                    dbContext.SubmitUpdates()
+                    let oUserEmail = Database.getEmailByUserId userId dbContext
+                    match oUserEmail with
+                    | None ->
+                        log.Error("UserEmail was None")
+                        fail "User email was None"
+                    | Some userEmail ->
+                        let dbEmployer = Database.insertEmployer employer userId dbContext
+                        dbContext.SubmitUpdates()
+                        Database.insertNotYetSentApplication
+                            dbEmployer.Id
+                            document.email
+                            (userEmail, userValues)
+                            (document.pages |> List.choose(fun x -> match x with FilePage p -> Some (p.path, p.pageIndex) | HtmlPage _ -> None))
+                            document.jobName
+                            url
+                            document.customVariables
+                            DateTime.Today
+                            userId
+                            dbContext
+                        dbContext.SubmitUpdates()
+                        ok ()
+                |> withTransaction
+        }
 
     [<Remote>]
     let addFilePage (DocumentId documentId) path pageIndex name =
         async {
-            Database.addFilePage db documentId path pageIndex name
-            dbContext.SubmitUpdates()
+            return
+                Database.insertFilePage documentId path pageIndex name |> withTransaction
         }
 
     
     [<Remote>]
     let getHtmlPageTemplates () =
         async {
-            return Database.getHtmlPageTemplates db ()
+            return Database.getHtmlPageTemplates |> readDB
         }
     
     [<Remote>]
     let getHtmlPageTemplate (templateId : int) =
         async {
-            return Database.getHtmlPageTemplate db templateId
+            return Database.getHtmlPageTemplate templateId |> readDB
         }
     
     [<Remote>]
     let getHtmlPages documentId =
         async {
-            return Database.getHtmlPages documentId
+            Database.getHtmlPages documentId |> readDB
         }
 
     [<Remote>]
     let getPageMapOffset (pageIndex : int) (documentIndex : int)  =
-        withCurrentUser (Database.getPageMapOffset db) |> Async.map (fun f -> f () pageIndex documentIndex)
+        let userId = withCurrentUser  ()
+        async {
+            return
+                userId
+                |> Database.getPageMapOffset pageIndex documentIndex
+                |> readDB
+        }
      
     [<Remote>]
     let getLastEditedDocumentOffset () =
-        doWithCurrentUser (Database.getLastEditedDocumentOffset db)
+        let userId = withCurrentUser ()
+        async {
+            return
+                userId
+                |> Database.getLastEditedDocumentOffset
+                |> readDB
+        }
 
     [<Remote>]
     let setLastEditedDocumentId (userId : UserId) (documentId : DocumentId) =
-        async { return fun () -> Database.setLastEditedDocumentId db documentId userId }
-        |> withTransaction
+        async {
+            return Database.setLastEditedDocumentId documentId userId |> withTransaction
+        }
 
     [<Remote>]
     let addNewDocument name =
-        withCurrentUser (Database.addNewDocument db name)
-        |> withTransaction
-
+        let userId = withCurrentUser  ()
+        async {
+            return
+                userId
+                |> Database.insertDocument name
+                |> withTransaction
+            }
 
     [<Remote>]
     let addHtmlPage (documentId : int) (oTemplateId : option<int>) (pageIndex : int) (name : string) =
         async {
-            return Database.addHtmlPage db documentId oTemplateId pageIndex name
+            Database.insertHtmlPage documentId oTemplateId pageIndex name |> withTransaction
         }
 
     [<Remote>]
     let getDocumentIdOffset documentIndex =
-        withCurrentUser (Database.tryGetDocumentIdOffset db) |> Async.map (fun f -> f documentIndex)
+        let userId = withCurrentUser ()
+        async {
+            return
+                userId
+                |> Database.tryGetDocumentIdOffset documentIndex
+                |> readDB
+        }
     
     [<Remote>]
     let readWebsite (identifier : string) : Async<Result<Employer, string>> =
@@ -725,94 +782,59 @@ module Server =
     [<Remote>]
     let createLink filePath name =
         async {
-            use dbConn = new NpgsqlConnection(Settings.DbConnStr)
-            dbConn.Open()
-            return Database.createLink db filePath name
+            let linkGuid = Guid.NewGuid().ToString("N")
+            return 
+                Database.insertLink filePath name linkGuid
+                |> withTransaction
+                |> (fun _ -> linkGuid)
         }
 
     [<Remote>]
     let tryGetPathAndNameByLinkGuid linkGuid =
         async {
-            return Database.tryGetPathAndNameByLinkGuid db linkGuid
+            return Database.tryGetPathAndNameByLinkGuid linkGuid |> readDB
         }
 
     [<Remote>]
     let deleteLink linkGuid =
         async {
-            use dbConn = new NpgsqlConnection(Settings.DbConnStr)
-            dbConn.Open()
-            Database.deleteLink db linkGuid
+            Database.deleteLink linkGuid |> withTransaction
         }
-
 
     [<Remote>]
     let getSentApplications () =
-        doWithCurrentUser (Database.getSentApplications db)
+        let userId = withCurrentUser ()
+        async {
+            return
+                userId
+                |> Database.getSentApplications
+                |> readDB
+        }
 
     let getFilesWithExtension extension userId =
         async {
-            return Database.getFilesWithExtension db extension userId
+            return Database.getFilesWithExtension extension userId |> readDB
         }
 
     [<Remote>]
     let getNotYetSentApplicationIds () = 
         async {
-            return Database.getNotYetSentApplicationIds db
+            return Database.getNotYetSentApplicationIds |> readDB
         }
 
     let getFilePageNames (documentId : DocumentId) =
         async {
-            return Database.getFilePageNames db documentId
+            return Database.getFilePageNames documentId |> readDB
         }
 
     [<Remote>]
     let tryFindSentApplication (employer : Employer) =
-        doWithCurrentUser (Database.tryFindSentApplication db employer)
-    
-    let sendNotYetSentApplications () =
-        let sendNotYetSentApplications () =
-            async {
-                printfn "Sending unsent applications: "
-                let notYetSentApplicationIds = Database.getNotYetSentApplicationIds db
-                printfn "notYetSentApplicationIds: %A" notYetSentApplicationIds
-                if notYetSentApplicationIds = []
-                then do! Async.Sleep 10000
-                notYetSentApplicationIds
-                |> List.iter (fun appId -> printfn "Sending %i" appId; sendNotYetSentApplication appId)
-            }
+        let userId = withCurrentUser ()
         async {
-            while true do
-                try
-                    do! sendNotYetSentApplications()
-                with
-                | e -> log.Error("", e)
-                do! Async.Sleep 5000
+            return
+                userId
+                |> Database.tryGetSentApplication employer
+                |> readDB
         }
 
-    let clearTmpFolder () =
-        let rec deleteOldFiles dir = 
-            let isOld lastWriteTime = DateTime.Now - lastWriteTime > TimeSpan.FromHours 3.
-            let directories = Directory.EnumerateDirectories dir
-            for directoryIndex = (Seq.length directories - 1) downto 0 do
-                deleteOldFiles (directories |> Seq.item directoryIndex)
-            let files = Directory.EnumerateFiles dir
-            for fileIndex = (Seq.length files - 1) downto 0 do
-                if isOld (File.GetLastWriteTime (files |> Seq.item fileIndex))
-                then try File.Delete (files |> Seq.item fileIndex) with _ -> ()
-            if Directory.EnumerateFileSystemEntries dir |> Seq.isEmpty
-            then try Directory.Delete dir with _ -> ()
-        async {
-            let tmpDir = @"C:\inetpub\JobApplicationSpamFSharpData\tmp"
-            while true do
-                try
-                    Directory.EnumerateDirectories tmpDir
-                    |> Seq.iter deleteOldFiles
-                with
-                | e -> log.Error("", e)
-                do! Async.Sleep (int (TimeSpan.FromMinutes 10.).TotalMilliseconds)
-        }
     
-    [ sendNotYetSentApplications(); clearTmpFolder() ]
-    |> Async.Parallel
-    |> Async.Ignore
-    |> Async.Start

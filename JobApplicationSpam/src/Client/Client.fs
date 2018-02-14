@@ -17,6 +17,7 @@ module Client =
     open ClientHelpers
     open ClientTypes
 
+
     [<JavaScript>]
     let togglePassword (el : JQuery) =
         if el.Attr("type") = "password"
@@ -756,7 +757,7 @@ module Client =
                 let regex = RegExp(emailRegexStr)
                 let! sentApplication (*TODO this is an option<int> instead of option<SentApplication> as placeholder*) =
                     Server.tryFindSentApplication varEmployer.Value
-                let! setUserEmailResult = Server.setUserEmail varUserEmail.Value
+                let! setUserEmailResult = Server.setUserEmail (Some varUserEmail.Value)
 
                 let userEmailValid() =
                     if isGuest
@@ -1067,8 +1068,11 @@ module Client =
             let! isGuest = Server.isLoggedInAsGuest()
             if isGuest
             then
+                JS.Alert("guest!")
                 varUserEmailInput.Value <- createInput "Deine Email" varUserEmail (fun x -> "")
-            else varUserEmailInput.Value <- text ""
+            else
+                JS.Alert("no guest!")
+                varUserEmailInput.Value <- text ""
             JQuery(JS.Document).Ready(
                 fun () ->
                     async {
@@ -1091,7 +1095,7 @@ module Client =
                         addMenuEntry (t German EditAttachments) (fun _ _ -> show [els.divAttachments]) |> ignore
                         addMenuEntry (t German AddEmployerAndApply) (fun _ _ -> show [els.divAddEmployer]) |> ignore
 
-                        let! oUserEmail = Server.getUserEmail()
+                        let! oUserEmail = Server.tryGetUserEmail()
                         varUserEmail.Value <- oUserEmail |> Option.defaultValue ""
                     
                         let! oUserValues = Server.getUserValues()

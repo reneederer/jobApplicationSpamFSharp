@@ -24,14 +24,14 @@ drop table if exists users cascade;
 
 
 create table users (id serial primary key, email text unique null, password text not null, salt text not null, confirmEmailGuid text null, sessionGuid text unique null, createdOn date not null);
-create table login (id serial primary key, userId int not null, loggedInAt timestamp with time zone, foreign key(userId) references users(id));
+create table login (id serial primary key, userId int not null, loggedInAt timestamp with time zone not null, foreign key(userId) references users(id));
 create table userValues(id serial primary key, userId int unique not null, gender text not null, degree text not null, firstName text not null, lastName text not null, street text not null, postcode text not null, city text not null,phone text not null, mobilePhone text not null, foreign key(userId) references users(id));
 create table employer(id serial primary key, userId int not null, company text not null, street text not null, postcode text not null, city text not null, gender text not null, degree text not null, firstName text not null, lastName text not null, email text not null, phone text not null, mobilePhone text not null, foreign key(userId) references users(id));
 create table jobOffer(id serial primary key, url text not null, jobName text not null);
 create table jobRequirement(id serial primary key, jobOfferId int not null, key text not null, value text not null, foreign key(jobOfferId) references jobOffer(id));
 create table htmlPageTemplate(id serial primary key, name text unique not null, odtPath text unique not null, html text not null);
 create table document(id serial primary key, userId int not null, name text not null, jobName text not null, customVariables text not null, foreign key(userId) references users(id));
-create table lastEditedDocumentId(userId int unique primary key not null, documentId int not null, foreign key(userId) references users(id), foreign key(documentId) references document(id));
+create table lastEditedDocumentId(id serial primary key, userId int unique not null, documentId int not null, foreign key(userId) references users(id), foreign key(documentId) references document(id));
 create table filePage(id serial primary key, documentId int not null, path text not null, pageIndex int not null, name text not null, foreign key(documentId) references document(id), constraint filePage_unique unique(documentId, pageIndex));
 create table htmlPage(id serial primary key, documentId int not null, templateId int null, pageIndex int not null, name text not null, foreign key(documentId) references document(id), foreign key(templateId) references htmlPageTemplate(id), constraint htmlPage_unique unique(documentId, pageIndex));
 create table documentEmail(id serial primary key, documentId int not null unique, subject text not null, body text not null, foreign key(documentId) references document(id));

@@ -8,7 +8,7 @@
     <ProjectGuid>4b1bac45-9918-4a9b-b801-b95dd996461a</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>SQLProvider1</RootNamespace>
-    <AssemblyName>SQLProvider1</AssemblyName>
+    <AssemblyName>JobApplicationSpam</AssemblyName>
     <WebSharperProject>Site</WebSharperProject>
     <WebProjectOutputDir>$(MSBuildThisFileDirectory)</WebProjectOutputDir>
     <TargetFrameworkVersion>v4.7.1</TargetFrameworkVersion>
@@ -145,6 +145,9 @@
     <Reference Include="FParsecCS">
       <HintPath>..\packages\FParsec.1.0.4-RC\lib\net40-client\FParsecCS.dll</HintPath>
     </Reference>
+    <Reference Include="FsControl.Core">
+      <HintPath>..\packages\FsControl.1.0.9\lib\net40\FsControl.Core.dll</HintPath>
+    </Reference>
     <Reference Include="FSharp.Configuration">
       <HintPath>..\packages\FSharp.Configuration.1.3.1\lib\net45\FSharp.Configuration.dll</HintPath>
     </Reference>
@@ -153,6 +156,9 @@
     </Reference>
     <Reference Include="FSharp.Data.SqlProvider">
       <HintPath>..\packages\SQLProvider.1.1.31\lib\net451\FSharp.Data.SqlProvider.dll</HintPath>
+    </Reference>
+    <Reference Include="FSharpPlus">
+      <HintPath>..\packages\FSharpPlus.0.0.4\lib\net40\FSharpPlus.dll</HintPath>
     </Reference>
     <Reference Include="FsUnit.NUnit">
       <HintPath>..\packages\FsUnit.3.0.0\lib\net45\FsUnit.NUnit.dll</HintPath>

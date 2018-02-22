@@ -47,91 +47,10 @@ create table sentStatusValue(id int primary key, status text not null);
 create table sentStatus(id serial primary key, sentApplicationId int not null, statusChangedOn date not null, dueOn timestamp null, sentStatusValueId int not null, statusMessage text not null, foreign key(sentApplicationId) references sentApplication(id), foreign key(sentStatusValueId) references sentStatusValue(id));
 create table link(id serial primary key, path text not null, guid text not null, name text not null);
 
-insert into users(email, password, salt, confirmEmailGuid, sessionGuid, createdOn) values('ene.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null, '1234', current_date);
-/*
-insert into users(email, password, salt, guid) values('ren.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null);
-insert into users(email, password, salt, guid) values('helmut.goerke@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', 'someguid');
-insert into users(email, password, salt, guid) values('r', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null);
+insert into users(email, password, salt, confirmEmailGuid, sessionGuid, createdOn) values('rene.ederer.nbg@gmail.com', 'r99n/4/4NGGeD7pn4I1STI2rI+BFweUmzAqkxwLUzFP9aB7g4zR5CBHx+Nz2yn3NbiY7/plf4ZRGPaXXnQvFsA==', 'JjjYQTWgutm4pv/VnzgHf6r4NjNrAVcTq+xnR7/JsRGAIHRdrcw3IMVrzngn2KPRakfX/S1kl9VrqwAT+T02Og==', null, null, current_date);
 
-*/
 insert into userValues(userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone) values(1, 'm', '', 'René', 'Ederer', 'Raabstr. 24A', '90429', 'Nürnberg', 'kein Telefon', 'kein Handy');
 /*
-insert into userValues(userId, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone) values(2, 'm', '', 'Helmut', 'Görke', 'Raabstr. 24A', '90429', 'Nürnberg', '0911 918273', '01520 2723494');
-*/
-/*
-insert into employer(userId, company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'BJC BEST JOB IT SERVICES GmbH', 'Alte Rabenstraße 32', '20148', 'Hamburg', 'f', '', 'Katrin', 'Thoms', 'Katrin.Thoms@bjc-its.de', '+49 (40) 5 14 00 7180', '');
-insert into employer(userId, company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'Deutsche Anwaltshotline AG', 'Am Plärrer 7', '90443', 'Nürnberg', 'm', '', 'Jonas', 'Zimmermann', 'mail@deutsche-anwaltshotline.de', '+49 911 3765690', '');
-insert into employer(userId, company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'ANG.-Punkt und gut! GmbH', 'Südwestpark 37-41', '90449', 'Nürnberg', 'f', '', 'Jaqueline', 'Strauß', 'bewerbung@ang.de', '+49 911 525700', '+49 1778876348');
-insert into employer(userId, company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'iQ-Bewerbermanagement', 'Obernstr. 111', '28832', 'Achim bei Bremen', 'f', '', 'Nele', 'Sommerfeld', 'nele.sommerfeld@iq-bewerbermanagement.de', '+49 40 6003852232', '');
-insert into employer(userId, company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'engineering people GmbH', 'Südwestpark 60', '90449', 'Nürnberg',  'm', '', 'Haluk', 'Acar','haluk.acar@engineering-people.de', '+49 911 239560316', '');
-insert into employer(userId, company, gender, street, postcode, city, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'BFI Informationssysteme GmbH', 'Ötterichweg 7', '90411', 'Nürnberg', 'm', '', 'Michael', 'Schlund', 'Michael.Schlund@bfi-info.de', '0911 9457668', '');
-*/
-insert into htmlPageTemplate(name, odtPath, html) values('Anschreiben nach DIN 5008', 'c:/users/rene/desktop/bewerbung_neu.odt',
-'<div id="divInsert">
-<div id="divTemplate" class="page1">
-    <div style="width: 100%; background-color: white">
-        <input type=text data-bind-ref="employerGender" data-bind-value="m" />
-        <input type=text data-bind-ref="employerGender" data-bind-value="u" />
-        <input type=text data-bind-ref="employerGender" data-bind-value="f" />
-        <input class="resizing" autofocus "autofocus" style="font-family: Arial; font-size: 12pt; font-weight: normal" data-bind-ref="userDegree" data-variable-value="userDegree" placeholder="Dein Titel" />
-        <input class="resizing" value="test" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-variable-value="userFirstName" data-bind-ref="userFirstName" placeholder="Dein Vorname" />
-        <input class="resizing" style="border:none; outline: none; letter-spacing: 0px; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind-ref="userLastName" data-variable-value="userLasssstName" placeholder="Dein Nachname" />
-        <br />
-        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind-ref="userStreet" style= "width:150px" data-variable-value="userStreet" placeholder="Deine Straße" />
-        <br />
-        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind-ref="userPostcode" data-variable-value="userPostcode" placeholder="Deine Postleitzahl" />
-        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind-ref="userCity" data-variable-value="userCity" placeholder="Deine Stadt" />
-        <br />
-        <br />
-        <br />
-        <br />
-        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind-ref="employerDegree" placeholder="Chef-Titel" />
-        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind-ref="employerFirstName" placeholder="Chef-Vorname" />
-        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind-ref="employerLastName" placeholder="Chef-Nachname" />
-        <br />
-        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind-ref="employerStreet" placeholder="Firma-Strasse" />
-        <br />
-        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind-ref="employerPostcode" placeholder="Firma-Postleitzahl" />
-        <input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal"  data-bind-ref="employerCity" placeholder="Firma-Stadt" />
-        <br />
-<span style= "float:right">
-<input type="text" readonly="readonly" class="resizing" style="font-family: Arial; font-size: 12pt; font-weight: normal; border: none; outline: none;padding:0px; margin:0px" data-bind-ref="userCity" />,&nbsp
-<input type="text" readonly="readonly" class="resizing" style="font-family: Arial; font-size: 12pt; font-weight: normal" data-variable-value="today" />
-</span>
-        <br />
-        <br />
-        <input class="resizing" data-bind-ref="documentEmailSubject" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: bold" placeholder="Betreff" />
-        <br />
-        <br />
-    </div>
-    <div style="width: 100%;">
-        <textarea rows="7" data-page-key="mainText" data-page-value="ehr geehrte Damen und Herren" style="wrap: soft; border: solid 2px red; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; overflow: hidden; min-height: 100%; min-width: 100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block"></textarea>
-        <textarea rows="7" data-page-key="mainText1" data-page-value="Sehr geehrte Damen und Herren" style="wrap: soft; border: solid 2px red; outline: none; letter-spacing:0pt; margin: 0px; padding: 0px; overflow: hidden; min-height: 100%; min-width: 100%; font-family: Arial; font-size: 12pt; font-weight: normal; display: block"></textarea>
-    </div>
-    <div style="width: 100%">
-        <br />
-        Mit freundlichen Grüßen
-        <br />
-        <br />
-        <br />
-<input type="text" readonly="readonly" class="resizing" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-bind-ref="userDegree" />&nbsp;
-<input type="text" readonly="readonly" class="resizing" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-bind-ref="userFirstName" />&nbsp;
-<input type="text" readonly="readonly" class="resizing" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-bind-ref="userLastName" />
-</div>
-</div>
-</div>');
-insert into htmlPageTemplate(name, odtPath, html) values('Deckblatt', 'c:/users/rene/desktop/bewerbung_deckblatt.odt',
-'<div id="insertDiv">
-<h1>Deckblatt</h1>
-<input class="resizing" style="border:none; outline: none; font-family: Arial; font-size: 12pt; font-weight: normal" data-bind-ref="employerFirstName" placeholder="Chef-Vorname" />
-<image src="null" width="400" height="100" />
-<input type="text" class="resizing" data-bind-ref="userFirstName"></input>
-<input type="text" data-page-mainText="xainText"></input>
-<br />
-<input type="text" class="resizing" style="border: none; outline: none;font-family: Arial; font-size: 12pt; font-weight: normal" data-bind-ref="userLastName" placeholder="Dein Name" />
-hallo div!</div>
-');
-insert into htmlPageTemplate(name, odtPath, html) values('Lebenslauf', 'c:/users/rene/desktop/bewerbung_lebenslauf.odt', '<div id="insertDiv"><b>Lebenslauf...</b></div>');
 insert into document(userId, name, jobName, customVariables) values(1, 'mein htmlTemplate', 'Fachinformatiker', '');
 insert into document(userId, name, jobName, customVariables) values(1, 'mein zweites htmlTemplate', 'Automechaniker', '');
 insert into documentEmail(documentId, subject, body) values(1, 'Bewerbung als $beruf', 'Sehr $geehrter $chefAnrede $chefTitel $chefNachname,\n\nanbei sende ich Ihnen meine Bewerbungsunterlagen.\nÜber eine Einladung zu einem Bewerbungsgespräch freue ich mich sehr.\n\nMit freundlichen Grüßen\n\n\n$meinTitel $meinVorname $meinNachname\n$meineStrasse\n$meinePlz $meineStadt\n$meineMobilnummer');
@@ -139,7 +58,7 @@ insert into filePage(documentId, path, pageIndex, name) values(1, 'Users/1/bewer
 insert into filePage(documentId, path, pageIndex, name) values(1, 'Users/1/labenwolf_zeugnis_small.pdf', 2, 'Labenwolf Zeugnis');
 insert into filePage(documentId, path, pageIndex, name) values(1, 'Users/1/bewerbung_neu1.odt', 3, 'Anschreiben');
 insert into filePage(documentId, path, pageIndex, name) values(1, 'Users/1/segitz_zeugnis_small.pdf', 4, 'Labenwolf Zeugnis');
-insert into pageMap(documentId, pageIndex, key, value) values (1, 2, 'mainText', 'nur ein gruß');
+*/
 
 insert into sentStatusValue(id, status) values(1, 'Application queued for sending');
 insert into sentStatusValue(id, status) values(2, 'Waiting for reply after sending application');
@@ -148,43 +67,5 @@ insert into sentStatusValue(id, status) values(4, 'Application rejected without 
 insert into sentStatusValue(id, status) values(5, 'Waiting for reply after interview');
 insert into sentStatusValue(id, status) values(6, 'Application rejected after interview');
 insert into sentStatusValue(id, status) values(7, 'Aapplication accepted after interview');
-
-insert into sentDocumentEmail (subject, body) values ('subject', 'body');
-insert into sentDocumentEmail (subject, body) values ('subject', 'body');
-insert into sentUserValues(email, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone)
-             values('rene.ederer.nbg@gmail.com', 'm', '', 'René', 'Ederer', 'Raabstr. 24A', '90429', 'Nürnberg', 'meinTelefon', 'meinMobiltelefon');
-insert into sentUserValues(email, gender, degree, firstName, lastName, street, postcode, city, phone, mobilePhone)
-             values('rene.ederer.nbg@gmail.com', 'm', '', 'René', 'Ederer', 'Raabstr. 24A', '90429', 'Nürnberg', 'meinTelefon', 'meinMobiltelefon');
-insert into employer(userId, company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'BJC BEST JOB IT SERVICES GmbH', 'Alte Rabenstraße 32', '20148', 'Hamburg', 'f', '', 'Katrin', 'Thoms', 'Katrin.Thoms@bjc-its.de', '+49 (40) 5 14 00 7180', '');
-insert into employer(userId, company, street, postcode, city, gender, degree, firstName, lastName, email, phone, mobilePhone) values(1, 'BJC BEST JOB IT SERVICES GmbH', 'Alte Rabenstraße 32', '20148', 'Hamburg', 'f', '', 'Der', 'Chef', 'Katrin.Thoms@bjc-its.de', '+49 (40) 5 14 00 7180', '');
-insert into  sentDocument    (employerId, sentDocumentEmailId, sentUserValuesId, jobName, customVariables)
-           values (1, 1, 1, 'Fachinformatiker', '');
-insert into  sentDocument    (employerId, sentDocumentEmailId, sentUserValuesId, jobName, customVariables)
-           values (2, 2, 2, 'Schiffskapitän', '');
-
-insert into sentApplication(userId, sentDocumentId, url)
-                      values(1, 1, 'meineUrl');
-insert into sentApplication(userId, sentDocumentId, url)
-                      values(1, 2, 'meineUrl');
-insert into sentStatus(sentApplicationId, statusChangedOn, dueOn, sentStatusValueId, statusMessage)
-                 values(1, current_date, null, 2, '');
-insert into sentStatus(sentApplicationId, statusChangedOn, dueOn, sentStatusValueId, statusMessage)
-                 values(2, current_date, null, 2, '');
-
-/*
-insert into sentApplication(userId, employerId, appliedAs) values(1, 1, 'Industriemechaniker');
-insert into sentApplication(userId, employerId, appliedAs) values(1, 2, 'Informatiker');
-insert into sentApplication(userId, employerId, appliedAs) values(1, 3, 'Bürokauffrau');
-
-insert into sentStatus(sentApplicationId, statusChangedOn, dueOn, sentStatusValueId, statusMessage)
-    values(1, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 2, '');
-insert into sentStatus(sentApplicationId, statusChangedOn, dueOn, sentStatusValueId, statusMessage)
-    values(2, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 2, '');
-insert into sentStatus(sentApplicationId, statusChangedOn, dueOn, sentStatusValueId, statusMessage)
-    values(3, to_timestamp('26.10.2017', '%d.%m.%Y'), null, 2, '');
-
-*/
-
-
 
 

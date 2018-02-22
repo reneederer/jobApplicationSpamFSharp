@@ -4,11 +4,11 @@ module Types =
     open WebSharper
     open System
     open FSharp.Configuration
-    open System.Configuration
     open System.IO
 
     type UserId = UserId of int
     type DocumentId = DocumentId of int
+    type EmailAddress = EmailAddress of string
 
     type Settings = AppSettings<"app.config">
 

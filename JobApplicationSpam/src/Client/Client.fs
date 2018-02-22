@@ -1068,7 +1068,6 @@ module Client =
             let! isGuest = Server.isLoggedInAsGuest()
             if isGuest
             then
-                JS.Alert("guest!")
                 varUserEmailInput.Value <- createInput "Deine Email" varUserEmail (fun x -> "")
             else
                 JS.Alert("no guest!")

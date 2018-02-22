@@ -244,13 +244,20 @@ module Site =
                                 Odt.saveStreamCompare streamCompare (toRootedPath filePath)
                                 filePath, fileName
 
-                        match Odt.odtToPdf (toRootedPath filePath) with
-                        | Some _ ->
+                        if Path.GetExtension(filePath).ToLower() = ".odt"
+                        then
+                            match Odt.odtToPdf (toRootedPath filePath) with
+                            | Some _ ->
+                                async {
+                                    do! Server.addFilePage documentId filePath pageIndex fileName
+                                    do! Server.setLastEditedDocumentId (UserId userId) documentId
+                                } |> Async.RunSynchronously
+                            | None -> File.Delete (toRootedPath filePath)
+                        else 
                             async {
                                 do! Server.addFilePage documentId filePath pageIndex fileName
                                 do! Server.setLastEditedDocumentId (UserId userId) documentId
                             } |> Async.RunSynchronously
-                        | None -> File.Delete (toRootedPath filePath)
 
                 )
         | _ -> ()
@@ -313,6 +320,7 @@ module Site =
     let main =
         Application.MultiPage (fun (ctx : Context<EndPoint>) endpoint ->
             match (ctx.UserSession.GetLoggedInUser() |> Async.RunSynchronously, endpoint) with
+            | _ , EndPoint.Login -> loginPage ctx
             | (_ , EndPoint.Logout) -> logoutPage ctx
             | None , EndPoint.Home ->
                 templatesPage ctx
@@ -325,7 +333,6 @@ module Site =
             | Some _ , EndPoint.Templates -> templatesPage ctx
             | Some _ , EndPoint.ChangePassword -> changePasswordPage ctx
             | None , EndPoint.ChangePassword -> changePasswordPage ctx
-            //| _ , EndPoint.Login -> loginPage ctx
             | Some _ , EndPoint.Download guid ->
                 downloadPage ctx guid
             | a, b ->

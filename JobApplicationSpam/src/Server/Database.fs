@@ -27,6 +27,9 @@ module Database =
                 else
                     "Expected one result, found 0")
     
+    let atMostOne (xs : seq<'a>) =
+        xs.Select(Some).SingleOrDefault()
+    
 
     let getEmailByUserId (UserId userId) (dbContext : D) =
         dbContext.Public.Users
@@ -131,14 +134,13 @@ module Database =
             dbContext.Public.Users
               .Where(fun x -> x.Email.IsSome && x.Email.Value = email)
               .Select(fun x ->
-                    Some
-                        { userId = UserId x.Id
-                          userEmail = email
-                          hashedPassword = x.Password
-                          salt = x.Salt
-                          confirmEmailGuid = x.Confirmemailguid
-                        })
-            |> single
+                    { userId = UserId x.Id
+                      userEmail = email
+                      hashedPassword = x.Password
+                      salt = x.Salt
+                      confirmEmailGuid = x.Confirmemailguid
+                    })
+            |> atMostOne
     
     let insertUser
             (oEmail : option<string>)
@@ -527,7 +529,7 @@ module Database =
               .OrderBy(fun x -> x.Id)
               .Skip(documentOffset)
               .Select(fun x -> Some x.Id)
-            |> single
+              .FirstOrDefault()
             |> Option.bind (fun documentId -> getDocument documentId dbContext)
         with
         | e ->

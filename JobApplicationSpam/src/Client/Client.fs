@@ -757,7 +757,7 @@ module Client =
                 let regex = RegExp(emailRegexStr)
                 let! sentApplication (*TODO this is an option<int> instead of option<SentApplication> as placeholder*) =
                     Server.tryFindSentApplication varEmployer.Value
-                let! setUserEmailResult = Server.setUserEmail (Some varUserEmail.Value)
+                let! setUserEmailResult = Server.setUserEmail varUserEmail.Value
 
                 let userEmailValid() =
                     if isGuest
@@ -816,6 +816,7 @@ module Client =
                             varDocument.Value
                             varUserValues.Value
                             els.txtReadFromWebsite?value
+                    do! Async.Sleep 3500
 
                     fontAwesomeEls
                     |> List.iter (fun faEl ->

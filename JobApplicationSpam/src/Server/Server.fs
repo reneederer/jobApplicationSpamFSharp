@@ -246,13 +246,19 @@ module Server =
         }
     
     [<Remote>]
-    let setUserEmail (oEmail : option<string>) =
-        if oEmail = Some "geprueftundokund nicht doppelt" || true //TODO
+    let setUserEmail (email : string) =
+        if email = "geprueftundokund nicht doppelt" || true //TODO
         then
-            withCurrentUser ()
-            |> Database.setUserEmail oEmail
-            |> withTransaction
-            async { return ok () }
+            try
+                withCurrentUser ()
+                |> (fun userId dbContext ->
+                    Database.setUserEmail (Some email) userId dbContext |> ignore
+                    Database.setConfirmEmailGuid email (Some <| Guid.NewGuid().ToString("N")) dbContext |> ignore
+                   )
+                |> withTransaction
+                async { return ok () }
+            with
+            | e -> async { return fail "Email already registered" }
         else
             async { return fail "Email is not valid" }
     
@@ -283,7 +289,7 @@ module Server =
         log.Debug (sprintf "(sessionGuid = %s)" sessionGuid)
         use dbScope = new TransactionScope(TransactionScopeOption.RequiresNew)
         let dbContext = DB.GetDataContext()
-        let user = Database.insertUser None "" "" None None DateTime.Now dbContext
+        let user = Database.insertUser None "" "" None (Some sessionGuid) DateTime.Now dbContext
         dbContext.SubmitUpdates()
         Database.insertLastLogin DateTime.Now (UserId user.Id) dbContext
         Database.insertUserValues emptyUserValues (UserId user.Id) dbContext
@@ -357,12 +363,8 @@ module Server =
                     match Database.tryGetConfirmEmailGuid email |> readDB with
                     | None -> ok "Email already confirmed"
                     | Some guid when guid = confirmEmailGuid ->
-                        let recordCount = Database.setConfirmEmailGuidToNull dbContext email
-                        if recordCount <> 1
-                        then
-                            log.Error("Email does not exist or confirmEmailGuid was already null: " + email)
-                            fail "An error occurred."
-                        else ok "Email has been confirmed."
+                        Database.setConfirmEmailGuid email None dbContext 
+                        ok "Email has been confirmed."
                     | Some _ ->
                         fail "Unknown confirmEmailGuid")
                 |> withTransaction

@@ -11,7 +11,7 @@ module JobApplicationService =
         let loginAsGuest () =
             async {
                 let sessionGuid = Guid.NewGuid().ToString("N")
-                Cookies.Set("user", sessionGuid, Cookies.Options(Expires = Date(Date.Now() + 604800)))
+                Cookies.Set("user", sessionGuid, Cookies.Options(Expires = Date(60800)))
                 do! Server.loginAsGuest sessionGuid
             }
 
@@ -23,6 +23,9 @@ module JobApplicationService =
                 if not loggedIn
                 then
                     do! loginAsGuest ()
+                else
+                    Cookies.Expire("user")
+                    Cookies.Set("user", userCookie, Cookies.Options(Expires = Date(2147483647)))
             else do! loginAsGuest()
         }
     

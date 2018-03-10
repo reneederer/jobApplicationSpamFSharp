@@ -45,6 +45,7 @@ module Database =
         let dbLogin = dbContext.Public.Login.Create()
         dbLogin.Userid <- userId
         dbLogin.Loggedinat <- time
+        dbContext.SubmitUpdates()
     
     let insertEmployer (employer : Employer) (UserId userId) (dbContext : D) =
         let dbEmployer =
@@ -95,6 +96,7 @@ module Database =
                x.City <- userValues.city
                x.Phone <- userValues.phone
                x.Mobilephone <- userValues.mobilePhone
+        dbContext.SubmitUpdates()
     
     let insertUserValues (userValues : UserValues) (UserId userId) (dbContext : D) =
         dbContext.Public.Uservalues.Create(
@@ -114,6 +116,7 @@ module Database =
         dbContext.Public.Users.Where(fun x -> x.Id = userId)
         |> single
         |> fun x -> x.Email <- oEmail
+        dbContext.SubmitUpdates()
     
     let userEmailExists (email : string) (dbContext : D) =
         let emailExists = dbContext.Public.Users.Any(fun x -> x.Email.IsSome && x.Email.Value = email)
@@ -129,6 +132,7 @@ module Database =
         dbContext.Public.Users.Where(fun x -> x.Id = userId)
         |> single
         |> fun x -> x.Sessionguid <- oSessionGuid
+        dbContext.SubmitUpdates()
 
     let tryGetValidateLoginData (email : string) (dbContext : D) =
             dbContext.Public.Users
@@ -170,13 +174,12 @@ module Database =
               .Select(fun x -> Option.map id x.Confirmemailguid)
             |> single
 
-    let setConfirmEmailGuidToNull (dbContext : D) (email : string) =
+    let setConfirmEmailGuid (email : string) (oGuid : option<string>) (dbContext : D) =
         let users =
             dbContext.Public.Users
-              .Where(fun x -> Option.map id x.Email = Some email)
-              .Select(fun x -> x)
-        users |> Seq.iter (fun x -> x.Confirmemailguid <- None)
-        users.Count()
+              .Where(fun x -> x.Email.IsSome)
+        users |> Seq.iter (fun x -> x.Confirmemailguid <- oGuid)
+        dbContext.SubmitUpdates()
 
     let insertNotYetSentApplication
             (employerId : int)
@@ -583,6 +586,7 @@ module Database =
         | Some v ->
             v.Documentid <- documentId
             v.Userid <- userId
+        dbContext.SubmitUpdates()
 
     let getPageMapOffset (pageIndex : int) (documentIndex : int) (UserId userId) (dbContext : D) =
         query {
@@ -597,11 +601,13 @@ module Database =
         dbContext.Public.Filepage.Where(fun x -> x.Pageindex >= pageIndex && x.Documentid = documentId)
         |> Seq.iter (fun x -> x.Pageindex <- x.Pageindex + 1)
         dbContext.Public.Filepage.Create(Documentid = documentId, Path = path, Pageindex = pageIndex, Name = name) |> ignore
+        dbContext.SubmitUpdates()
 
     let insertHtmlPage (documentId : int) (oTemplateId : option<int>) (pageIndex : int) (name : string) (dbContext : D) =
         dbContext.Public.Htmlpage.Where(fun x -> x.Pageindex >= pageIndex && x.Documentid = documentId)
         |> Seq.iter (fun x -> x.Pageindex <- x.Pageindex + 1)
         dbContext.Public.Htmlpage.Create(Documentid = documentId, Templateid = oTemplateId, Pageindex = pageIndex, Name = name) |> ignore
+        dbContext.SubmitUpdates()
 
     let tryGetDocumentIdOffset (documentIndex : int) (UserId userId) (dbContext : D) =
         let documentIds = dbContext.Public.Document.Where(fun x -> x.Userid = userId).Select(fun x -> x.Id)
@@ -665,6 +671,8 @@ module Database =
         user.Password <- password
         user.Salt <- salt
         user.Confirmemailguid <- oConfirmEmailGuid
+        dbContext.SubmitUpdates()
+
 
 
 

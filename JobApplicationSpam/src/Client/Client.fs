@@ -16,6 +16,7 @@ module Client =
     open JobApplicationSpam.I18n
     open ClientHelpers
     open ClientTypes
+    open JobApplicationSpam.Database
 
 
     [<JavaScript>]
@@ -31,33 +32,6 @@ module Client =
 
 
     [<JavaScript>]
-    let loginOrOutButton () =
-        let varIsGuest = Var.Create false
-        async {
-            let! isGuest = Server.isLoggedInAsGuest()
-            varIsGuest.Value <- isGuest
-        } |> Async.Start
-        match varIsGuest.Value with
-        | true ->
-            formAttr
-              [ attr.action "/ghi" ]
-              [ buttonAttr
-                  [ attr.``type`` "submit"
-                  ]
-                  [text "Login"]
-              ]
-            :> Doc
-        | false ->
-            formAttr
-              [ attr.action "/logout" ]
-              [ buttonAttr
-                  [ attr.``type`` "submit"
-                  ]
-                  [text "Logout"]
-              ]
-            :> Doc
-
-    [<JavaScript>]
     let logout () =
         Cookies.Expire("user")        
         div
@@ -67,9 +41,12 @@ module Client =
     let changePassword() =
         div
           [ formAttr
-              [ on.submit (fun _ _ ->
+              [ on.submit (fun _ ev ->
+                    ev.PreventDefault()
+                    ev.StopPropagation()
                     async {
                         do! Server.setPassword (JS.Document.GetElementById("txtNewPassword")?value)
+                        JS.Window.Location.Href <- "/"
                     } |> Async.Start
                 )
               ]
@@ -816,7 +793,7 @@ module Client =
                             varDocument.Value
                             varUserValues.Value
                             els.txtReadFromWebsite?value
-                    do! Async.Sleep 3500
+                    do! Async.Sleep 4500
 
                     fontAwesomeEls
                     |> List.iter (fun faEl ->
@@ -1070,9 +1047,26 @@ module Client =
             if isGuest
             then
                 varUserEmailInput.Value <- createInput "Deine Email" varUserEmail (fun x -> "")
+                Doc.RunById
+                    "btnLoginOrOut"
+                    (formAttr
+                      [ attr.action "/ghi" ]
+                      [ buttonAttr
+                          [ attr.``type`` "submit"
+                          ]
+                          [text "Login"]
+                      ] :> Doc)
             else
-                JS.Alert("no guest!")
                 varUserEmailInput.Value <- text ""
+                Doc.RunById
+                    "btnLoginOrOut"
+                    (formAttr
+                      [ attr.action "/logout" ]
+                      [ buttonAttr
+                          [ attr.``type`` "submit"
+                          ]
+                          [text "Logout"]
+                      ] :> Doc)
             JQuery(JS.Document).Ready(
                 fun () ->
                     async {
@@ -1090,7 +1084,7 @@ module Client =
                         ) |> ignore
 
                         addMenuEntry "Variablen" (fun _ _ -> show [els.divVariables]) |> ignore
-                        addMenuEntry (t German EditYourValues) (fun _ _ -> show [els.divEditUserValues]) |> ignore
+                        //addMenuEntry (t German EditYourValues) (fun _ _ -> show [els.divEditUserValues]) |> ignore
                         addMenuEntry (t German EditEmail) (fun _ _ -> show [els.divEmail]) |> ignore
                         addMenuEntry (t German EditAttachments) (fun _ _ -> show [els.divAttachments]) |> ignore
                         addMenuEntry (t German AddEmployerAndApply) (fun _ _ -> show [els.divAddEmployer]) |> ignore

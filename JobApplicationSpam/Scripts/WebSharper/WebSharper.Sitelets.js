@@ -1,7 +1,7 @@
 (function()
 {
  "use strict";
- var Global,WebSharper,Sitelets,StringEncoding,PathUtil,Route,List,Router,Obj,RouterModule,ListArrayConverter,RouterOperators,SC$1,Strings,String,List$1,Seq,Collections,Map,Arrays,IntelliFactory,Runtime,FSharpMap,Utils,console,Lazy,Unchecked,Nullable,Numeric,Concurrency,$,Operators,Char,System,Guid,Slice;
+ var Global,WebSharper,Sitelets,StringEncoding,PathUtil,Route,List,Router,Obj,RouterModule,ListArrayConverter,RouterOperators,SC$1,Strings,String,List$1,Seq,Collections,Map,Arrays,IntelliFactory,Runtime,FSharpMap,Unchecked,Utils,console,Lazy,Nullable,Numeric,Concurrency,$,Operators,Char,System,Guid,Slice;
  Global=window;
  WebSharper=Global.WebSharper=Global.WebSharper||{};
  Sitelets=WebSharper.Sitelets=WebSharper.Sitelets||{};
@@ -25,10 +25,10 @@
  IntelliFactory=Global.IntelliFactory;
  Runtime=IntelliFactory&&IntelliFactory.Runtime;
  FSharpMap=Collections&&Collections.FSharpMap;
+ Unchecked=WebSharper&&WebSharper.Unchecked;
  Utils=WebSharper&&WebSharper.Utils;
  console=Global.console;
  Lazy=WebSharper&&WebSharper.Lazy;
- Unchecked=WebSharper&&WebSharper.Unchecked;
  Nullable=WebSharper&&WebSharper.Nullable;
  Numeric=WebSharper&&WebSharper.Numeric;
  Concurrency=WebSharper&&WebSharper.Concurrency;
@@ -176,7 +176,7 @@
   {
    var m,v;
    m=Strings.SplitChars(kv,["="],0);
-   return m&&Arrays.length(m)===2?(v=Arrays.get(m,1),{
+   return!Unchecked.Equals(m,null)&&m.length===2?(v=Arrays.get(m,1),{
     $:1,
     $0:[Arrays.get(m,0),v]
    }):((function($1)
@@ -1223,7 +1223,7 @@
    fields=p[2];
    p$1=Arrays.get(p[1],0);
    casePath=[Route.Segment(List$1.ofArray(p$1[1]),p$1[0])];
-   return fields&&Arrays.length(fields)===0?{
+   return!Unchecked.Equals(fields,null)&&fields.length===0?{
     $:1,
     $0:casePath
    }:(fieldParts=(((Runtime.Curried3(Arrays.map2))(m$1))(readFields(tag,value)))(fields),Arrays.forall(function(o)

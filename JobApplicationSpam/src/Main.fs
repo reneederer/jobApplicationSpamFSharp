@@ -73,9 +73,6 @@ module Templating =
         then "@"
         else "@"
 
-    let btnLoginOrOut (ctx: Context<EndPoint>) : Doc =
-        client <@ Client.loginOrOutButton() @>
-
     let main (ctx : Context<EndPoint>) (action : EndPoint) (title: string) (body: Doc list) : Async<Content<'a>>=
         Content.Page
             (MainTemplate()
@@ -83,7 +80,6 @@ module Templating =
                 .AtSign(atSign ctx)
                 .MenuBar(MenuBar ctx action)
                 .Body(body)
-                .BtnLoginOrOut(btnLoginOrOut ctx)
                 .LoggedInUserEmail(loggedInUserEmail ctx)
                 .Doc())
 

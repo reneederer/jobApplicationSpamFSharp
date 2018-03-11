@@ -1,4 +1,4 @@
-﻿set client_encoding to 'UTF8';
+﻿;set client_encoding to 'UTF8';
 
 drop table if exists link cascade;
 drop table if exists sentStatus cascade;

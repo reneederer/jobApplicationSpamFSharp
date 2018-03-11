@@ -550,109 +550,112 @@ module Server =
                 |> fun userId () -> emailSentApplicationToUser' sentApplicationOffset customVariablesString userId
                 |> fun f -> f()
         }
+
+
+
+    [<Remote>]
+    let sendNotYetSentApplication' sentApplicationId dbContext =
+        let oSentApp = Database.getSentApplication sentApplicationId dbContext
+        match oSentApp with
+        | None ->
+            log.Error (sprintf "sentApplication was None. Id: %i" sentApplicationId)
+        | Some sentApp ->
+            let myList =
+                    toCV
+                        sentApp.employer
+                        sentApp.user.values
+                        sentApp.user.email
+                        sentApp.jobName
+                        sentApp.customVariables
+                    |> Async.RunSynchronously
+            let tmpDirectory = Path.Combine(Settings.DataDirectory, "tmp", Guid.NewGuid().ToString("N"))
+            let odtPaths =
+                [ for (filePath, pageIndex) in sentApp.filePages do
+                    yield
+                        if unoconvImageTypes |> List.contains(Path.GetExtension(filePath).ToLower().Substring(1))
+                        then
+                            toRootedPath filePath
+                        elif filePath.ToLower().EndsWith(".odt")
+                        then
+                            let directoryGuid = Guid.NewGuid().ToString("N")
+                            Odt.replaceInOdt
+                                (toRootedPath filePath)
+                                (Path.Combine(tmpDirectory, directoryGuid, "extractedOdt"))
+                                (Path.Combine(tmpDirectory, directoryGuid, "replacedOdt"))
+                                myList
+                        else
+                            let copiedPath = Path.Combine(tmpDirectory, Guid.NewGuid().ToString("N"), Path.GetFileName(filePath))
+                            Directory.CreateDirectory(Path.GetDirectoryName copiedPath) |> ignore
+                            File.Copy(toRootedPath filePath, copiedPath)
+                            Odt.replaceInFile
+                                copiedPath
+                                myList
+                                Types.Ignore
+                            copiedPath
+                ]
+                   
+
+            let pdfPaths =
+                [ for odtPath in odtPaths do
+                    yield
+                        Odt.odtToPdf odtPath
+                ] |> List.choose id
+            let mergedPdfPath = Path.Combine(tmpDirectory, Guid.NewGuid().ToString() + ".pdf")
+            if pdfPaths <> []
+            then Odt.mergePdfs pdfPaths mergedPdfPath
+
+
+            //TODO
+            dbContext.Public.Sentstatus.Create
+                ( Sentapplicationid = sentApplicationId
+                , Statuschangedon = DateTime.Today
+                , Dueon = None
+                , Sentstatusvalueid = 2
+                , Statusmessage = "")
+            |> ignore
+
+            sendEmail
+                sentApp.user.email
+                (sentApp.user.values.firstName + " " + sentApp.user.values.lastName)
+                sentApp.employer.email
+                (Odt.replaceInString sentApp.email.subject myList Types.Ignore)
+                (Odt.replaceInString (sentApp.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Types.Ignore)
+
+                (if pdfPaths = []
+                 then []
+                 else [mergedPdfPath, (sprintf "Bewerbung_%s_%s.pdf" sentApp.user.values.firstName sentApp.user.values.lastName)]
+                 )
+            sendEmail
+                sentApp.user.email
+                (sentApp.user.values.firstName + " " + sentApp.user.values.lastName)
+                sentApp.user.email
+                ("Deine Bewerbung wurde versandt - " + Odt.replaceInString sentApp.email.subject myList Types.Ignore)
+                ((sprintf
+                    "Deine Bewerbung wurde am %s an %s versandt.\n\n"
+                    (DateTime.Now.ToShortDateString())
+                    sentApp.employer.email)
+                        + Odt.replaceInString (sentApp.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Types.Ignore)
+
+                (if pdfPaths = []
+                 then []
+                 else [mergedPdfPath, (sprintf "Bewerbung_%s_%s.pdf" sentApp.user.values.firstName sentApp.user.values.lastName)]
+                 )
+
+            let oConfirmEmailGuid = Database.tryGetConfirmEmailGuid sentApp.user.email dbContext
+            match oConfirmEmailGuid with
+            | Some confirmEmailGuid ->
+                sendEmail
+                    Settings.EmailUsername
+                    "Bewerbungsspam"
+                    sentApp.user.email
+                    (t German PleaseConfirmYourEmailAddressEmailSubject)
+                    (String.Format((t German PleaseConfirmYourEmailAddressEmailBody), sentApp.user.email, confirmEmailGuid))
+                    []
+            | None -> ()
     [<Remote>]
     let sendNotYetSentApplication sentApplicationId =
-        try
-            let oSentApp = Database.getSentApplication sentApplicationId |> readDB
-            match oSentApp with
-            | None ->
-                log.Error (sprintf "sentApplication was None. Id: %i" sentApplicationId)
-            | Some sentApp ->
-                let myList =
-                        toCV
-                            sentApp.employer
-                            sentApp.user.values
-                            sentApp.user.email
-                            sentApp.jobName
-                            sentApp.customVariables
-                        |> Async.RunSynchronously
-                let tmpDirectory = Path.Combine(Settings.DataDirectory, "tmp", Guid.NewGuid().ToString("N"))
-                let odtPaths =
-                    [ for (filePath, pageIndex) in sentApp.filePages do
-                        yield
-                            if unoconvImageTypes |> List.contains(Path.GetExtension(filePath).ToLower().Substring(1))
-                            then
-                                toRootedPath filePath
-                            elif filePath.ToLower().EndsWith(".odt")
-                            then
-                                let directoryGuid = Guid.NewGuid().ToString("N")
-                                Odt.replaceInOdt
-                                    (toRootedPath filePath)
-                                    (Path.Combine(tmpDirectory, directoryGuid, "extractedOdt"))
-                                    (Path.Combine(tmpDirectory, directoryGuid, "replacedOdt"))
-                                    myList
-                            else
-                                let copiedPath = Path.Combine(tmpDirectory, Guid.NewGuid().ToString("N"), Path.GetFileName(filePath))
-                                Directory.CreateDirectory(Path.GetDirectoryName copiedPath) |> ignore
-                                File.Copy(toRootedPath filePath, copiedPath)
-                                Odt.replaceInFile
-                                    copiedPath
-                                    myList
-                                    Types.Ignore
-                                copiedPath
-                    ]
-                       
-
-                let pdfPaths =
-                    [ for odtPath in odtPaths do
-                        yield
-                            Odt.odtToPdf odtPath
-                    ] |> List.choose id
-                let mergedPdfPath = Path.Combine(tmpDirectory, Guid.NewGuid().ToString() + ".pdf")
-                if pdfPaths <> []
-                then Odt.mergePdfs pdfPaths mergedPdfPath
-
-
-                //TODO
-                (fun (dbContext : DB.dataContext) ->
-                    dbContext.Public.Sentstatus.Create(Sentapplicationid = sentApplicationId, Statuschangedon = DateTime.Today, Dueon = None, 
-                        Sentstatusvalueid = 2, Statusmessage = ""))
-                |> withTransaction
-                |> ignore
-
-                sendEmail
-                    sentApp.user.email
-                    (sentApp.user.values.firstName + " " + sentApp.user.values.lastName)
-                    sentApp.employer.email
-                    (Odt.replaceInString sentApp.email.subject myList Types.Ignore)
-                    (Odt.replaceInString (sentApp.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Types.Ignore)
-
-                    (if pdfPaths = []
-                     then []
-                     else [mergedPdfPath, (sprintf "Bewerbung_%s_%s.pdf" sentApp.user.values.firstName sentApp.user.values.lastName)]
-                     )
-                sendEmail
-                    sentApp.user.email
-                    (sentApp.user.values.firstName + " " + sentApp.user.values.lastName)
-                    sentApp.user.email
-                    ("Deine Bewerbung wurde versandt - " + Odt.replaceInString sentApp.email.subject myList Types.Ignore)
-                    ((sprintf
-                        "Deine Bewerbung wurde am %s an %s versandt.\n\n"
-                        (DateTime.Now.ToShortDateString())
-                        sentApp.employer.email)
-                            + Odt.replaceInString (sentApp.email.body.Replace("\\r\\n", "\n").Replace("\\n", "\n")) myList Types.Ignore)
-
-                    (if pdfPaths = []
-                     then []
-                     else [mergedPdfPath, (sprintf "Bewerbung_%s_%s.pdf" sentApp.user.values.firstName sentApp.user.values.lastName)]
-                     )
-
-                let oConfirmEmailGuid = Database.tryGetConfirmEmailGuid sentApp.user.email |> readDB
-                match oConfirmEmailGuid with
-                | Some confirmEmailGuid ->
-                    sendEmail
-                        Settings.EmailUsername
-                        "Bewerbungsspam"
-                        sentApp.user.email
-                        (t German PleaseConfirmYourEmailAddressEmailSubject)
-                        (String.Format((t German PleaseConfirmYourEmailAddressEmailBody), sentApp.user.email, confirmEmailGuid))
-                        []
-                | None -> ()
-        with
-        | e ->
-            log.Error ("", e)
-
-
+        sendNotYetSentApplication' sentApplicationId
+        |> withTransaction
 
     [<Remote>]
     let applyNow
